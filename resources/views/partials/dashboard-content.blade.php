@@ -11,9 +11,11 @@
     ] as [$title, $count, $icon, $color])
     <div class="col-6 col-lg-3">
         <div class="card shadow-sm h-100 border-0" style="border-radius: 20px; overflow: hidden;">
-            <div class="card-body p-4 d-flex flex-column align-items-center text-center">
-                <div class="fc-icon-box mb-3" style="--icon-color: {{ $color }};">
-                    <i class="bi {{ $icon }}"></i>
+            <div class="card-body p-4 d-flex flex-column text-center" style="align-items: center; justify-content: center;">
+                <div style="width: 100%; display: flex; justify-content: center; margin-bottom: 12px;">
+                    <div class="fc-icon-box" style="--icon-color: {{ $color }};">
+                        <i class="bi {{ $icon }}"></i>
+                    </div>
                 </div>
                 <h6 class="text-muted mb-1 fw-semibold text-uppercase tracking-wider" style="font-size: 0.65rem; letter-spacing: 0.05em;">{{ $title }}</h6>
                 <h3 class="fw-bold mb-0 fs-3 color-navy">{{ $count }}</h3>
@@ -37,7 +39,7 @@
                         <span class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle" style="width: 18px; height: 18px;"></span>
                     </div>
                     <div>
-                        <h4 class="mb-1 fw-bold tracking-tight">Selamat datang, {{ auth()->user()->name ?? 'User' }}!</h4>
+                        <h4 class="mb-1 fw-bold tracking-tight text-white">Selamat datang, {{ auth()->user()->name ?? 'User' }}!</h4>
                         <p class="mb-0 opacity-75 d-flex align-items-center gap-2" style="font-size: 14px;">
                             <span class="badge bg-white bg-opacity-10 text-white fw-medium px-2 py-1"><i class="bi bi-shield-check me-1"></i> {{ session('role', 'Employee') }}</span>
                             <span class="opacity-50">&bull;</span>
@@ -57,9 +59,11 @@
     ] as [$title, $count, $icon, $color])
     <div class="col-6 col-lg-3">
         <div class="card shadow-sm h-100 border-0" style="border-radius: 20px;">
-            <div class="card-body p-4 d-flex flex-column align-items-center text-center">
-                <div class="fc-icon-box mb-3" style="--icon-color: {{ $color }};">
-                    <i class="bi {{ $icon }}"></i>
+            <div class="card-body p-4 d-flex flex-column text-center" style="align-items: center; justify-content: center;">
+                <div style="width: 100%; display: flex; justify-content: center; margin-bottom: 12px;">
+                    <div class="fc-icon-box" style="--icon-color: {{ $color }};">
+                        <i class="bi {{ $icon }}"></i>
+                    </div>
                 </div>
                 <h6 class="text-muted mb-1 fw-semibold text-uppercase tracking-wider" style="font-size: 0.65rem; letter-spacing: 0.05em;">{{ $title }}</h6>
                 <h3 class="fw-bold mb-0 fs-3 color-navy">{{ $count }}</h3>
@@ -161,6 +165,8 @@
     color: var(--icon-color);
     background: rgba(var(--bs-body-bg-rgb), 1);
     position: relative;
+    margin-left: auto;
+    margin-right: auto;
     box-shadow: 
         0 10px 20px -10px var(--icon-color),
         0 0 0 1px rgba(0,0,0,0.05),
@@ -198,6 +204,15 @@
 
 .tracking-wider { letter-spacing: 0.05em; }
 .tracking-tight { letter-spacing: -0.025em; }
+
+.fc-icon-box i {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    width: 100%;
+    height: 100%;
+}
 </style>
 
 {{-- ================= SCRIPT ================= --}}
