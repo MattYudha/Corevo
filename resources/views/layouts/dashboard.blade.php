@@ -112,10 +112,50 @@
             body.sidebar-collapsed #main { margin-left: 0; }
         }
 
-        /* Mobile sidebar overlap fix */
+        /* Mobile sidebar overlap fix + scrollable */
         @media screen and (max-width: 991px) {
             #sidebar, .sidebar-wrapper {
                 z-index: 1050 !important;
+            }
+
+            /* Make sidebar wrapper scrollable on iOS/mobile */
+            .sidebar-wrapper {
+                display: flex;
+                flex-direction: column;
+                height: 100vh !important;
+                max-height: 100vh !important;
+                overflow: hidden !important;
+            }
+
+            /* Sticky header within sidebar */
+            .sidebar-wrapper .sidebar-header {
+                flex-shrink: 0;
+            }
+
+            /* Scrollable menu area */
+            .sidebar-wrapper .sidebar-menu {
+                flex: 1 1 auto;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+                -webkit-overflow-scrolling: touch; /* Critical for iOS momentum scroll */
+                overscroll-behavior: contain;
+                padding-bottom: env(safe-area-inset-bottom, 24px); /* iPhone notch/home bar */
+                padding-bottom: max(24px, env(safe-area-inset-bottom));
+            }
+
+            /* Custom thin scrollbar for sidebar on mobile */
+            .sidebar-wrapper .sidebar-menu::-webkit-scrollbar {
+                width: 3px;
+            }
+            .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-thumb {
+                background: rgba(0, 0, 0, 0.15);
+                border-radius: 10px;
+            }
+            [data-bs-theme='dark'] .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.15);
             }
         }
 
