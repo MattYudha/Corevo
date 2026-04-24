@@ -28,7 +28,7 @@ jobs:
             echo "-- Update Database"
             php artisan migrate --force
 
-            echo "-- Clean server cache"
+            echo "-- Clean Server Cache"
             php artisan optimize:clear
 
             echo "Deploy Completed"
