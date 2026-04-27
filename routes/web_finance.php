@@ -12,7 +12,7 @@ use App\Constants\Roles;
 Route::middleware(['auth', 'verified'])->prefix('finance')->name('finance.')->group(function () {
 
     // ── 1. Full Admin / HR Access (CRUD Master Data & Full Transaksi) ────────────────
-    Route::middleware(['role:' . Roles::MASTER_ADMIN . ',' . Roles::HR_ADMINISTRATOR])->group(function() {
+    Route::middleware(['role:' . Roles::MASTER_ADMIN . ',' . Roles::HR_ADMINISTRATOR . ',' . Roles::FINANCE])->group(function() {
         Route::resource('entities', FinancialEntityController::class);
         Route::resource('accounts', FinancialAccountController::class);
         

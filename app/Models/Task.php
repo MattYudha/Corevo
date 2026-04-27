@@ -13,7 +13,7 @@ class Task extends Model
     protected $fillable = [
         'title', 'description', 'assigned_to', 'due_date', 'status', 
         'completed_at', 'quality_rating', 'quality_notes', 'reviewed_by', 'reviewed_at',
-        'priority', 'estimated_hours', 'actual_hours',
+        'priority', 'estimated_hours', 'actual_hours', 'created_by',
     ];
 
     protected $casts = [

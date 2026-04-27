@@ -104,6 +104,9 @@
                                         <th class="text-center text-uppercase text-secondary text-xs font-weight-bolder opacity-7" style="width: 200px;">Achievement</th>
                                         <th class="text-center text-uppercase text-secondary text-xs font-weight-bolder opacity-7" style="width: 120px;">Status</th>
                                         <th class="text-end px-4 text-uppercase text-secondary text-xs font-weight-bolder opacity-7" style="width: 100px;">Variance</th>
+                                        @if(in_array(session('role'), [\App\Constants\Roles::MASTER_ADMIN, \App\Constants\Roles::HR_ADMINISTRATOR]))
+                                        <th class="text-center text-uppercase text-secondary text-xs font-weight-bolder opacity-7" style="width: 80px;">Admin</th>
+                                        @endif
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -157,6 +160,15 @@
                                                 {{ $variance > 0 ? '+' : '' }}{{ round($variance, 2) }}
                                             </span>
                                         </td>
+                                        @if(in_array(session('role'), [\App\Constants\Roles::MASTER_ADMIN, \App\Constants\Roles::HR_ADMINISTRATOR]))
+                                        <td class="text-center">
+                                            <a href="{{ route('kpi.admin-edit', [$employee->id, $record->record->id ?? $record->id]) }}"
+                                               class="btn btn-xs btn-outline-warning py-0 px-2"
+                                               title="Edit manual (Admin)">
+                                                <i class="bi bi-pencil-fill" style="font-size:0.75rem;"></i>
+                                            </a>
+                                        </td>
+                                        @endif
                                     </tr>
                                     @endforeach
                                 </tbody>

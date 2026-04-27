@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class AuditLog extends Model
 {
@@ -17,6 +18,23 @@ class AuditLog extends Model
         'old_values' => 'array',
         'new_values' => 'array'
     ];
+
+    /**
+     * Check if audit logging is currently enabled.
+     * Reads from cache; defaults to enabled (true).
+     */
+    public static function isEnabled(): bool
+    {
+        return (bool) Cache::get('audit_logging_enabled', true);
+    }
+
+    /**
+     * Enable or disable audit logging globally.
+     */
+    public static function setEnabled(bool $enabled): void
+    {
+        Cache::forever('audit_logging_enabled', $enabled);
+    }
 
     public function user()
     {

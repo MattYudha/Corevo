@@ -56,10 +56,13 @@ class AuthenticatedSessionController extends Controller
     {
         Auth::guard('web')->logout();
 
+        // Explicitly clear custom session keys to prevent stale role data
+        $request->session()->forget(['role', 'employee_id']);
+
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/login');
     }
 }

@@ -112,6 +112,39 @@
             body.sidebar-collapsed #main { margin-left: 0; }
         }
 
+        /* Desktop sidebar toggle button */
+        #desktopSidebarToggle {
+            display: none;
+        }
+        @media screen and (min-width: 992px) {
+            #desktopSidebarToggle {
+                display: flex;
+                position: fixed;
+                top: 12px;
+                left: 12px;
+                z-index: 1100;
+                width: 36px;
+                height: 36px;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255,255,255,0.92);
+                border: 1px solid rgba(0,0,0,0.1);
+                border-radius: 8px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                cursor: pointer;
+                color: #1a1f3c;
+                transition: background 0.2s, left 0.3s;
+                text-decoration: none;
+            }
+            #desktopSidebarToggle:hover { background: #0d6efd; color: #fff; }
+            body.sidebar-collapsed #desktopSidebarToggle { left: 12px; }
+            [data-bs-theme='dark'] #desktopSidebarToggle {
+                background: rgba(30,30,45,0.92);
+                color: #f8fafc;
+                border-color: rgba(255,255,255,0.1);
+            }
+        }
+
         /* Mobile sidebar overlap fix + scrollable */
         @media screen and (max-width: 991px) {
             #sidebar, .sidebar-wrapper {
@@ -233,6 +266,11 @@
 
 <div id="app">
 
+    {{-- Desktop Sidebar Toggle Button (visible on lg+ screens only via CSS) --}}
+    <button id="desktopSidebarToggle" title="Toggle Sidebar" aria-label="Toggle Sidebar">
+        <i class="bi bi-layout-sidebar" style="font-size:1.1rem;"></i>
+    </button>
+
     <!-- ================= SIDEBAR ================= -->
     <div id="sidebar">
         <div class="sidebar-wrapper active">
@@ -265,6 +303,7 @@
                         $isStaff = $isManagerOrAdmin || $isSupervisor || $isEmployee || $isMarketing;
 
                         $activeDashboard = request()->is('dashboard');
+                        $activePayroll = request()->is('payrolls*');
                         $activeEmployees = request()->is('employees*');
                         $activeEmployeeApprovals = request()->is('employee-approvals*');
                         $activeDepartments = request()->is('departments*');
@@ -422,15 +461,23 @@
                         </ul>
                     </li>
 
-                    <!-- KEY PERFORMANCE (KPI) -->
+                    <!-- PAYROLL & KPI -->
                     @if($showPayrollGroup)
                     <li class="menu-group expanded">
                         <div class="menu-group-header">
-                            <i class="bi bi-speedometer group-icon"></i>
-                            <span>Key Performance (KPI)</span>
+                            <i class="bi bi-cash-stack group-icon"></i>
+                            <span>Payroll & KPI</span>
                             <i class="bi bi-chevron-right chevron"></i>
                         </div>
                         <ul class="menu-group-items">
+                            @if($isMasterAdmin || $isAdmin || $isManager)
+                            <li class="sidebar-item {{ $activePayroll ? 'active' : '' }}">
+                                <a href="{{ url('/payrolls') }}" class="sidebar-link">
+                                    <i class="bi bi-currency-dollar"></i>
+                                    <span>Payrolls</span>
+                                </a>
+                            </li>
+                            @endif
                             @if($user->hasAccess('hr_reports') || $isAdmin || $isManager)
                             <li class="sidebar-item {{ $activeKpiDashboard ? 'active' : '' }}">
                                 <a href="{{ url('/kpi/dashboard') }}" class="sidebar-link">
@@ -766,6 +813,14 @@
     const sidebarWrapper = $('#sidebar .sidebar-wrapper');
     const DESKTOP_BREAKPOINT = 992;
 
+    // ── Restore sidebar state from localStorage ──────────────────────
+    const SIDEBAR_KEY = 'hris_sidebar_collapsed';
+    if (window.innerWidth >= DESKTOP_BREAKPOINT) {
+        if (localStorage.getItem(SIDEBAR_KEY) === '1') {
+            bodyEl.classList.add('sidebar-collapsed');
+        }
+    }
+
     function isDesktopViewport() {
         return window.innerWidth >= DESKTOP_BREAKPOINT;
     }
@@ -790,10 +845,16 @@
 
         if (isDesktopViewport()) {
             bodyEl.classList.toggle('sidebar-collapsed');
-            // If toggling on desktop, the CSS handles #main margin
+            localStorage.setItem(SIDEBAR_KEY, bodyEl.classList.contains('sidebar-collapsed') ? '1' : '0');
         } else {
             sidebarWrapper.toggleClass('active');
         }
+    });
+
+    // Desktop toggle button
+    document.getElementById('desktopSidebarToggle')?.addEventListener('click', function() {
+        bodyEl.classList.toggle('sidebar-collapsed');
+        localStorage.setItem(SIDEBAR_KEY, bodyEl.classList.contains('sidebar-collapsed') ? '1' : '0');
     });
 
     // Close mobile sidebar when clicking outside

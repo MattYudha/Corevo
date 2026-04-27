@@ -99,7 +99,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get("payrolls/attendance-data", [PayrollsController::class, "getAttendanceData"])->name("payrolls.attendance-data")->middleware(["role:" . Roles::HR_ADMINISTRATOR . "," . Roles::MASTER_ADMIN]);
     Route::get("payrolls/employee-data", [PayrollsController::class, "getEmployeeData"])->name("payrolls.employee-data")->middleware(["role:" . Roles::HR_ADMINISTRATOR . "," . Roles::MASTER_ADMIN]);
     Route::resource('payrolls', PayrollsController::class)->only(['index', 'show']);
-    Route::resource('payrolls', PayrollsController::class)->only(['create', 'store', 'edit', 'update', 'destroy'])->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+    Route::resource('payrolls', PayrollsController::class)->only(['create', 'store', 'edit', 'update', 'destroy'])
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
 
     // Additional presence routes (must be defined before resource route to avoid conflicts)
     Route::get('presences/checkout', [PresencesController::class, 'checkout'])->name('presences.checkout');
@@ -114,7 +115,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('presences', [PresencesController::class, 'index'])->name('presences.index');
     Route::get('presences/create', [PresencesController::class, 'create'])->name('presences.create');
     Route::post('presences', [PresencesController::class, 'store'])->name('presences.store')
-        ->middleware(['throttle:10,1']);
+        ->middleware(['throttle:60,1']);
 
     // Resource routes for presences management (restricted)
     Route::resource('presences', PresencesController::class)
@@ -190,7 +191,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('kpi/trend/{id}', [KPIController::class, 'trend'])->name('kpi.trend');
     Route::get('kpi/team', [KPIController::class, 'team'])->name('kpi.team')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
     Route::get('kpi/department', [KPIController::class, 'department'])->name('kpi.department')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
-    Route::post('kpi/recalculate/{id}', [KPIController::class, 'recalculate'])->name('kpi.recalculate')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+    Route::post('kpi/recalculate/{id}', [KPIController::class, 'recalculate'])->name('kpi.recalculate')
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
     
     // KPI Submission and Approval Workflow
     Route::post('kpi/submit/{id}', [KPIController::class, 'submit'])->name('kpi.submit');
@@ -199,9 +201,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('kpi/approve/{id}', [KPIController::class, 'approve'])->name('kpi.approve')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
     Route::post('kpi/reject/{id}', [KPIController::class, 'reject'])->name('kpi.reject')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
     
-    Route::get('kpi/pending', [KPIController::class, 'pendingApprovals'])->name('kpi.pending')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
-    Route::post('kpi/approve/{id}', [KPIController::class, 'approve'])->name('kpi.approve')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
-    Route::post('kpi/reject/{id}', [KPIController::class, 'reject'])->name('kpi.reject')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+    // KPI Admin Manual Edit (Master Admin / HR Administrator only)
+    Route::get('kpi/{employee}/records/{record}/admin-edit', [KPIController::class, 'adminEdit'])->name('kpi.admin-edit')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+    Route::put('kpi/{employee}/records/{record}/admin-edit', [KPIController::class, 'adminUpdate'])->name('kpi.admin-update')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
     
     Route::get('reports/monthly-recap', [ReportingController::class, 'monthlyRecap'])->name('reports.monthly-recap');
     Route::get('reports/executive', [ReportingController::class, 'executiveDashboard'])->name('reports.executive')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
@@ -210,6 +212,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Audit Trail - Master Admin only
     Route::get('audit-trail', [AuditController::class, 'index'])->name('audit.index')->middleware(['role:' . Roles::MASTER_ADMIN]);
+    Route::post('audit-trail/toggle', [AuditController::class, 'toggleEnabled'])->name('audit.toggle')->middleware(['role:' . Roles::MASTER_ADMIN]);
+    Route::delete('audit-trail/purge', [AuditController::class, 'purge'])->name('audit.purge')->middleware(['role:' . Roles::MASTER_ADMIN]);
 
     // System Management - Master Admin only
     Route::get('system', [SystemController::class, 'index'])->name('system.index')->middleware(['role:' . Roles::MASTER_ADMIN]);

@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('signatures', function (Blueprint $table) {
-            $table->dropUnique('signatures_signature_hash_unique');
-        });
+        try {
+            Schema::table('signatures', function (Blueprint $table) {
+                $table->dropUnique('signatures_signature_hash_unique');
+            });
+        } catch (\Exception $e) {
+            // Ignore if index is already dropped
+        }
     }
 
     /**

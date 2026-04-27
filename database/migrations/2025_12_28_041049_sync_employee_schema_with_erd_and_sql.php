@@ -46,14 +46,26 @@ return new class extends Migration
         });
 
         // positions (Job_Positions) table sync
-        Schema::table('positions', function (Blueprint $table) {
-            if (!Schema::hasColumn('positions', 'title')) {
-                $table->string('title')->after('position_name')->nullable();
-            }
-            if (!Schema::hasColumn('positions', 'description')) {
-                $table->text('description')->after('title')->nullable();
-            }
-        });
+        $tableName = Schema::hasTable('job_positions') ? 'job_positions' : (Schema::hasTable('positions') ? 'positions' : null);
+        if ($tableName) {
+            Schema::table($tableName, function (Blueprint $table) use ($tableName) {
+                if (!Schema::hasColumn($tableName, 'title')) {
+                    // Try to add after position_name if it exists, otherwise just add it
+                    if (Schema::hasColumn($tableName, 'position_name')) {
+                        $table->string('title')->after('position_name')->nullable();
+                    } else {
+                        $table->string('title')->nullable();
+                    }
+                }
+                if (!Schema::hasColumn($tableName, 'description')) {
+                    if (Schema::hasColumn($tableName, 'title')) {
+                        $table->text('description')->after('title')->nullable();
+                    } else {
+                        $table->text('description')->nullable();
+                    }
+                }
+            });
+        }
 
         // employee_positions table sync
         Schema::table('employee_positions', function (Blueprint $table) {

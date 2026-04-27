@@ -125,12 +125,15 @@ class TaskController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
             'assigned_to' => 'required|exists:employees,id',
-            'due_date' => 'required|date',
-            'status' => 'required|string',
+            'due_date'    => 'required|date',
+            'status'      => 'required|in:pending,on progress,done',
         ]);
+
+        // Attach the creator from session
+        $validated['created_by'] = session('employee_id');
 
         Task::create($validated);
 
@@ -187,11 +190,15 @@ class TaskController extends Controller
      */
     public function done(int $id)
     {
-        $task = Task::find($id);
-        $task->update([
-            'status' => 'done',
-            'completed_at' => now()
-        ]);
+        try {
+            $task = Task::findOrFail($id);
+            $task->update([
+                'status'       => 'done',
+                'completed_at' => now()
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            abort(404, 'Task not found.');
+        }
 
         return redirect()->route('tasks.index')->with('success', 'Task marked as done.');
     }
@@ -201,11 +208,15 @@ class TaskController extends Controller
      */
     public function pending(int $id)
     {
-        $task = Task::find($id);
-        $task->update([
-            'status' => 'pending',
-            'completed_at' => null
-        ]);
+        try {
+            $task = Task::findOrFail($id);
+            $task->update([
+                'status'       => 'pending',
+                'completed_at' => null
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            abort(404, 'Task not found.');
+        }
 
         return redirect()->route('tasks.index')->with('success', 'Task marked as pending.');
     }

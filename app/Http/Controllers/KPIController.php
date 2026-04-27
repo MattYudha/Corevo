@@ -580,4 +580,66 @@ class KPIController extends Controller
             'presenceLabels', 'presenceData', 'payrollLabels', 'payrollData'
         ));
     }
+
+    /**
+     * Admin: Show edit form for a specific KPI record.
+     */
+    public function adminEdit(Request $request, $employeeId, $recordId)
+    {
+        if (!\App\Constants\Roles::isAdmin(session('role'))) {
+            abort(403, 'Unauthorized');
+        }
+
+        $employee = Employee::findOrFail($employeeId);
+        $record   = EmployeeKPIRecord::with('kpi')->findOrFail($recordId);
+
+        // Make sure the record belongs to the employee
+        if ($record->employee_id != $employeeId) {
+            abort(404);
+        }
+
+        return view('kpi.admin-edit', compact('employee', 'record'));
+    }
+
+    /**
+     * Admin: Save manual KPI update for a specific record.
+     */
+    public function adminUpdate(Request $request, $employeeId, $recordId)
+    {
+        if (!\App\Constants\Roles::isAdmin(session('role'))) {
+            abort(403, 'Unauthorized');
+        }
+
+        $record = EmployeeKPIRecord::findOrFail($recordId);
+
+        if ($record->employee_id != $employeeId) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'actual_value'     => 'required|numeric|min:0',
+            'notes'            => 'nullable|string|max:1000',
+            'status'           => 'required|in:achieved,warning,critical',
+            'performance_level'=> 'required|in:excellent,good,satisfactory,needs_improvement,poor',
+        ]);
+
+        // Recalculate composite score from actual vs target
+        $target = $record->target_value > 0 ? $record->target_value : 100;
+        $achievement = ($validated['actual_value'] / $target) * 100;
+
+        $record->update([
+            'actual_value'      => $validated['actual_value'],
+            'notes'             => $validated['notes'],
+            'status'            => $validated['status'],
+            'performance_level' => $validated['performance_level'],
+            'composite_score'   => round($achievement, 2),
+            'submission_status' => 'approved', // Admin edit is auto-approved
+            'reviewed_by'       => session('employee_id'),
+            'reviewed_at'       => now(),
+            'reviewer_notes'    => '[Admin Manual Edit] ' . ($validated['notes'] ?? ''),
+        ]);
+
+        return redirect()->route('kpi.show', $employeeId)
+            ->with('success', 'KPI record berhasil diperbarui oleh admin.');
+    }
 }

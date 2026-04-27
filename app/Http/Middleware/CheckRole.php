@@ -12,15 +12,15 @@ class CheckRole
     public function handle(Request $request, Closure $next, string ...$roles)
     {
         $user = auth()->user();
-        
+
         // Validate user exists
         if (!$user) {
             abort(401, 'Unauthenticated');
         }
-        
+
         // Get employee ID
         $employeeID = $user->employee_id;
-        
+
         // Check if employee ID exists
         if (!$employeeID) {
             \Log::warning('User without employee_id attempted access', [
@@ -29,10 +29,10 @@ class CheckRole
             ]);
             abort(403, 'No employee profile associated with this user');
         }
-        
+
         // Find employee
         $employee = Employee::find($employeeID);
-        
+
         // Validate employee exists
         if (!$employee) {
             \Log::error('Employee not found for user', [
@@ -41,7 +41,7 @@ class CheckRole
             ]);
             abort(403, 'Employee profile not found');
         }
-        
+
         // Validate employee has role
         if (!$employee->role) {
             \Log::error('Employee without role attempted access', [
@@ -53,20 +53,21 @@ class CheckRole
         // Store in session for backward compatibility
         $request->session()->put('role', $employee->role->title);
         $request->session()->put('employee_id', $employee->id);
-        
-        $checkRoles = $roles;
 
-        // Use trimmed and case-insensitive check if possible, but at least trim
-        $checkUserRole = trim($employee->role->title);
-        $checkRolesTrimmer = array_map('trim', $checkRoles);
-        $hasRole = in_array($checkUserRole, $checkRolesTrimmer);
-        $hasAccess = false;
+        $checkRoles = array_map('trim', $roles);
         
-        // If it looks like a module key (lowercase, underscore), check if employee has that access
-        foreach ($roles as $r) {
-            if (preg_match('/^[a-z_]+$/', $r) && is_array($employee->role->access) && in_array($r, $employee->role->access)) {
-                $hasAccess = true;
-                break;
+        // Match by Role Title (String)
+        $userRoleTitle = trim($employee->role->title);
+        $hasRole = in_array($userRoleTitle, $checkRoles);
+        
+        // Match by Module Access (JSON array in DB)
+        $hasAccess = false;
+        if (is_array($employee->role->access)) {
+            foreach ($checkRoles as $requiredRole) {
+                if (in_array($requiredRole, $employee->role->access)) {
+                    $hasAccess = true;
+                    break;
+                }
             }
         }
 

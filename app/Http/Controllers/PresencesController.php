@@ -752,6 +752,12 @@ class PresencesController extends Controller
                 return false;
             }
 
+            // WFH and WFA are flexible — no late rule applies
+            $workType = strtoupper($presence->work_type ?? 'WFO');
+            if (in_array($workType, ['WFH', 'WFA'])) {
+                return false;
+            }
+
             $checkInTime = Carbon::parse($presence->check_in);
             
             // Handle date field - it might be a date string or Carbon instance
