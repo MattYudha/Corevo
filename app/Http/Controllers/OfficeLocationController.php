@@ -74,25 +74,38 @@ class OfficeLocationController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $data['allowed_ssids'] = $this->normalizeSsids($request->input('allowed_ssids_text'));
+        $data['allowed_ssids'] = $this->normalizeTextArray($request->input('allowed_ssids_text'));
+        $data['allowed_ips'] = $this->normalizeTextArray($request->input('allowed_ips_text'));
 
         return $data;
     }
 
-    protected function normalizeSsids(?string $value): array
+    protected function normalizeTextArray(?string $value): array
     {
-        $lines = preg_split('/
-||
-/', (string) $value) ?: [];
-        $ssids = [];
-
+        $lines = preg_split('/\r\n|\r|\n/', (string) $value) ?: [];
+        $items = [];
         foreach ($lines as $line) {
             $line = trim($line);
-            if ($line !== '') {
-                $ssids[] = $line;
-            }
+            if ($line !== '') $items[] = $line;
         }
-
-        return array_values(array_unique($ssids));
+        return array_values(array_unique($items));
     }
+
+//     protected function normalizeSsids(?string $value): array
+//     {
+//         $lines = preg_split('/
+// |
+// |
+// /', (string) $value) ?: [];
+//         $ssids = [];
+
+//         foreach ($lines as $line) {
+//             $line = trim($line);
+//             if ($line !== '') {
+//                 $ssids[] = $line;
+//             }
+//         }
+
+//         return array_values(array_unique($ssids));
+//     }
 }

@@ -72,11 +72,21 @@
                             <label class="form-label">Radius WFO (meter)</label>
                             <input type="number" name="radius" class="form-control" value="{{ old('radius', $officeLocation->radius) }}" min="10" required>
                         </div>
-                        <div class="col-12">
+                        {{-- <div class="col-12">
                             <label class="form-label">Daftar WiFi SSID</label>
                             <textarea name="allowed_ssids_text" rows="5" class="form-control" placeholder="Satu SSID per baris">{{ old('allowed_ssids_text', implode("
 ", $officeLocation->allowed_ssids ?? [])) }}</textarea>
                             <small class="text-muted">SSID ini dipakai untuk validasi WFO pada lokasi kantor terkait.</small>
+                        </div> --}}
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">SSID WiFi yang Diizinkan</label>
+                            <textarea name="allowed_ssids_text" class="form-control" rows="3">{{ old('allowed_ssids_text', implode("\n", $officeLocation->allowed_ssids ?? [])) }}</textarea>
+                            <small class="text-muted">Masukkan satu SSID per baris.</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Alamat IP yang Diizinkan (Opsional)</label>
+                            <textarea name="allowed_ips_text" class="form-control" rows="3">{{ old('allowed_ips_text', implode("\n", $officeLocation->allowed_ips ?? [])) }}</textarea>
+                            <small class="text-muted">Masukkan satu Alamat IP per baris untuk membatasi akses.</small>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Catatan</label>

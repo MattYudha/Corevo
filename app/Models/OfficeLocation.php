@@ -18,6 +18,7 @@ class OfficeLocation extends Model
         'longitude',
         'radius',
         'allowed_ssids',
+        'allowed_ips', 
         'status',
         'notes',
     ];
@@ -29,6 +30,7 @@ class OfficeLocation extends Model
             'longitude' => 'float',
             'radius' => 'integer',
             'allowed_ssids' => 'array',
+            'allowed_ips' => 'array',
             'deleted_at' => 'datetime',
         ];
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Presence;
 use App\Models\Employee;
 use App\Models\OfficeLocation;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
@@ -219,38 +220,37 @@ class PresencesController extends Controller
                     return redirect()->back()->withInput()->with('error', 'Lokasi kantor WFO tidak valid atau tidak aktif.');
                 }
 
-                // 2. Anti-Fake GPS: Check Accuracy (too perfect = suspicious)
-                if ($request->accuracy <= 0 || $request->accuracy == 1) {
-                    $this->logSuspicious($user->id, 'fake_gps', "Extremely perfect accuracy detected: {$request->accuracy}m");
-                    // return redirect()->back()->with('error', 'Lokasi Anda terdeteksi tidak valid (kemungkinan Fake GPS).');
+                // check gps accuracy to help detect fake gps
+                // spoofed gps may return 1m or unrealistically perfect values
+                // real gps usually fluctuates between 10-65m
+                if ($request->accuracy <= 5) {
+                    $this->logSuspicious($user->id, 'fake_gps', "Deteksi akurasi tidak wajar (terlalu sempurna): {$request->accuracy}m");
+                    return redirect()->back()->with('error', 'Lokasi Anda terdeteksi menggunakan aplikasi pihak ketiga (Fake GPS). Matikan aplikasi tersebut dan coba lagi.');
                 }
 
-                // 3. Server-side Geofencing (Haversine)
+                // verify user location on the server using radius-based geofencing
                 $officeLat = $officeLocationConfig['latitude'];
                 $officeLon = $officeLocationConfig['longitude'];
                 $radius = $officeLocationConfig['radius'];
                 $distance = $this->calculateDistance($request->latitude, $request->longitude, $officeLat, $officeLon);
                 
                 if ($distance > $radius) {
-                    $this->logSuspicious($user->id, 'out_of_radius', "Attempted attendance at $distance meters from {$officeLocationConfig['name']}.");
-                    return redirect()->back()->with('error', "Anda berada di luar jangkauan {$officeLocationConfig['name']} ($distance meter).");
+                    $this->logSuspicious($user->id, 'out_of_radius', "Percobaan absen sejauh $distance meter dari {$officeLocationConfig['name']}.");
+                    return redirect()->back()->with('error', "Anda berada di luar jangkauan radius {$officeLocationConfig['name']} (Jarak Anda: " . round($distance) . " meter).");
                 }
 
-                // 4. WiFi Validation
-                $allowedSSIDs = $officeLocationConfig['allowed_ssids'];
-                \Log::info('WFO Step 5: WiFi SSID check', [
-                    'ssid' => $ssid,
-                    'office_location' => $officeLocationConfig['name'],
-                    'allowed_ssids' => $allowedSSIDs,
-                    'is_valid' => in_array($ssid, $allowedSSIDs)
-                ]);
-                if (!in_array($ssid, $allowedSSIDs)) {
-                    $this->logSuspicious($user->id, 'invalid_ssid', "Attempted attendance with invalid WiFi SSID: $ssid for {$officeLocationConfig['name']}");
-                    \Log::warning('WFO validation FAILED: Invalid SSID', ['ssid' => $ssid, 'office_location' => $officeLocationConfig['name']]);
-                    return redirect()->back()->with('error', $this->buildInvalidSsidMessage($officeLocationConfig['name'], $allowedSSIDs));
+                // validate network security using ip address instead of manual ssid checks
+                // significantly harder to bypass than gps spoofing
+                $allowedIPs = $officeLocationConfig['allowed_ips'] ?? [];
+                $clientIp = request()->ip();
+
+                // run validation only when the office has an ip configured
+                if (!empty($allowedIPs)) {
+                    if (!in_array($clientIp, $allowedIPs)) {
+                        $this->logSuspicious($user->id, 'invalid_ip', "Percobaan absen dari jaringan yang tidak dikenal: $clientIp");
+                        return redirect()->back()->with('error', "Sistem menolak presensi WFO karena IP Perangkat Anda ($clientIp) tidak terhubung ke jaringan WiFi resmi kantor.");
+                    }
                 }
-                \Log::info('WFO Step 5 PASSED: SSID valid');
-                \Log::info('WFO: ALL validations passed, proceeding to presence creation');
             }
 
             // Validate employee_id exists in session
@@ -275,9 +275,10 @@ class PresencesController extends Controller
 
             // Check for late check-in
             $checkInTime = Carbon::now();
-            $workStartTime = Carbon::parse(date('Y-m-d') . ' ' . config('presence.work_start_time', '08:00'));
-            $lateThreshold = config('presence.late_threshold_minutes', 15);
-            $isLate = $checkInTime->gt($workStartTime->copy()->addMinutes($lateThreshold));
+            $workStartTimeStr = Setting::getValue('work_start_time', '08:00');
+            $workStartTime = Carbon::parse(date('Y-m-d') . ' ' . $workStartTimeStr);
+            $lateThreshold = (int) Setting::getValue('late_threshold_minutes', 15);
+            $isLate = $this->isLateCheckIn($presence ?? new Presence(['status' => 'present', 'work_type' => $workType, 'check_in' => $checkInTime]));
 
             try {
                 // Store GPS data for all work types (WFO, WFH, WFA)
@@ -410,15 +411,14 @@ class PresencesController extends Controller
 
     private function defaultOfficeLocationConfig(): array
     {
-        $defaultAllowedSsids = config('presence.allowed_ssids', ['UNPAM VIKTOR', 'Serhan 2', 'Serhan', 'S53s']);
-
         return [
             'id' => null,
             'name' => 'Kantor Pusat',
-            'latitude' => (float) config('presence.office_latitude'),
-            'longitude' => (float) config('presence.office_longitude'),
+            'latitude' => (float) config('presence.office_latitude', -6.200000),
+            'longitude' => (float) config('presence.office_longitude', 106.816666),
             'radius' => (int) config('presence.location_radius', 1000),
-            'allowed_ssids' => array_values($defaultAllowedSsids),
+            'allowed_ssids' => ['WIFI KANTOR'], // Bisa diganti kosong []
+            'allowed_ips' => [], // Nilai bawaan IP
             'address' => null,
         ];
     }
@@ -436,6 +436,9 @@ class PresencesController extends Controller
             'allowed_ssids' => !empty($officeLocation->allowed_ssids)
                 ? array_values(array_filter($officeLocation->allowed_ssids))
                 : $defaultConfig['allowed_ssids'],
+            'allowed_ips' => !empty($officeLocation->allowed_ips)
+                ? array_values(array_filter($officeLocation->allowed_ips))
+                : $defaultConfig['allowed_ips'],
             'address' => $officeLocation->address,
         ];
     }
@@ -752,27 +755,30 @@ class PresencesController extends Controller
                 return false;
             }
 
-            // WFH and WFA are flexible — no late rule applies
-            $workType = strtoupper($presence->work_type ?? 'WFO');
-            if (in_array($workType, ['WFH', 'WFA'])) {
+            $workType = strtolower($presence->work_type ?? 'wfo');
+            
+            // Ambil status toggle sesuai tipe kerja (wfo, wfh, wfa)
+            $isLateEnabled = \App\Models\Setting::getValue('enable_late_' . $workType, '0');
+            
+            // Jika dimatikan dari master presence, maka otomatis tidak pernah telat
+            if ($isLateEnabled == '0') {
                 return false;
             }
 
             $checkInTime = Carbon::parse($presence->check_in);
-            
-            // Handle date field - it might be a date string or Carbon instance
             $dateStr = $presence->date instanceof \DateTime 
                 ? $presence->date->format('Y-m-d') 
                 : (string) $presence->date;
             
-            $workStartTime = Carbon::parse($dateStr . ' ' . config('presence.work_start_time', '08:00'));
-            $lateThreshold = config('presence.late_threshold_minutes', 15);
+            $workStartTimeStr = \App\Models\Setting::getValue('work_start_time', '08:00');
+            $workStartTime = Carbon::parse($dateStr . ' ' . $workStartTimeStr);
+            
+            // Ambil toleransi menit spesifik sesuai tipe kerjanya
+            $lateThreshold = (int) \App\Models\Setting::getValue('late_threshold_' . $workType, 15);
 
             return $checkInTime->gt($workStartTime->copy()->addMinutes($lateThreshold));
         } catch (\Exception $e) {
-            \Log::warning('Error checking late check-in: ' . $e->getMessage(), [
-                'presence_id' => $presence->id ?? null
-            ]);
+            \Log::warning('Galat saat memeriksa keterlambatan: ' . $e->getMessage());
             return false;
         }
     }

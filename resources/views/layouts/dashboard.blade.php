@@ -344,6 +344,12 @@
                         $activeReportsExec = request()->is('reports/executive*');
                         $activeReportsMonthly = request()->is('reports/monthly-recap*');
 
+                        // Work Log Menu
+                        $activeWorkLogs = request()->is('work-logs*');
+
+                        // Overtime Menu
+                        $overtimes = request()->is('overtimes*');
+
                         // Dynamic visibility checks
                         $hasInventoryAccess = $user->hasAnyAccess(['inventory', 'inventory_logs', 'inventory_usage', 'inventory_requests']);
                         $hasKpiAccess = $user->hasAccess('hr_reports');
@@ -362,7 +368,7 @@
                         $inventoryMenuActive = $activeInventoryCategories || $activeInventories || $activeInventoryUsage || $activeInventoryRequests || $activeVendors || $activeProcurements || $activeInventoryDispatches || $activeLogisticsShipments;
                         $lettersMenuActive = $activeLetters || $activeLetterTemplates || $activeLetterConfigs || $activeLetterArchives || $activeSignatureLogs;
                         $reportsMenuActive = $activeReportsExec || $activeReportsMonthly;
-                        $personalMenuActive = request()->is('my-profile') || request()->is('presences') || request()->is('knowledge-base*') || $activeMyFinance || $activeFinanceClaims;
+                        $personalMenuActive = request()->is('my-profile') || request()->is('presences') || request()->is('knowledge-base*') || $activeMyFinance || $activeFinanceClaims || $activeWorkLogs || $overtimes;
                     @endphp
 
                     <!-- DASHBOARD -->
@@ -733,7 +739,25 @@
                                 </a>
                             </li>
 
+                            
+
+                            
                             <hr class="mx-3 my-1 border-light opacity-25">
+
+                            <li class="sidebar-item {{ $activeWorkLogs ? 'active' : '' }}">
+                                <a href="{{ route('work-logs.index') }}" class="sidebar-link">
+                                    <i class="bi bi-journal-check"></i>
+                                    <span>Aktivitas Saya</span>
+                                </a>
+                            </li>
+                            
+                            <li class="sidebar-item {{ $overtimes ? 'active' : '' }}">
+                                <a href="{{ route('overtimes.index') }}" class="sidebar-link">
+                                    <i class="bi bi-clock"></i>
+                                    <span>Lembur Saya</span>
+                                </a>
+                            </li>
+
                             <li class="sidebar-item {{ $activeMyFinance ? 'active' : '' }}">
                                 <a href="{{ url('/finance/my-finance') }}" class="sidebar-link">
                                     <i class="bi bi-wallet-fill"></i>

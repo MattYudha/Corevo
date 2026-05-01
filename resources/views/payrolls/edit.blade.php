@@ -440,6 +440,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('absent_deduction').value = Math.round(d.absent_deduction);
                     document.getElementById('bpjs_kes').value = d.bpjs_kes;
                     document.getElementById('bpjs_tk').value = d.bpjs_tk;
+                    document.getElementById('overtime_hours').value = d.overtime_hours || 0;
+                    document.getElementById('overtime_amount').value = d.overtime_amount || 0;
 
                     const infoEl = document.getElementById('attendance-info');
                     const infoText = document.getElementById('attendance-info-text');

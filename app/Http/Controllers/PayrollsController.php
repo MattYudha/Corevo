@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Payroll;
 use App\Models\Employee;
 use App\Models\Presence;
+use App\Models\Setting;
+use App\Models\OvertimeSubmission;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 use Carbon\Carbon;
@@ -367,6 +369,17 @@ class PayrollsController extends Controller
         $bpjsKes = round($baseSalary * $bpjsKesRate);
         $bpjsTk = round($baseSalary * config('payroll.bpjs_tk_employee_rate', 0.02));
 
+        // Overtime 
+        $overtimeRate = (int) Setting::getValue('overtime_rate_per_hour', 0);
+        
+        $totalApprovedOvertimeMinutes = OvertimeSubmission::where('employee_id', $employeeId)
+            ->where('status', 'approved')
+            ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
+            ->sum('duration_minutes');
+
+        $totalOvertimeHours = $totalApprovedOvertimeMinutes / 60;
+        $overtimePay = round($totalOvertimeHours * $overtimeRate);
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -382,6 +395,8 @@ class PayrollsController extends Controller
                 'bpjs_tk' => $bpjsTk,
                 'transport_allowance' => config('payroll.default_transport_allowance', 500000),
                 'meal_allowance' => config('payroll.default_meal_allowance', 500000),
+                'overtime_hours' => round($totalOvertimeHours, 2),
+                'overtime_amount' => $overtimePay,
             ],
         ]);
     }

@@ -2,8 +2,6 @@
 
 @section('content')
 
-
-
 <div class="page-heading">
     <div class="page-title">
         <div class="row">
@@ -14,7 +12,7 @@
             <div class="col-12 col-md-6 order-md-2 order-first">
                 <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
                     <ol class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
                         <li class="breadcrumb-item">Presences</li>
                         <li class="breadcrumb-item active" aria-current="page">Index</li>
                     </ol>
@@ -40,7 +38,7 @@
 
             @if ($errors->any())
                 <div class="alert alert-danger">
-                    <ul>
+                    <ul class="mb-0">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
@@ -51,7 +49,6 @@
             <div class="card-body">
 
                 @if (session('role') == 'HR Administrator') 
-                    <!-- HR Administrator FORM (unchanged) -->
                     <form action="{{ route('presences.store') }}" method="POST">
                         @csrf
             
@@ -87,9 +84,6 @@
                     </form>
 
                 @else
-                    <!-- EMPLOYEE FORM: Step-based approach -->
-                    
-                    <!-- STEP 1: Choose Work Type -->
                     <div id="step-choose-type">
                         <h5 class="mb-3">📍 Pilih Tipe Kerja Hari Ini</h5>
                         <div class="row g-3">
@@ -98,7 +92,7 @@
                                     <div class="card-body text-center">
                                         <span class="badge bg-primary mb-2" style="font-size: 1.2rem;">WFO</span>
                                         <h6>Work From Office</h6>
-                                        <p class="text-muted small">Bekerja dari kantor<br>(Pilih site + GPS + WiFi + Face)</p>
+                                        <p class="text-muted small">Bekerja dari kantor<br>(GPS + Jaringan IP + Wajah + Fingerprint)</p>
                                     </div>
                                 </div>
                             </div>
@@ -107,7 +101,7 @@
                                     <div class="card-body text-center">
                                         <span class="badge bg-success mb-2" style="font-size: 1.2rem;">WFH</span>
                                         <h6>Work From Home</h6>
-                                        <p class="text-muted small">Bekerja dari rumah<br>(GPS + WiFi + Face)</p>
+                                        <p class="text-muted small">Bekerja dari rumah<br>(GPS + Wajah + Fingerprint)</p>
                                     </div>
                                 </div>
                             </div>
@@ -116,14 +110,13 @@
                                     <div class="card-body text-center">
                                         <span class="badge bg-info mb-2" style="font-size: 1.2rem;">WFA</span>
                                         <h6>Work From Anywhere</h6>
-                                        <p class="text-muted small">Bekerja dari mana saja<br>(GPS + WiFi + Face)</p>
+                                        <p class="text-muted small">Bekerja dari mana saja<br>(GPS + Wajah + Fingerprint)</p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- STEP 2: WFO Form -->
                     <div id="form-wfo" style="display: none;">
                         <h5 class="mb-3">
                             <span class="badge bg-primary">WFO</span> Work From Office
@@ -142,6 +135,7 @@
                             <div class="mb-3">
                                 <label class="form-label"><i class="bi bi-building"></i> <strong>Site Kantor WFO</strong></label>
                                 <select class="form-select" name="office_location_id" id="office-location-wfo" {{ !empty($wfoOfficeLocations) ? 'required' : 'disabled' }}>
+                                    <option value="">-- Pilih Kantor Terdekat --</option>
                                     @forelse($wfoOfficeLocations as $officeLocation)
                                         <option value="{{ $officeLocation['id'] }}" {{ (string) old('office_location_id', $selectedWfoOfficeLocation['id'] ?? '') === (string) $officeLocation['id'] ? 'selected' : '' }}>
                                             {{ $officeLocation['name'] }}
@@ -150,11 +144,11 @@
                                         <option value="">Belum ada lokasi kantor aktif</option>
                                     @endforelse
                                 </select>
-                                <small class="text-muted">Semua karyawan dapat memilih site WFO sesuai lokasi aktual dan SSID kantor yang terhubung.</small>
+                                <small class="text-muted">Pilih site kantor untuk mencocokkan Jarak GPS dan Jaringan IP Anda.</small>
                             </div>
 
                             <div class="alert alert-info">
-                                <strong>📋 Validasi WFO:</strong> Pilih site kantor + GPS + WiFi Kantor + Verifikasi Wajah
+                                <strong>📋 Validasi WFO:</strong> Pilih site kantor + GPS + Jaringan IP + Verifikasi Wajah + Fingerprint
                                 <div class="small mt-2">
                                     Lokasi kerja aktif: <strong id="wfo-office-name">{{ $selectedWfoOfficeLocation['name'] ?? 'Belum ada lokasi kantor aktif' }}</strong>
                                     <span id="wfo-office-address-wrapper" @if(empty($selectedWfoOfficeLocation['address'])) style="display: none;" @endif>
@@ -164,7 +158,33 @@
                                 </div>
                             </div>
 
-                            <!-- GPS Section -->
+                            <div class="card mb-3 border-primary">
+                                <div class="card-body">
+                                    <h6><i class="bi bi-shield-check text-primary"></i> Keamanan Jaringan (IP)</h6>
+                                    
+                                    <div id="network-status-wfo" class="mb-2">
+                                        <span class="badge bg-warning">⏳ Memeriksa Jaringan...</span>
+                                    </div>
+                                    
+                                    <div class="mb-2" id="network-details-wfo" style="display: none;">
+                                        <ul class="list-group list-group-flush mb-2">
+                                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
+                                                <small class="text-muted">IP Perangkat</small>
+                                                <span id="ip-display-wfo" class="badge bg-secondary">{{ request()->ip() }}</span>
+                                            </li>
+                                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1 border-bottom-0">
+                                                <small class="text-muted">Status Keamanan</small>
+                                                <span id="ip-status-text-wfo">-</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshNetwork(true)">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh Jaringan
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="card mb-3 bg-light">
                                 <div class="card-body">
                                     <h6><i class="bi bi-geo-alt"></i> Lokasi GPS</h6>
@@ -183,19 +203,6 @@
                                 </div>
                             </div>
 
-                            <!-- WiFi SSID -->
-                            <div class="mb-3">
-                                <label class="form-label"><i class="bi bi-wifi"></i> <strong>WiFi SSID Kantor</strong></label>
-                                <select class="form-select" name="ssid" id="ssid-wfo" required {{ empty($wfoOfficeLocations) ? 'disabled' : '' }}>
-                                    <option value="">-- Pilih SSID Terhubung --</option>
-                                    @foreach(($selectedWfoOfficeLocation['allowed_ssids'] ?? []) as $allowedSsid)
-                                        <option value="{{ $allowedSsid }}">{{ $allowedSsid }}</option>
-                                    @endforeach
-                                </select>
-                                <small class="text-muted" id="wfo-ssid-help">Pilih WiFi yang saat ini terhubung untuk lokasi {{ $selectedWfoOfficeLocation['name'] ?? 'kantor terpilih' }}.</small>
-                            </div>
-
-                            <!-- Face Detection -->
                             <div class="mb-3">
                                 <label class="form-label"><i class="bi bi-camera"></i> <strong>Verifikasi Wajah</strong></label>
                                 <div class="position-relative" style="width: 100%; max-width: 400px;">
@@ -206,14 +213,20 @@
                                 </div>
                             </div>
 
-                            <!-- Submit Button -->
+                            <div class="card mb-3 bg-light">
+                                <div class="card-body text-center">
+                                    <div id="fingerprint-status-wfo" class="mb-2">
+                                        <span class="badge bg-warning">Memuat Fingerprint...</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <button type="submit" id="btn-submit-wfo" class="btn btn-primary btn-lg w-100" disabled>
                                 <i class="bi bi-check-circle"></i> Present (WFO)
                             </button>
                         </form>
                     </div>
 
-                    <!-- STEP 2: WFH Form -->
                     <div id="form-wfh" style="display: none;">
                         <h5 class="mb-3">
                             <span class="badge bg-success">WFH</span> Work From Home
@@ -228,13 +241,11 @@
                             <input type="hidden" name="latitude" id="latitude-wfh">
                             <input type="hidden" name="longitude" id="longitude-wfh">
                             <input type="hidden" name="accuracy" id="accuracy-wfh">
-                            <input type="hidden" name="ssid" id="ssid-value-wfh">
 
                             <div class="alert alert-success">
-                                <strong>📋 Validasi WFH:</strong> GPS + WiFi + Verifikasi Wajah + Fingerprint
+                                <strong>📋 Validasi WFH:</strong> GPS + Verifikasi Wajah + Fingerprint
                             </div>
 
-                            <!-- GPS Section (Free Location) -->
                             <div class="card mb-3 bg-light">
                                 <div class="card-body">
                                     <h6><i class="bi bi-geo-alt"></i> Lokasi GPS</h6>
@@ -251,22 +262,6 @@
                                 </div>
                             </div>
 
-                            <!-- WiFi SSID (Free) -->
-                            <div class="mb-3">
-                                <label class="form-label"><i class="bi bi-wifi"></i> <strong>WiFi SSID</strong></label>
-                                <select class="form-select" id="ssid-select-wfh">
-                                    <option value="">-- Pilih SSID --</option>
-                                    <option value="UNPAM VIKTOR">UNPAM VIKTOR</option>
-                                    <option value="Serhan 2">Serhan 2</option>
-                                    <option value="Serhan">Serhan</option>
-                                    <option value="S53s">S53s</option>
-                                    <option value="__other__">Other (Input Manual)</option>
-                                </select>
-                                <input type="text" class="form-control mt-2" id="ssid-other-wfh" placeholder="Masukkan nama WiFi" style="display: none;">
-                                <small class="text-muted">Pilih WiFi yang terhubung atau pilih Other</small>
-                            </div>
-
-                            <!-- Face Detection -->
                             <div class="mb-3">
                                 <label class="form-label"><i class="bi bi-camera"></i> <strong>Verifikasi Wajah</strong></label>
                                 <div class="position-relative" style="width: 100%; max-width: 400px;">
@@ -277,7 +272,6 @@
                                 </div>
                             </div>
 
-                            <!-- Fingerprint Status -->
                             <div class="card mb-3 bg-light">
                                 <div class="card-body text-center">
                                     <div id="fingerprint-status-wfh" class="mb-2">
@@ -292,7 +286,6 @@
                         </form>
                     </div>
 
-                    <!-- STEP 2: WFA Form -->
                     <div id="form-wfa" style="display: none;">
                         <h5 class="mb-3">
                             <span class="badge bg-info">WFA</span> Work From Anywhere
@@ -307,13 +300,11 @@
                             <input type="hidden" name="latitude" id="latitude-wfa">
                             <input type="hidden" name="longitude" id="longitude-wfa">
                             <input type="hidden" name="accuracy" id="accuracy-wfa">
-                            <input type="hidden" name="ssid" id="ssid-value-wfa">
 
                             <div class="alert alert-info">
-                                <strong>📋 Validasi WFA:</strong> GPS + WiFi + Verifikasi Wajah + Fingerprint
+                                <strong>📋 Validasi WFA:</strong> GPS + Verifikasi Wajah + Fingerprint
                             </div>
 
-                            <!-- GPS Section (Free Location) -->
                             <div class="card mb-3 bg-light">
                                 <div class="card-body">
                                     <h6><i class="bi bi-geo-alt"></i> Lokasi GPS</h6>
@@ -330,22 +321,6 @@
                                 </div>
                             </div>
 
-                            <!-- WiFi SSID (Free) -->
-                            <div class="mb-3">
-                                <label class="form-label"><i class="bi bi-wifi"></i> <strong>WiFi SSID</strong></label>
-                                <select class="form-select" id="ssid-select-wfa">
-                                    <option value="">-- Pilih SSID --</option>
-                                    <option value="UNPAM VIKTOR">UNPAM VIKTOR</option>
-                                    <option value="Serhan 2">Serhan 2</option>
-                                    <option value="Serhan">Serhan</option>
-                                    <option value="S53s">S53s</option>
-                                    <option value="__other__">Other (Input Manual)</option>
-                                </select>
-                                <input type="text" class="form-control mt-2" id="ssid-other-wfa" placeholder="Masukkan nama WiFi" style="display: none;">
-                                <small class="text-muted">Pilih WiFi yang terhubung atau pilih Other</small>
-                            </div>
-
-                            <!-- Face Detection -->
                             <div class="mb-3">
                                 <label class="form-label"><i class="bi bi-camera"></i> <strong>Verifikasi Wajah</strong></label>
                                 <div class="position-relative" style="width: 100%; max-width: 400px;">
@@ -356,7 +331,6 @@
                                 </div>
                             </div>
 
-                            <!-- Fingerprint Status -->
                             <div class="card mb-3 bg-light">
                                 <div class="card-body text-center">
                                     <div id="fingerprint-status-wfa" class="mb-2">
@@ -378,18 +352,18 @@
     </section>
 </div>
 
-<!-- Security Libraries -->
 <script src="{{ asset('vendor/fingerprintjs/fp.min.js') }}"></script>
 <script src="{{ asset('vendor/face-api/face-api.min.js') }}"></script>
 
 <script>
+    const userIp = "{{ request()->ip() }}";
     const wfoOfficeLocations = @json($wfoOfficeLocations);
 
-    // State tracking per mode
+    // FIX: SSID dihilangkan dari WFH dan WFA! Cuma butuh GPS, Face, dan Fingerprint.
     const modeState = {
-        wfo: { gps: false, fingerprint: false, ssid: false, face: false },
-        wfh: { gps: false, fingerprint: false, ssid: false, face: false },
-        wfa: { gps: false, fingerprint: false, ssid: false, face: false }
+        wfo: { gps: false, fingerprint: false, network: false, face: false },
+        wfh: { gps: false, fingerprint: false, face: false },
+        wfa: { gps: false, fingerprint: false, face: false }
     };
 
     let currentWorkType = null;
@@ -400,14 +374,89 @@
     let faceDetectionInterval = null;
     let faceDetectionIntervals = { wfh: null, wfa: null };
 
+    // ============ WFO OFFICE & NETWORK LOGIC ============
     function getSelectedWfoOffice() {
         const select = document.getElementById('office-location-wfo');
-        if (!select) {
+        if (!select || !select.value) {
             return null;
         }
-
         const selectedId = Number(select.value);
         return wfoOfficeLocations.find((officeLocation) => Number(officeLocation.id) === selectedId) ?? null;
+    }
+
+    function refreshNetwork(isManualRefresh = false) {
+        const office = getSelectedWfoOffice();
+        const statusEl = document.getElementById('network-status-wfo');
+        const detailsEl = document.getElementById('network-details-wfo');
+        const textEl = document.getElementById('ip-status-text-wfo');
+
+        if (isManualRefresh) {
+            statusEl.style.display = 'block';
+            statusEl.innerHTML = '<span class="badge bg-warning">⏳ Memeriksa Jaringan...</span>';
+            detailsEl.style.display = 'none';
+            modeState.wfo.network = false;
+            checkReady('wfo');
+        }
+
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+            detailsEl.style.display = 'block';
+
+            if (!office) {
+                textEl.innerHTML = '<span class="text-warning small"><i class="bi bi-exclamation-triangle"></i> Pilih site kantor dulu</span>';
+                modeState.wfo.network = false;
+            } else {
+                const allowedIps = office.allowed_ips || [];
+                
+                if (allowedIps.length === 0) {
+                    textEl.innerHTML = '<span class="text-info small"><i class="bi bi-info-circle"></i> Kantor tidak membatasi IP</span>';
+                    modeState.wfo.network = true;
+                } else if (allowedIps.includes(userIp)) {
+                    textEl.innerHTML = '<span class="text-success fw-bold small"><i class="bi bi-check-circle-fill"></i> Terverifikasi (Aman)</span>';
+                    modeState.wfo.network = true;
+                } else {
+                    textEl.innerHTML = '<span class="text-danger fw-bold small"><i class="bi bi-x-circle-fill"></i> Jaringan Tidak Dikenal</span>';
+                    modeState.wfo.network = false;
+                }
+            }
+            checkReady('wfo');
+        }, isManualRefresh ? 800 : 0);
+    }
+
+    function renderWfoOfficeDetails() {
+        const office = getSelectedWfoOffice();
+        const officeName = office ? office.name : 'Belum ada lokasi kantor aktif';
+        const officeAddress = office?.address ?? '';
+        const officeRadius = office?.radius ?? 0;
+
+        document.getElementById('wfo-office-name').textContent = officeName;
+        document.getElementById('wfo-office-radius').textContent = officeRadius;
+        document.getElementById('wfo-distance-office-name').textContent = office ? office.name : '-';
+
+        const addressWrapper = document.getElementById('wfo-office-address-wrapper');
+        const addressEl = document.getElementById('wfo-office-address');
+        if (officeAddress) {
+            addressEl.textContent = officeAddress;
+            addressWrapper.style.display = 'inline';
+        } else {
+            addressEl.textContent = '';
+            addressWrapper.style.display = 'none';
+        }
+
+        refreshNetwork(true);
+
+        const latitude = document.getElementById('latitude-wfo').value;
+        const longitude = document.getElementById('longitude-wfo').value;
+        const accuracy = document.getElementById('accuracy-wfo').value;
+
+        if (office && latitude && longitude) {
+            updateWfoDistanceStatus(Number(latitude), Number(longitude), Number(accuracy || 0));
+        } else if (!office) {
+            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ Belum ada lokasi kantor aktif</span>';
+            document.getElementById('dist-display-wfo').textContent = '-';
+            modeState.wfo.gps = false;
+            checkReady('wfo');
+        }
     }
 
     function calculateDistanceMeters(lat, lon, officeLat, officeLon) {
@@ -444,66 +493,6 @@
         }
 
         checkReady('wfo');
-    }
-
-    function renderWfoOfficeDetails() {
-        const office = getSelectedWfoOffice();
-        const officeName = office ? office.name : 'Belum ada lokasi kantor aktif';
-        const officeAddress = office?.address ?? '';
-        const officeRadius = office?.radius ?? 0;
-        const allowedSsids = office?.allowed_ssids ?? [];
-
-        document.getElementById('wfo-office-name').textContent = officeName;
-        document.getElementById('wfo-office-radius').textContent = officeRadius;
-        document.getElementById('wfo-distance-office-name').textContent = office ? office.name : '-';
-
-        const addressWrapper = document.getElementById('wfo-office-address-wrapper');
-        const addressEl = document.getElementById('wfo-office-address');
-        if (officeAddress) {
-            addressEl.textContent = officeAddress;
-            addressWrapper.style.display = 'inline';
-        } else {
-            addressEl.textContent = '';
-            addressWrapper.style.display = 'none';
-        }
-
-        const ssidSelect = document.getElementById('ssid-wfo');
-        const ssidHelp = document.getElementById('wfo-ssid-help');
-        const previousValue = ssidSelect ? ssidSelect.value : '';
-
-        if (ssidSelect) {
-            ssidSelect.innerHTML = '<option value="">-- Pilih SSID Terhubung --</option>';
-            allowedSsids.forEach((ssid) => {
-                const option = document.createElement('option');
-                option.value = ssid;
-                option.textContent = ssid;
-                if (ssid === previousValue) {
-                    option.selected = true;
-                }
-                ssidSelect.appendChild(option);
-            });
-            ssidSelect.disabled = !office || allowedSsids.length === 0;
-            modeState.wfo.ssid = ssidSelect.value !== '';
-        }
-
-        if (ssidHelp) {
-            ssidHelp.textContent = office
-                ? 'Pilih WiFi yang saat ini terhubung untuk lokasi ' + office.name + '.'
-                : 'Belum ada lokasi kantor aktif yang dapat dipilih.';
-        }
-
-        const latitude = document.getElementById('latitude-wfo').value;
-        const longitude = document.getElementById('longitude-wfo').value;
-        const accuracy = document.getElementById('accuracy-wfo').value;
-
-        if (office && latitude && longitude) {
-            updateWfoDistanceStatus(Number(latitude), Number(longitude), Number(accuracy || 0));
-        } else if (!office) {
-            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ Belum ada lokasi kantor aktif</span>';
-            document.getElementById('dist-display-wfo').textContent = '-';
-            modeState.wfo.gps = false;
-            checkReady('wfo');
-        }
     }
 
     // ============ UI NAVIGATION ============
@@ -561,7 +550,15 @@
     // ============ GENERIC READY CHECK ============
     function checkReady(mode) {
         const state = modeState[mode];
-        const isReady = state.gps && state.fingerprint && state.ssid && state.face;
+        let isReady = false;
+        
+        if (mode === 'wfo') {
+            isReady = state.gps && state.fingerprint && state.network && state.face;
+        } else {
+            // FIX: WFH & WFA sudah tidak butuh SSID lagi!
+            isReady = state.gps && state.fingerprint && state.face;
+        }
+        
         const button = document.getElementById('btn-submit-' + mode);
         if (button) {
             button.disabled = !isReady;
@@ -572,8 +569,11 @@
     // ============ WFO MODE ============
     async function initWFO() {
         console.log('Initializing WFO mode...');
+        document.getElementById('network-status-wfo').style.display = 'block';
+        document.getElementById('network-details-wfo').style.display = 'none';
+        
         initFingerprintForMode('wfo');
-        renderWfoOfficeDetails();
+        renderWfoOfficeDetails(); 
         startGPSForWFO();
         setTimeout(() => initFaceDetectionForMode('wfo'), 1000);
     }
@@ -628,7 +628,6 @@
         console.log('Initializing WFH mode...');
         initFingerprintForMode('wfh');
         startGPSFree('wfh');
-        initSSIDHandler('wfh');
         setTimeout(() => initFaceDetectionForMode('wfh'), 1000);
     }
 
@@ -637,7 +636,6 @@
         console.log('Initializing WFA mode...');
         initFingerprintForMode('wfa');
         startGPSFree('wfa');
-        initSSIDHandler('wfa');
         setTimeout(() => initFaceDetectionForMode('wfa'), 1000);
     }
 
@@ -689,45 +687,6 @@
         }
         modeState[mode].gps = false;
         startGPSFree(mode);
-    }
-
-    // ============ SSID HANDLER (WFH/WFA) ============
-    function initSSIDHandler(mode) {
-        const select = document.getElementById('ssid-select-' + mode);
-        const otherInput = document.getElementById('ssid-other-' + mode);
-        const hiddenField = document.getElementById('ssid-value-' + mode);
-
-        if (!select || !otherInput || !hiddenField || select.dataset.initialized === '1') {
-            return;
-        }
-
-        select.dataset.initialized = '1';
-
-        select.addEventListener('change', function() {
-            if (this.value === '__other__') {
-                otherInput.style.display = 'block';
-                otherInput.focus();
-                hiddenField.value = otherInput.value;
-                modeState[mode].ssid = otherInput.value.trim() !== '';
-            } else if (this.value !== '') {
-                otherInput.style.display = 'none';
-                otherInput.value = '';
-                hiddenField.value = this.value;
-                modeState[mode].ssid = true;
-            } else {
-                otherInput.style.display = 'none';
-                otherInput.value = '';
-                hiddenField.value = '';
-                modeState[mode].ssid = false;
-            }
-            checkReady(mode);
-        });
-
-        otherInput.addEventListener('input', function() {
-            hiddenField.value = this.value;
-            modeState[mode].ssid = this.value.trim() !== '';
-            checkReady(mode);
-        });
     }
 
     // ============ FACE DETECTION (All Modes) ============
@@ -810,23 +769,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const ssidSelect = document.getElementById('ssid-wfo');
-        if (ssidSelect) {
-            ssidSelect.addEventListener('change', function() {
-                modeState.wfo.ssid = this.value !== '';
-                checkReady('wfo');
-            });
-        }
-
         const officeSelect = document.getElementById('office-location-wfo');
         if (officeSelect) {
             officeSelect.addEventListener('change', function() {
-                modeState.wfo.ssid = false;
+                modeState.wfo.network = false; 
                 renderWfoOfficeDetails();
                 refreshGPS();
             });
         }
-
+        
         renderWfoOfficeDetails();
     });
 </script>
