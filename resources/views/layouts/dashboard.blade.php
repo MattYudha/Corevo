@@ -25,184 +25,357 @@
 
 
     <style>
-        /* Active highlight */
-        .sidebar-item.active > a.sidebar-link {
-            background: #0d6efd;
-            color: #fff !important;
-            border-radius: 10px;
-        }
-        .sidebar-item.active > a.sidebar-link i {
-            color: #fff !important;
+        /* ═══════════════════════════════════════════════════════
+           ENTERPRISE SIDEBAR — HRIS Aratech
+           ═══════════════════════════════════════════════════════ */
+
+        /* ── Core Variables ── */
+        :root {
+            --sidebar-width: 260px;
+            --sidebar-bg: #ffffff;
+            --sidebar-border: rgba(0,0,0,0.06);
+            --sidebar-active-bg: linear-gradient(135deg, #0d6efd, #0a58ca);
+            --sidebar-active-color: #ffffff;
+            --sidebar-hover-bg: rgba(13,110,253,0.06);
+            --sidebar-text: #374151;
+            --sidebar-muted: #9ca3af;
+            --sidebar-group-color: #0d6efd;
+            --sidebar-group-border: #0d6efd;
+            --sidebar-item-radius: 8px;
+            --sidebar-transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Menu group styles */
-        .menu-group {
-            background: rgba(13, 110, 253, 0.04);
-            border-left: 3px solid #0d6efd;
-            border-radius: 0 10px 10px 0;
-            margin: 8px 10px 8px 5px;
-            padding: 0;
+        [data-bs-theme='dark'] {
+            --sidebar-bg: #131929;
+            --sidebar-border: rgba(255,255,255,0.06);
+            --sidebar-hover-bg: rgba(99,179,237,0.08);
+            --sidebar-text: #cbd5e1;
+            --sidebar-muted: #64748b;
+            --sidebar-group-color: #60a5fa;
+            --sidebar-group-border: #3b82f6;
+        }
+
+        /* ── Sidebar Shell ── */
+        #sidebar {
+            width: var(--sidebar-width) !important;
+            min-width: var(--sidebar-width) !important;
+            max-width: var(--sidebar-width) !important;
+            transition: width var(--sidebar-transition), transform var(--sidebar-transition);
+            overflow: hidden;
+        }
+
+        .sidebar-wrapper {
+            width: var(--sidebar-width) !important;
+            background: var(--sidebar-bg) !important;
+            border-right: 1px solid var(--sidebar-border) !important;
+            box-shadow: 2px 0 20px rgba(0,0,0,0.04) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            height: 111.15vh !important; /* Perfect calculation to counteract body zoom: 0.9 */
+            overflow: hidden !important;
+            position: fixed !important;
+            top: 0 !important;
+            bottom: auto !important;
+            left: 0 !important;
+            z-index: 1050 !important;
+            transition: width var(--sidebar-transition), transform var(--sidebar-transition) !important;
+        }
+
+        /* ── Logo Header ── */
+        .sidebar-header {
+            padding: 20px 16px 14px !important;
+            border-bottom: 1px solid var(--sidebar-border);
+            flex-shrink: 0;
+        }
+
+        .sidebar-header a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+        }
+
+        #sidebar-logo {
+            height: 64px !important;
+            width: auto;
+            object-fit: contain;
+        }
+
+        /* ── Scrollable Menu ── */
+        .sidebar-menu {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 8px 0 24px;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        .sidebar-wrapper .sidebar-menu::-webkit-scrollbar { width: 4px !important; }
+        .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-track { background: transparent !important; }
+        .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.15) !important;
+            border-radius: 10px !important;
+        }
+        [data-bs-theme='dark'] .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.25) !important;
+        }
+
+        /* Removed dark mode logo background as requested */
+
+        .sidebar-menu .menu {
+            padding: 0 10px;
+            margin: 0;
             list-style: none;
         }
-        .menu-group-header {
+
+        /* ── Dashboard Link (top-level) ── */
+        li.sidebar-item > a.sidebar-link {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 10px 15px 10px 12px;
-            font-size: 0.72rem;
+            padding: 10px 14px !important;
+            border-radius: var(--sidebar-item-radius) !important;
+            color: var(--sidebar-text);
+            font-size: 0.875rem !important;
+            font-weight: 500 !important;
+            letter-spacing: normal !important;
+            font-family: inherit !important;
+            text-decoration: none;
+            transition: background var(--sidebar-transition), color var(--sidebar-transition);
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            margin: 2px 0 !important;
+        }
+
+        li.sidebar-item > a.sidebar-link i {
+            font-size: 1rem;
+            flex-shrink: 0;
+            width: 20px;
+            text-align: center;
+            color: var(--sidebar-muted);
+            transition: color var(--sidebar-transition);
+        }
+
+        li.sidebar-item > a.sidebar-link span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        li.sidebar-item > a.sidebar-link:hover {
+            background: var(--sidebar-hover-bg);
+            color: var(--sidebar-group-color);
+        }
+
+        li.sidebar-item > a.sidebar-link:hover i {
+            color: var(--sidebar-group-color);
+        }
+
+        /* ── Active state ── */
+        li.sidebar-item.active > a.sidebar-link {
+            background: var(--sidebar-active-bg) !important;
+            color: #fff !important;
+            box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+        }
+
+        li.sidebar-item.active > a.sidebar-link i {
+            color: #fff !important;
+        }
+
+        /* ── Menu Group (collapsible section) ── */
+        .menu-group {
+            background: transparent;
+            border-left: none;
+            border-radius: 0;
+            margin: 4px 0 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .menu-group-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: #0d6efd;
-            opacity: 0.85;
+            letter-spacing: 0.9px;
+            color: var(--sidebar-group-color);
             cursor: pointer;
             user-select: none;
-            transition: opacity 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity var(--sidebar-transition);
+            border-radius: var(--sidebar-item-radius);
+            margin: 0 0 2px;
         }
-        .menu-group-header:hover {
-            opacity: 1;
+
+        .menu-group-header:hover { opacity: 0.75; }
+
+        .menu-group-header .group-icon {
+            font-size: 0.8rem;
+            flex-shrink: 0;
+            width: 16px;
+            text-align: center;
         }
-        .menu-group-header i.group-icon {
-            font-size: 0.85rem;
+
+        .menu-group-header > span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
         }
+
         .menu-group-header .chevron {
             margin-left: auto;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
+            flex-shrink: 0;
             transition: transform 0.3s ease;
+            opacity: 0.6;
         }
+
         .menu-group.expanded .menu-group-header .chevron {
             transform: rotate(90deg);
         }
 
-        /* Collapse/expand items */
+        /* ── Collapsible Items ── */
         .menu-group .menu-group-items {
             list-style: none;
-            padding: 0 6px 0 6px;
+            padding: 0 0 0 8px;
             margin: 0;
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.35s ease, padding-bottom 0.35s ease;
+            transition: max-height 0.35s ease, padding-bottom 0.3s ease;
         }
+
         .menu-group.expanded .menu-group-items {
-            max-height: 500px;
-            padding-bottom: 6px;
-        }
-        .menu-group .menu-group-items .sidebar-item {
-            margin: 0;
-        }
-        .menu-group .menu-group-items .sidebar-link {
-            padding: 8px 12px;
-            font-size: 0.88rem;
+            max-height: 800px;
+            padding-bottom: 4px;
         }
 
-        /* Dark mode group adjustments */
-        [data-bs-theme='dark'] .menu-group {
-            background: rgba(255, 255, 255, 0.04);
-            border-left-color: #5e9bff;
-        }
-        [data-bs-theme='dark'] .menu-group-header {
-            color: #7db4ff;
+        /* Sub-item links */
+        .menu-group-items .sidebar-item > a.sidebar-link {
+            padding: 8px 12px !important;
+            font-size: 0.845rem !important;
+            font-weight: 450 !important;
+            gap: 9px !important;
         }
 
-        /* Desktop sidebar layout */
+        .menu-group-items .sidebar-item > a.sidebar-link i {
+            font-size: 0.9rem !important;
+            width: 18px !important;
+        }
+
+        /* Divider inside groups */
+        .menu-group-items hr {
+            border-color: var(--sidebar-border);
+            margin: 4px 8px;
+            opacity: 1;
+        }
+
+        /* ── Desktop Sidebar Layout ── */
         @media screen and (min-width: 992px) {
-            #sidebar { width: 300px; transition: all 0.3s ease; overflow-x: hidden; }
-            #main { margin-left: 300px; transition: all 0.3s ease; }
-            body.sidebar-collapsed #sidebar { width: 0; transform: translateX(-300px); }
+            #main { margin-left: var(--sidebar-width); transition: margin-left var(--sidebar-transition); }
+            body.sidebar-collapsed #sidebar { width: 0 !important; min-width: 0 !important; }
+            body.sidebar-collapsed .sidebar-wrapper { transform: translateX(calc(-1 * var(--sidebar-width))); }
             body.sidebar-collapsed #main { margin-left: 0; }
         }
 
-        /* Desktop sidebar toggle button */
-        #desktopSidebarToggle {
+        /* ── Sidebar Collapse Toggle (embedded «/» button) ── */
+        .sidebar-collapse-btn {
             display: none;
         }
+
+        /* Reopen tab — visible only when sidebar is collapsed on desktop */
+        #sidebarReopenTab {
+            display: none;
+        }
+
         @media screen and (min-width: 992px) {
-            #desktopSidebarToggle {
+            .sidebar-collapse-btn {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                width: 28px !important;
+                height: 28px !important;
+                border-radius: 8px !important;
+                border: 1px solid var(--sidebar-border) !important;
+                background: transparent !important;
+                color: var(--sidebar-muted) !important;
+                cursor: pointer !important;
+                transition: background var(--sidebar-transition), color var(--sidebar-transition), border-color var(--sidebar-transition) !important;
+                flex-shrink: 0 !important;
+                font-size: 1.1rem !important;
+                font-weight: 400 !important;
+                padding: 0 !important;
+                line-height: 0 !important;
+                margin: 0 !important;
+            }
+            .sidebar-collapse-btn:hover {
+                background: var(--sidebar-group-color);
+                color: #fff;
+                border-color: var(--sidebar-group-color);
+            }
+
+            /* Reopen tab — slim vertical pill on left edge when sidebar hidden */
+            #sidebarReopenTab {
                 display: flex;
                 position: fixed;
-                top: 12px;
-                left: 12px;
-                z-index: 1100;
-                width: 36px;
-                height: 36px;
+                top: 50%;
+                left: -48px;
+                transform: translateY(-50%);
+                z-index: 1200;
                 align-items: center;
                 justify-content: center;
-                background: rgba(255,255,255,0.92);
-                border: 1px solid rgba(0,0,0,0.1);
-                border-radius: 8px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                width: 20px;
+                height: 56px;
+                border-radius: 0 8px 8px 0;
+                background: var(--sidebar-group-color);
+                color: #fff;
                 cursor: pointer;
-                color: #1a1f3c;
-                transition: background 0.2s, left 0.3s;
-                text-decoration: none;
+                border: none;
+                box-shadow: 2px 0 12px rgba(13,110,253,0.3);
+                transition: left var(--sidebar-transition), background 0.2s;
+                font-size: 0.75rem;
+                font-weight: 700;
+                letter-spacing: -1px;
+                writing-mode: horizontal-tb;
+                opacity: 0;
+                pointer-events: none;
             }
-            #desktopSidebarToggle:hover { background: #0d6efd; color: #fff; }
-            body.sidebar-collapsed #desktopSidebarToggle { left: 12px; }
-            [data-bs-theme='dark'] #desktopSidebarToggle {
-                background: rgba(30,30,45,0.92);
-                color: #f8fafc;
-                border-color: rgba(255,255,255,0.1);
+            body.sidebar-collapsed #sidebarReopenTab {
+                left: 0;
+                opacity: 1;
+                pointer-events: auto;
+            }
+            #sidebarReopenTab:hover {
+                background: #0a58ca;
+                width: 26px;
             }
         }
 
-        /* Mobile sidebar overlap fix + scrollable */
+        /* ── Mobile Sidebar ── */
         @media screen and (max-width: 991px) {
             #sidebar, .sidebar-wrapper {
                 z-index: 1050 !important;
             }
-
-            /* Make sidebar wrapper scrollable on iOS/mobile */
-            .sidebar-wrapper {
-                display: flex;
-                flex-direction: column;
-                height: 100vh !important;
-                max-height: 100vh !important;
-                overflow: hidden !important;
-            }
-
-            /* Sticky header within sidebar */
-            .sidebar-wrapper .sidebar-header {
-                flex-shrink: 0;
-            }
-
-            /* Scrollable menu area */
-            .sidebar-wrapper .sidebar-menu {
-                flex: 1 1 auto;
-                overflow-y: auto !important;
-                overflow-x: hidden !important;
-                -webkit-overflow-scrolling: touch; /* Critical for iOS momentum scroll */
-                overscroll-behavior: contain;
-                padding-bottom: env(safe-area-inset-bottom, 24px); /* iPhone notch/home bar */
-                padding-bottom: max(24px, env(safe-area-inset-bottom));
-            }
-
-            /* Custom thin scrollbar for sidebar on mobile */
-            .sidebar-wrapper .sidebar-menu::-webkit-scrollbar {
-                width: 3px;
-            }
-            .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-track {
-                background: transparent;
-            }
-            .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-thumb {
-                background: rgba(0, 0, 0, 0.15);
-                border-radius: 10px;
-            }
-            [data-bs-theme='dark'] .sidebar-wrapper .sidebar-menu::-webkit-scrollbar-thumb {
-                background: rgba(255, 255, 255, 0.15);
-            }
         }
 
+        /* ── Mobile Nav Header ── */
         .mobile-nav-header {
             position: sticky;
             top: 0;
             z-index: 9;
-            background: rgba(255, 255, 255, 0.85);
+            background: rgba(255,255,255,0.9);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            padding: 0.85rem 1.25rem;
-            margin-bottom: 1.25rem;
-            margin-left: -1rem; /* Negate the generic mobile padding of #main if any */
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            margin-left: -1rem;
             margin-right: -1rem;
         }
 
@@ -211,7 +384,6 @@
             align-items: center;
             justify-content: space-between;
             width: 100%;
-            margin: 0 auto;
         }
 
         .app-brand {
@@ -224,63 +396,77 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
-            height: 40px;
-            color: #1a1f3c; /* Navy dark */
+            width: 38px;
+            height: 38px;
+            color: #374151;
             text-decoration: none;
             cursor: pointer;
             background: transparent;
             border: none;
             border-radius: 8px;
-            transition: background 0.15s, transform 0.15s;
+            transition: background 0.15s;
         }
 
-        .mobile-burger-btn:hover,
-        .mobile-burger-btn:active {
-            background: rgba(0, 0, 0, 0.04);
-            transform: scale(0.95);
-        }
-
-        .mobile-burger-btn i {
-            font-size: 1.8rem;
-            line-height: 1;
-        }
+        .mobile-burger-btn:hover { background: rgba(0,0,0,0.05); }
+        .mobile-burger-btn i { font-size: 1.6rem; line-height: 1; }
 
         [data-bs-theme='dark'] .mobile-nav-header {
-            background: rgba(30, 30, 45, 0.85);
-            border-bottom-color: rgba(255, 255, 255, 0.05);
+            background: rgba(19, 25, 41, 0.9);
+            border-bottom-color: rgba(255,255,255,0.05);
         }
-        [data-bs-theme='dark'] .mobile-burger-btn {
-            color: #f8fafc;
+        [data-bs-theme='dark'] .mobile-burger-btn { color: #cbd5e1; }
+        [data-bs-theme='dark'] .app-brand span { color: #f1f5f9 !important; }
+
+        /* ── Fix: sidebar-wrapper must never shrink text in dark mode ── */
+        .sidebar-wrapper,
+        [data-bs-theme='dark'] .sidebar-wrapper {
+            width: var(--sidebar-width) !important;
+            min-width: var(--sidebar-width) !important;
         }
-        [data-bs-theme='dark'] .app-brand span {
-            color: #f8fafc !important;
+
+        /* ── Logout item red styling ── */
+        .sidebar-item--danger > a.sidebar-link {
+            color: #ef4444 !important;
         }
-      
+        .sidebar-item--danger > a.sidebar-link i {
+            color: #ef4444 !important;
+        }
+        .sidebar-item--danger > a.sidebar-link:hover {
+            background: rgba(239,68,68,0.08) !important;
+        }
     </style>
+
     @stack('styles')
 </head>
 
-<body>
+<body style="zoom: 0.9;">
 <script src="{{ asset('mazer/assets/static/js/initTheme.js') }}"></script>
 
 <div id="app">
 
-    {{-- Desktop Sidebar Toggle Button (visible on lg+ screens only via CSS) --}}
-    <button id="desktopSidebarToggle" title="Toggle Sidebar" aria-label="Toggle Sidebar">
-        <i class="bi bi-layout-sidebar" style="font-size:1.1rem;"></i>
+    {{-- Slim reopen tab — appears at left edge when sidebar is collapsed on desktop --}}
+    <button id="sidebarReopenTab" title="Buka Sidebar" aria-label="Buka Sidebar">
+        &raquo;
     </button>
 
     <!-- ================= SIDEBAR ================= -->
     <div id="sidebar">
         <div class="sidebar-wrapper active">
 
-            <div class="sidebar-header text-center d-flex flex-column align-items-center gap-2 pb-2">
-                <div class="d-flex justify-content-center align-items-center w-100 px-3">
-                    <a href="{{ url('/dashboard') }}" class="d-inline-flex justify-content-center">
-                        <img src="{{ asset('img/HRIS ARATECH logo tr.png') }}" style="height:120px" id="sidebar-logo">
+            <div class="sidebar-header" style="padding: 18px 14px 14px !important; border-bottom: 1px solid var(--sidebar-border); flex-shrink: 0; position: relative;">
+                {{-- Logo — centered --}}
+                <div class="d-flex justify-content-center align-items-center w-100">
+                    <a href="{{ url('/dashboard') }}" class="d-inline-flex align-items-center justify-content-center text-decoration-none">
+                        <img src="{{ asset('img/HRIS ARATECH logo tr.png') }}" id="sidebar-logo"
+                             style="height:140px; width:auto; max-width:220px; object-fit:contain;">
                     </a>
                 </div>
+                {{-- «/» collapse button — absolute right so it does NOT affect centering --}}
+                <button class="sidebar-collapse-btn burger-btn" id="sidebarCollapseBtn"
+                        title="Tutup Sidebar" aria-label="Toggle Sidebar"
+                        style="position:absolute; top:50%; right:14px; transform:translateY(-50%);">
+                    &laquo;
+                </button>
             </div>
 
             <div class="sidebar-menu">
@@ -521,7 +707,7 @@
                     <li class="menu-group expanded">
                         <div class="menu-group-header">
                             <i class="bi bi-wallet2 group-icon"></i>
-                            <span>Buku Kas & Keuangan</span>
+                            <span>Cashbook & Finance</span>
                             <i class="bi bi-chevron-right chevron"></i>
                         </div>
                         <ul class="menu-group-items">
@@ -529,7 +715,7 @@
                             <li class="sidebar-item {{ $activeFinanceTransactions ? 'active' : '' }}">
                                 <a href="{{ url('/finance/transactions') }}" class="sidebar-link">
                                     <i class="bi bi-pencil-square"></i>
-                                    <span>Buku Kas (Ledger)</span>
+                                    <span>Cashbook (Ledger)</span>
                                 </a>
                             </li>
                             @endif
@@ -538,13 +724,13 @@
                             <li class="sidebar-item {{ $activeFinanceEntities ? 'active' : '' }}">
                                 <a href="{{ url('/finance/entities') }}" class="sidebar-link">
                                     <i class="bi bi-building"></i>
-                                    <span>Master Entitas</span>
+                                    <span>Master Entities</span>
                                 </a>
                             </li>
                             <li class="sidebar-item {{ $activeFinanceAccounts ? 'active' : '' }}">
                                 <a href="{{ url('/finance/accounts') }}" class="sidebar-link">
                                     <i class="bi bi-journal-bookmark"></i>
-                                    <span>Kategori Akun (CoA)</span>
+                                    <span>Account Categories (CoA)</span>
                                 </a>
                             </li>
                             @endif
@@ -552,7 +738,7 @@
                             <li class="sidebar-item {{ $activeFinanceReports ? 'active' : '' }}">
                                 <a href="{{ url('/finance/reports') }}" class="sidebar-link">
                                     <i class="bi bi-file-earmark-spreadsheet"></i>
-                                    <span>Laporan Keuangan</span>
+                                    <span>Financial Reports</span>
                                 </a>
                             </li>
 
@@ -560,7 +746,7 @@
                             <li class="sidebar-item {{ $activeFinanceCharts ? 'active' : '' }}">
                                 <a href="{{ url('/finance/charts') }}" class="sidebar-link">
                                     <i class="bi bi-graph-up-arrow"></i>
-                                    <span>Grafik Analitik</span>
+                                    <span>Analytical Charts</span>
                                 </a>
                             </li>
                             @endif
@@ -570,7 +756,7 @@
                             <li class="sidebar-item {{ $activeFinanceClaims ? 'active' : '' }}">
                                 <a href="{{ url('/finance/claims') }}" class="sidebar-link">
                                     <i class="bi bi-clipboard-check"></i>
-                                    <span>Kelola Klaim Biaya</span>
+                                    <span>Manage Expense Claims</span>
                                 </a>
                             </li>
                             @endif
@@ -739,38 +925,6 @@
                                 </a>
                             </li>
 
-                            
-
-                            
-                            <hr class="mx-3 my-1 border-light opacity-25">
-
-                            <li class="sidebar-item {{ $activeWorkLogs ? 'active' : '' }}">
-                                <a href="{{ route('work-logs.index') }}" class="sidebar-link">
-                                    <i class="bi bi-journal-check"></i>
-                                    <span>Aktivitas Saya</span>
-                                </a>
-                            </li>
-                            
-                            <li class="sidebar-item {{ $overtimes ? 'active' : '' }}">
-                                <a href="{{ route('overtimes.index') }}" class="sidebar-link">
-                                    <i class="bi bi-clock"></i>
-                                    <span>Lembur Saya</span>
-                                </a>
-                            </li>
-
-                            <li class="sidebar-item {{ $activeMyFinance ? 'active' : '' }}">
-                                <a href="{{ url('/finance/my-finance') }}" class="sidebar-link">
-                                    <i class="bi bi-wallet-fill"></i>
-                                    <span>Keuangan Saya</span>
-                                </a>
-                            </li>
-                            <li class="sidebar-item {{ $activeFinanceClaims ? 'active' : '' }}">
-                                <a href="{{ url('/finance/claims') }}" class="sidebar-link">
-                                    <i class="bi bi-receipt"></i>
-                                    <span>Klaim Biaya Saya</span>
-                                </a>
-                            </li>
-
                             <li class="sidebar-item {{ request()->is('knowledge-base*') ? 'active' : '' }}">
                                 <a href="{{ url('/knowledge-base') }}" class="sidebar-link">
                                     <i class="bi bi-book"></i>
@@ -778,10 +932,32 @@
                                 </a>
                             </li>
 
-                            <li class="sidebar-item">
-                                <a href="{{ url('/logout') }}" class="sidebar-link">
-                                    <i class="bi bi-box-arrow-right"></i>
-                                    <span>Logout</span>
+                            <hr class="mx-3 my-1 border-light opacity-25">
+
+                            <li class="sidebar-item {{ $activeWorkLogs ? 'active' : '' }}">
+                                <a href="{{ route('work-logs.index') }}" class="sidebar-link">
+                                    <i class="bi bi-journal-check"></i>
+                                    <span>My Activities</span>
+                                </a>
+                            </li>
+                            
+                            <li class="sidebar-item {{ $overtimes ? 'active' : '' }}">
+                                <a href="{{ route('overtimes.index') }}" class="sidebar-link">
+                                    <i class="bi bi-clock"></i>
+                                    <span>My Overtime</span>
+                                </a>
+                            </li>
+
+                            <li class="sidebar-item {{ $activeMyFinance ? 'active' : '' }}">
+                                <a href="{{ url('/finance/my-finance') }}" class="sidebar-link">
+                                    <i class="bi bi-wallet-fill"></i>
+                                    <span>My Finance</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-item {{ $activeFinanceClaims ? 'active' : '' }}">
+                                <a href="{{ url('/finance/claims') }}" class="sidebar-link">
+                                    <i class="bi bi-receipt"></i>
+                                    <span>My Expense Claims</span>
                                 </a>
                             </li>
                         </ul>
@@ -789,6 +965,19 @@
 
                 </ul>
             </div>
+
+            <!-- Perfect Sticky Logout Footer -->
+            <div class="sidebar-footer" style="padding: 10px 14px 20px; border-top: 1px solid var(--sidebar-border) !important; flex-shrink: 0; background: var(--sidebar-bg) !important; z-index: 10;">
+                <ul class="menu" style="padding: 0; margin: 0; list-style: none;">
+                    <li class="sidebar-item sidebar-item--danger" style="margin: 0 !important;">
+                        <a href="{{ url('/logout') }}" class="sidebar-link" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px !important; border-radius: var(--sidebar-item-radius) !important; text-decoration: none; font-weight: 500 !important; font-size: 0.875rem !important; transition: background 0.2s;">
+                            <i class="bi bi-box-arrow-right" style="font-size: 1rem !important;"></i>
+                            <span>Logout</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
         </div>
     </div>
     <!-- ================= END SIDEBAR ================= -->
@@ -875,10 +1064,28 @@
         }
     });
 
-    // Desktop toggle button
-    document.getElementById('desktopSidebarToggle')?.addEventListener('click', function() {
-        bodyEl.classList.toggle('sidebar-collapsed');
-        localStorage.setItem(SIDEBAR_KEY, bodyEl.classList.contains('sidebar-collapsed') ? '1' : '0');
+    // Desktop toggle — now handled by burger-btn class (see above)
+    // Also wire reopen tab
+    document.getElementById('sidebarReopenTab')?.addEventListener('click', function() {
+        bodyEl.classList.remove('sidebar-collapsed');
+        localStorage.setItem(SIDEBAR_KEY, '0');
+        syncCollapseIcon();
+    });
+
+    function syncCollapseIcon() {
+        const btn = document.getElementById('sidebarCollapseBtn');
+        if (!btn) return;
+        const isCollapsed = bodyEl.classList.contains('sidebar-collapsed');
+        btn.innerHTML = isCollapsed ? '&raquo;' : '&laquo;';
+        btn.title = isCollapsed ? 'Buka Sidebar' : 'Tutup Sidebar';
+    }
+
+    // Sync icon on load
+    syncCollapseIcon();
+
+    // Sync icon after burger-btn click
+    $(document).on('click', '.burger-btn', function() {
+        setTimeout(syncCollapseIcon, 50);
     });
 
     // Close mobile sidebar when clicking outside

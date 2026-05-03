@@ -86,8 +86,10 @@
 
                     <div class="mb-3">
                         <p><strong>Check-in Time:</strong> {{ $checkInTime ?? 'N/A' }}</p>
-                        <p><strong>Work Type:</strong> <span class="badge bg-primary">{{ $presence->work_type ?? 'WFO' }}</span></p>
+                        <p><strong>Work Type:</strong> <span class="badge {{ ($presence->work_type ?? 'WFO') === 'WFO' ? 'bg-primary' : 'bg-secondary' }}">{{ $presence->work_type ?? 'WFO' }}</span></p>
+                        @if(($presence->work_type ?? 'WFO') === 'WFO')
                         <p><strong>Office Location:</strong> {{ $officeLocationConfig['name'] }}</p>
+                        @endif
                         <p><strong>Current Time:</strong> <span id="current-time"></span></p>
                     </div>
 
@@ -104,13 +106,15 @@
     const officeLat = @json($officeLocationConfig['latitude']);
     const officeLon = @json($officeLocationConfig['longitude']);
     const thresholdMeters = @json($officeLocationConfig['radius']);
+    // Only validate GPS & disable button for WFO
+    const isWFO = @json(($presence->work_type ?? 'WFO') === 'WFO');
 
     // GPS State
     let gpsWatchId = null;
     let gpsRetryInterval = null;
     let gpsLastUpdateTime = 0;
 
-    // 🚀 AGGRESSIVE GPS: Auto-start on page load
+    // 🚀 AGGRESSIVE GPS: Auto-start on page load (WFO only)
     function startAggressiveGPS() {
         console.log("🚀 AGGRESSIVE GPS: Starting continuous location tracking...");
         
@@ -147,13 +151,16 @@
             const distDisplay = document.getElementById('distance-display');
             if (distDisplay) distDisplay.value = distMeters;
 
-            const btnCheckout = document.getElementById('btn-checkout');
-            if (distMeters <= thresholdMeters) {
-                console.log(`✅ Location OK: ${distMeters}m`);
-                if (btnCheckout) btnCheckout.removeAttribute('disabled');
-            } else {
-                console.warn(`❌ Outside radius: ${distMeters}m > ${thresholdMeters}m`);
-                if (btnCheckout) btnCheckout.setAttribute('disabled', 'disabled');
+            // Only enforce distance restriction for WFO
+            if (isWFO) {
+                const btnCheckout = document.getElementById('btn-checkout');
+                if (distMeters <= thresholdMeters) {
+                    console.log(`✅ Location OK: ${distMeters}m`);
+                    if (btnCheckout) btnCheckout.removeAttribute('disabled');
+                } else {
+                    console.warn(`❌ Outside radius: ${distMeters}m > ${thresholdMeters}m`);
+                    if (btnCheckout) btnCheckout.setAttribute('disabled', 'disabled');
+                }
             }
         };
 
@@ -219,10 +226,24 @@
         );
     }
 
-    // 🚀 AUTO-START ON PAGE LOAD
+    // 🚀 AUTO-START ON PAGE LOAD (GPS only needed for WFO)
     document.addEventListener('DOMContentLoaded', () => {
-        console.log("🚀 Checkout page: Auto-starting GPS...");
-        startAggressiveGPS();
+        if (isWFO) {
+            console.log("🚀 Checkout page (WFO): Auto-starting GPS...");
+            startAggressiveGPS();
+        } else {
+            console.log("ℹ️ Checkout page: WFH/WFA — skipping GPS validation.");
+        }
+
+        // Live clock
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const el = document.getElementById('current-time');
+            if (el) el.textContent = timeStr;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
     });
 </script>
 
