@@ -8,6 +8,7 @@ use App\Models\OfficeLocation;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
@@ -515,9 +516,13 @@ class PresencesController extends Controller
     // Delete an attendance record
     public function destroy(Presence $presence)
     {
-        $presence->delete();
+        if ($presence->photo_path && Storage::disk('public')->exists($presence->photo_path)) {
+            Storage::disk('public')->delete($presence->photo_path);
+        }
 
-        return redirect()->route('presences.index')->with('success', 'Attendance data deleted successfully.');
+        $presence->delete();
+        
+        return redirect()->route('presences.index')->with('success', 'Attendance data delted successfully');
     }
 
     // Check-out functionality - Show form
