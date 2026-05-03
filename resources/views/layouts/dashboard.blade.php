@@ -71,11 +71,11 @@
             box-shadow: 2px 0 20px rgba(0,0,0,0.04) !important;
             display: flex !important;
             flex-direction: column !important;
-            height: 111.15vh !important; /* Perfect calculation to counteract body zoom: 0.9 */
+            height: 120vh !important;
             overflow: hidden !important;
             position: fixed !important;
             top: 0 !important;
-            bottom: auto !important;
+            bottom: -20vh !important;
             left: 0 !important;
             z-index: 1050 !important;
             transition: width var(--sidebar-transition), transform var(--sidebar-transition) !important;
@@ -434,12 +434,45 @@
         .sidebar-item--danger > a.sidebar-link:hover {
             background: rgba(239,68,68,0.08) !important;
         }
+
+        /* ── Mobile vs Desktop Separation ── */
+        @media screen and (max-width: 991.98px) {
+            body { zoom: 1 !important; }
+
+            /* Sidebar on mobile: slide OFF-screen by default, slide IN when .active is added by Mazer */
+            #sidebar {
+                display: block !important; /* Keep visible so Mazer can toggle it */
+                width: 0 !important;
+                min-width: 0 !important;
+            }
+            .sidebar-wrapper {
+                height: 100dvh !important; /* Use dynamic viewport height on mobile */
+                bottom: 0 !important;
+                top: 0 !important;
+                transform: translateX(-100%) !important; /* Hidden off-screen by default */
+                transition: transform 0.3s ease !important;
+                z-index: 1060 !important;
+            }
+            .sidebar-wrapper.active {
+                transform: translateX(0) !important; /* Slide in when active */
+            }
+            #main {
+                margin-left: 0 !important;
+            }
+            #sidebarReopenTab {
+                display: none !important;
+            }
+        }
+        /* On desktop: apply zoom and show sidebar */
+        @media screen and (min-width: 992px) {
+            body { zoom: 0.9; }
+        }
     </style>
 
     @stack('styles')
 </head>
 
-<body style="zoom: 0.9;">
+<body>
 <script src="{{ asset('mazer/assets/static/js/initTheme.js') }}"></script>
 
 <div id="app">
@@ -451,7 +484,8 @@
 
     <!-- ================= SIDEBAR ================= -->
     <div id="sidebar">
-        <div class="sidebar-wrapper active">
+        {{-- DO NOT hardcode 'active' here - JS will add it only on desktop --}}
+        <div class="sidebar-wrapper">
 
             <div class="sidebar-header" style="padding: 18px 14px 14px !important; border-bottom: 1px solid var(--sidebar-border); flex-shrink: 0; position: relative;">
                 {{-- Logo — centered --}}
@@ -461,7 +495,8 @@
                              style="height:140px; width:auto; max-width:220px; object-fit:contain;">
                     </a>
                 </div>
-                {{-- «/» collapse button — absolute right so it does NOT affect centering --}}
+
+{{-- «/» collapse button — absolute right so it does NOT affect centering --}}
                 <button class="sidebar-collapse-btn burger-btn" id="sidebarCollapseBtn"
                         title="Tutup Sidebar" aria-label="Toggle Sidebar"
                         style="position:absolute; top:50%; right:14px; transform:translateY(-50%);">
@@ -960,21 +995,15 @@
                                     <span>My Expense Claims</span>
                                 </a>
                             </li>
+                            <li class="sidebar-item sidebar-item--danger">
+                                <a href="{{ url('/logout') }}" class="sidebar-link">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                    <span>Logout</span>
+                                </a>
+                            </li>
                         </ul>
                     </li>
 
-                </ul>
-            </div>
-
-            <!-- Perfect Sticky Logout Footer -->
-            <div class="sidebar-footer" style="padding: 10px 14px 20px; border-top: 1px solid var(--sidebar-border) !important; flex-shrink: 0; background: var(--sidebar-bg) !important; z-index: 10;">
-                <ul class="menu" style="padding: 0; margin: 0; list-style: none;">
-                    <li class="sidebar-item sidebar-item--danger" style="margin: 0 !important;">
-                        <a href="{{ url('/logout') }}" class="sidebar-link" style="display: flex; align-items: center; gap: 10px; padding: 10px 14px !important; border-radius: var(--sidebar-item-radius) !important; text-decoration: none; font-weight: 500 !important; font-size: 0.875rem !important; transition: background 0.2s;">
-                            <i class="bi bi-box-arrow-right" style="font-size: 1rem !important;"></i>
-                            <span>Logout</span>
-                        </a>
-                    </li>
                 </ul>
             </div>
 
@@ -1232,6 +1261,28 @@ const observer = new MutationObserver(() => {
 observer.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ['data-bs-theme']
+});
+
+// ── Mobile Sidebar Fix ──
+// 1. On desktop: add 'active' class to show sidebar on load
+// 2. On mobile: keep sidebar closed by default (no 'active' class)
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebarWrapper = document.querySelector('.sidebar-wrapper');
+    if (sidebarWrapper && window.innerWidth >= 992) {
+        sidebarWrapper.classList.add('active');
+    }
+
+    // Mobile close button: always call hide() directly to prevent backdrop bug
+    const mobileCloseBtn = document.getElementById('mobileSidebarClose');
+    if (mobileCloseBtn) {
+        mobileCloseBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.sidebar) {
+                window.sidebar.hide();
+            }
+        });
+    }
 });
 </script>
 
