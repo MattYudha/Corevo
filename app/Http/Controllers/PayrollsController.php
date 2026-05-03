@@ -350,15 +350,12 @@ class PayrollsController extends Controller
 
         // Calculate deductions
         $baseSalary = (float) $employee->salary;
-        $dailySalary = $workingDays > 0 ? $baseSalary / $workingDays : 0;
+        // $dailySalary = $workingDays > 0 ? $baseSalary / $workingDays : 0;
 
-        $latePenalty = config('payroll.late_penalty_per_incident', 50000);
-        $absentMultiplier = config('payroll.absent_penalty_multiplier', 1.0);
+        // $latePenalty = config('payroll.late_penalty_per_incident', 50000);
+        // $absentMultiplier = config('payroll.absent_penalty_multiplier', 1.0);
 
-        // Potongan Telat: (1% x Gaji Pokok) x Jumlah Hari Telat
         $lateDeduction = round($lateCount * ($baseSalary * 0.01));
-        
-        // Potongan Alpha/Mangkir: (1% x Gaji Pokok) x Jumlah Hari Alpha
         $absentDeduction = round($absentCount * ($baseSalary * 0.01));
 
         // BPJS calculations
