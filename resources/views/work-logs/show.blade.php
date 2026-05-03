@@ -12,7 +12,7 @@
                 <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                        <li class="breadcrumb-item"><a href="{{ route('work-logs.index') }}">Aktivitas Saya</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('work-logs.index') }}">My Activity</a></li>
                         <li class="breadcrumb-item active" aria-current="page">Detail Log Aktivitas</li>
                     </ol>
                 </nav>

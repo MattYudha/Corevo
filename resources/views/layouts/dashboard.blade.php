@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>HRIS Aratech</title>
+    <title>COREVO Aratech</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Expires" content="0">
 
-    <link rel="shortcut icon" href="{{ asset('img/HRIS ARATECH logo tr.png') }}" type="image/png">
+    <link rel="shortcut icon" href="{{ asset('corevo-logo.png') }}" type="image/png">
 
     <!-- Mazer CSS -->
     <link rel="stylesheet" href="{{ asset('mazer/assets/compiled/css/app.css') }}?v={{ time() }}">
@@ -278,7 +278,7 @@
             <div class="sidebar-header text-center d-flex flex-column align-items-center gap-2 pb-2">
                 <div class="d-flex justify-content-center align-items-center w-100 px-3">
                     <a href="{{ url('/dashboard') }}" class="d-inline-flex justify-content-center">
-                        <img src="{{ asset('img/HRIS ARATECH logo tr.png') }}" style="height:120px" id="sidebar-logo">
+                        <img src="{{ asset('corevo-logo.png') }}" style="height:65px" id="sidebar-logo">
                     </a>
                 </div>
             </div>
@@ -747,14 +747,14 @@
                             <li class="sidebar-item {{ $activeWorkLogs ? 'active' : '' }}">
                                 <a href="{{ route('work-logs.index') }}" class="sidebar-link">
                                     <i class="bi bi-journal-check"></i>
-                                    <span>Aktivitas Saya</span>
+                                    <span>My Activity</span>
                                 </a>
                             </li>
                             
                             <li class="sidebar-item {{ $overtimes ? 'active' : '' }}">
                                 <a href="{{ route('overtimes.index') }}" class="sidebar-link">
                                     <i class="bi bi-clock"></i>
-                                    <span>Lembur Saya</span>
+                                    <span>My Overtimes</span>
                                 </a>
                             </li>
 
@@ -799,8 +799,8 @@
         <header class="mobile-nav-header d-xl-none">
             <div class="mobile-top-bar">
                 <div class="app-brand">
-                    <img src="{{ asset('img/HRIS ARATECH logo tr.png') }}" style="height: 28px;" alt="Logo" onerror="this.style.display='none'">
-                    <span class="fw-bolder" style="color: #1a1f3c; font-size: 1.05rem; letter-spacing: -0.02em;">Aratech </span>
+                    <img src="{{ asset('corevo-logo.png') }}" style="height: 30px;" alt="Logo" onerror="this.style.display='none'">
+                    {{-- <span class="fw-bolder" style="color: #1a1f3c; font-size: 1.05rem; letter-spacing: -0.02em;">Aratech </span> --}}
                 </div>
                 <button class="burger-btn mobile-burger-btn" aria-label="Buka menu navigasi">
                     <i class="bi bi-list"></i>

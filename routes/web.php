@@ -116,6 +116,7 @@ Route::middleware(['auth'])->group(function () {
     
     // Presence routes (accessible to all)
     Route::get('presences', [PresencesController::class, 'index'])->name('presences.index');
+    Route::get('presences/{presence}/show', [PresencesController::class, 'show'])->name('presences.show');
     Route::get('presences/create', [PresencesController::class, 'create'])->name('presences.create');
     Route::post('presences', [PresencesController::class, 'store'])->name('presences.store')
         ->middleware(['throttle:60,1']);

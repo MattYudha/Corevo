@@ -37,7 +37,7 @@
 
             {{-- PROFILE --}}
             <li>
-                <a class="dropdown-item" href="{{ route('profile.edit') }}">
+                <a class="dropdown-item" href="{{ route('my-profile') }}">
                     <i class="bi bi-person me-2"></i> Data Pribadi
                 </a>
             </li>

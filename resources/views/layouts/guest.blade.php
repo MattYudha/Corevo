@@ -99,7 +99,7 @@
                     <div class="absolute inset-0 bg-white/40 dark:bg-white/10 blur-2xl rounded-full scale-[1.8] z-0 transition-opacity duration-300"></div>
                     <div class="absolute inset-0 bg-primary/10 dark:bg-primary/20 blur-3xl rounded-full scale-[2] z-0 transition-opacity duration-300"></div>
                     <!-- Logo Image -->
-                    <img src="{{ asset('logo_transparan.png') }}" alt="Aratech Logo" class="relative z-10 h-32 md:h-48 w-auto object-contain transition-transform duration-500 group-hover:scale-105">
+                    <img src="{{ asset('corevo-logo.png') }}" alt="Aratech Logo" class="relative z-10 h-24 md:h-26 w-auto object-contain transition-transform duration-500 group-hover:scale-105">
                 </div>
 
                 <!-- Headline -->
@@ -132,7 +132,7 @@
                 
                 <!-- Branding Header -->
                 <div class="mb-10 text-center flex flex-col items-center">
-                    <img src="{{ asset('img/HRIS ARATECH logo tr.png') }}" class="h-20 sm:h-24 md:h-28 w-auto max-w-[80vw] object-contain mb-8 transition-transform hover:scale-105" alt="HRIS Aratech Logo">
+                    <img src="{{ asset('corevo-logo.png') }}" class="h-20 sm:h-20 md:h-20 w-auto max-w-[80vw] object-contain mb-8 transition-transform hover:scale-105" alt="HRIS Aratech Logo">
                 </div>
 
                 <!-- SLOTTED CONTENT GOES HERE -->
