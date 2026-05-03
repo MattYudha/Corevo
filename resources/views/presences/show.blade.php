@@ -33,14 +33,17 @@
                     <div class="text-center mb-4">
                         @if($presence->photo_path)
                             <!-- Menampilkan Foto Hasil Jepretan Absen -->
-                            <div class="mb-3 position-relative d-inline-block">
-                                <img src="{{ asset('storage/' . $presence->photo_path) }}" 
-                                     alt="Presence Photo" 
-                                     class="rounded-3 shadow-sm border border-2 border-white object-fit-cover" 
-                                     style="width: 140px; height: 140px;">
-                                <span class="position-absolute bottom-0 start-50 translate-middle-x badge bg-primary" style="transform: translateY(50%) !important;">
-                                    Live Photo
-                                </span>
+                            <div class="mb-4 d-flex justify-content-center">
+                                <div class="position-relative d-inline-block text-center">
+                                    <img src="{{ asset('storage/' . $presence->photo_path) }}" 
+                                        alt="Presence Photo"
+                                        width="140" height="140"
+                                        class="rounded-3 shadow-sm border border-2 border-white object-fit-cover">
+
+                                    <span class="position-absolute bottom-0 start-50 translate-middle-x translate-middle-y badge bg-primary shadow-sm">
+                                        Live Photo
+                                    </span>
+                                </div>
                             </div>
                         @else
                             <!-- Fallback jika tidak ada foto -->
