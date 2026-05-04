@@ -53,12 +53,16 @@
         
                     <div class="mb-3">
                         <label for="check_in" class="form-label">Check-in Time</label>
-                        <input type="datetime-local" name="check_in" class="form-control datetime" id="check_in" value="{{ old('check_in', $presence->check_in) }}" required>
+                        <input type="datetime-local" name="check_in" class="form-control" id="check_in"
+                            value="{{ old('check_in', $presence->check_in ? \Carbon\Carbon::parse($presence->check_in)->format('Y-m-d\TH:i') : '') }}"
+                            step="60" required>
                     </div>
         
                     <div class="mb-3">
                         <label for="check_out" class="form-label">Check-out Time</label>
-                        <input type="datetime-local" name="check_out" class="form-control datetime" id="check_out" value="{{ old('check_out', $presence->check_out ? $presence->check_out : '') }}">
+                        <input type="datetime-local" name="check_out" class="form-control" id="check_out"
+                            value="{{ old('check_out', $presence->check_out ? \Carbon\Carbon::parse($presence->check_out)->format('Y-m-d\TH:i') : '') }}"
+                            step="60">
                     </div>
         
                     <div class="mb-3">
