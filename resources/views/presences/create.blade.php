@@ -776,13 +776,19 @@
             const videoEl = document.getElementById('video-' + mode);
             videoEl.srcObject = stream;
 
-            statusEl.innerHTML = '<span class="badge bg-info">Waiting for face movement...</span>';
+            statusEl.innerHTML = `
+                <span class="badge bg-info text-wrap text-start lh-base p-2 w-100 shadow-sm">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Waiting for face movement...
+                </span>`;
 
             // Call the detection loop function
             startFaceDetectionLoop(mode, videoEl, statusEl, videoContainer, previewContainer, previewImg);
 
         } catch (err) {
-            statusEl.innerHTML = '<span class="badge bg-danger">Camera failed: ' + err.message + '</span>';
+            statusEl.innerHTML = `
+                <span class="badge bg-danger text-wrap text-start lh-base p-2 w-100 shadow-sm">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Camera Failed: ${errorMsg}
+                </span>`;
         }
     }
 
