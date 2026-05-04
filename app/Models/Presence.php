@@ -15,11 +15,19 @@ class Presence extends Model
         'office_location_id',
         'latitude',
         'longitude',
+        'check_out_latitude',  
+        'check_out_longitude',
         'work_type',
         'check_in',
         'check_out',
         'date',
         'status',
+        'is_late',
+        'photo_path',
+    ];
+
+    protected $casts = [
+        'is_late' => 'boolean',
     ];
 
     // Define the relationship with the Employee model

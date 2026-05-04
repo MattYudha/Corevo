@@ -298,15 +298,17 @@ class PayrollsController extends Controller
         $lateThreshold = config('presence.late_threshold_minutes', 15);
         $lateLimit = Carbon::createFromFormat('H:i', $workStart)->addMinutes($lateThreshold);
 
-        $lateCount = 0;
-        foreach ($presences as $p) {
-            if ($p->check_in) {
-                $checkInTime = Carbon::parse($p->check_in);
-                if ($checkInTime->format('H:i:s') > $lateLimit->format('H:i:s')) {
-                    $lateCount++;
-                }
-            }
-        }
+        // $lateCount = 0;
+        // foreach ($presences as $p) {
+        //     if ($p->check_in) {
+        //         $checkInTime = Carbon::parse($p->check_in);
+        //         if ($checkInTime->format('H:i:s') > $lateLimit->format('H:i:s')) {
+        //             $lateCount++;
+        //         }
+        //     }
+        // }
+
+        $lateCount = $presences->where('is_late', true)->count();
 
         // Absent days = working days that have passed - days present - approved leaves
         $today = Carbon::today();
@@ -348,13 +350,13 @@ class PayrollsController extends Controller
 
         // Calculate deductions
         $baseSalary = (float) $employee->salary;
-        $dailySalary = $workingDays > 0 ? $baseSalary / $workingDays : 0;
+        // $dailySalary = $workingDays > 0 ? $baseSalary / $workingDays : 0;
 
-        $latePenalty = config('payroll.late_penalty_per_incident', 50000);
-        $absentMultiplier = config('payroll.absent_penalty_multiplier', 1.0);
+        // $latePenalty = config('payroll.late_penalty_per_incident', 50000);
+        // $absentMultiplier = config('payroll.absent_penalty_multiplier', 1.0);
 
-        $lateDeduction = $lateCount * $latePenalty;
-        $absentDeduction = $absentCount * $dailySalary * $absentMultiplier;
+        $lateDeduction = round($lateCount * ($baseSalary * 0.01));
+        $absentDeduction = round($absentCount * ($baseSalary * 0.01));
 
         // BPJS calculations
         // BPJS Kes rules: 1% covers Employee + 1 Spouse + 3 Children (Total 5).

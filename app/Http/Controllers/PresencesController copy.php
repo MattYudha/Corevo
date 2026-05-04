@@ -8,7 +8,6 @@ use App\Models\OfficeLocation;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
@@ -153,7 +152,7 @@ class PresencesController extends Controller
 
         } else {
 
-            // Regular employee mode, handle WFO/WFH/WFA
+            // Mode karyawan biasa, handle WFO/WFH/WFA
             $workType = $request->work_type ?? 'WFO';
             $fingerprint = $request->fingerprint;
             // Handle is_mobile as string "0" or "1" from form
@@ -176,7 +175,7 @@ class PresencesController extends Controller
             
             // 1. Device Fingerprinting Logic (required for all work types)
             if (empty($fingerprint)) {
-                return redirect()->back()->with('error', 'Failed to verify your device identity. Please refresh the page and try again.');
+                return redirect()->back()->with('error', 'Gagal memverifikasi identitas perangkat Anda. Silakan refresh halaman dan coba lagi.');
             }
             
             try {
@@ -185,19 +184,19 @@ class PresencesController extends Controller
                         $user->update(['browser_fingerprint_mobile' => $fingerprint]);
                     } elseif ($user->browser_fingerprint_mobile !== $fingerprint) {
                         $this->logSuspicious($user->id, 'wrong_fingerprint', "Mobile fingerprint mismatch. Got: $fingerprint");
-                        return redirect()->back()->with('error', 'Unregistered mobile device. Please use your original device.');
+                        return redirect()->back()->with('error', 'Perangkat mobile tidak terdaftar. Gunakan perangkat asli Anda.');
                     }
                 } else {
                     if (!$user->browser_fingerprint_desktop) {
                         $user->update(['browser_fingerprint_desktop' => $fingerprint]);
                     } elseif ($user->browser_fingerprint_desktop !== $fingerprint) {
                         $this->logSuspicious($user->id, 'wrong_fingerprint', "Desktop fingerprint mismatch. Got: $fingerprint");
-                        return redirect()->back()->with('error', 'Unregistered browser. Please use your primary browser.');
+                        return redirect()->back()->with('error', 'Browser tidak terdaftar. Gunakan browser utama Anda.');
                     }
                 }
             } catch (\Exception $e) {
                 \Log::error('Error updating fingerprint: ' . $e->getMessage());
-                return redirect()->back()->with('error', 'An error occurred while verifying the device. Please try again.');
+                return redirect()->back()->with('error', 'Terjadi kesalahan saat memverifikasi perangkat. Silakan coba lagi.');
             }
 
             // For WFO, validate selected office, GPS, and WiFi
@@ -217,15 +216,15 @@ class PresencesController extends Controller
                 $officeLocationConfig = $this->resolveOfficeLocationForSelection($selectedWfoOfficeLocationId);
 
                 if (!$officeLocationConfig) {
-                    return redirect()->back()->withInput()->with('error', 'Invalid or inactive WFO office location.');
+                    return redirect()->back()->withInput()->with('error', 'Lokasi kantor WFO tidak valid atau tidak aktif.');
                 }
 
                 // check gps accuracy to help detect fake gps
                 // spoofed gps may return 1m or unrealistically perfect values
                 // real gps usually fluctuates between 10-65m
                 if ($request->accuracy <= 5) {
-                    $this->logSuspicious($user->id, 'fake_gps', "Unnatural accuracy detected (too perfect): {$request->accuracy}m");
-                    return redirect()->back()->with('error', 'Your location is detected using a third-party application (Fake GPS). Please disable it and try again.');
+                    $this->logSuspicious($user->id, 'fake_gps', "Deteksi akurasi tidak wajar (terlalu sempurna): {$request->accuracy}m");
+                    return redirect()->back()->with('error', 'Lokasi Anda terdeteksi menggunakan aplikasi pihak ketiga (Fake GPS). Matikan aplikasi tersebut dan coba lagi.');
                 }
 
                 // verify user location on the server using radius-based geofencing
@@ -235,8 +234,8 @@ class PresencesController extends Controller
                 $distance = $this->calculateDistance($request->latitude, $request->longitude, $officeLat, $officeLon);
                 
                 if ($distance > $radius) {
-                    $this->logSuspicious($user->id, 'out_of_radius', "Attendance attempt from $distance meters away from {$officeLocationConfig['name']}.");
-                    return redirect()->back()->with('error', "You are outside the radius of {$officeLocationConfig['name']} (Your distance: " . round($distance) . " meters).");
+                    $this->logSuspicious($user->id, 'out_of_radius', "Percobaan absen sejauh $distance meter dari {$officeLocationConfig['name']}.");
+                    return redirect()->back()->with('error', "Anda berada di luar jangkauan radius {$officeLocationConfig['name']} (Jarak Anda: " . round($distance) . " meter).");
                 }
 
                 // validate network security using ip address instead of manual ssid checks
@@ -247,15 +246,15 @@ class PresencesController extends Controller
                 // run validation only when the office has an ip configured
                 if (!empty($allowedIPs)) {
                     if (!in_array($clientIp, $allowedIPs)) {
-                        $this->logSuspicious($user->id, 'invalid_ip', "Attendance attempt from an unknown network: $clientIp");
-                        return redirect()->back()->with('error', "The system rejected your WFO attendance because your device's IP ($clientIp) is not connected to the official office WiFi network.");
+                        $this->logSuspicious($user->id, 'invalid_ip', "Percobaan absen dari jaringan yang tidak dikenal: $clientIp");
+                        return redirect()->back()->with('error', "Sistem menolak presensi WFO karena IP Perangkat Anda ($clientIp) tidak terhubung ke jaringan WiFi resmi kantor.");
                     }
                 }
             }
 
             // Validate employee_id exists in session
             if (!$employeeId) {
-                return redirect()->back()->with('error', 'Invalid session. Please log in again.');
+                return redirect()->back()->with('error', 'Session tidak valid. Silakan login ulang.');
             }
 
             // Check if already checked in today
@@ -267,9 +266,9 @@ class PresencesController extends Controller
 
             if ($existingPresence) {
                 if ($existingPresence->check_out) {
-                    return redirect()->back()->with('error', 'You have already checked in and checked out today.');
+                    return redirect()->back()->with('error', 'Anda sudah check-in dan check-out hari ini.');
                 } else {
-                    return redirect()->back()->with('error', 'You have already checked in today. Please check out first.');
+                    return redirect()->back()->with('error', 'Anda sudah check-in hari ini. Silakan check-out terlebih dahulu.');
                 }
             }
 
@@ -282,25 +281,11 @@ class PresencesController extends Controller
 
             try {
                 // Store GPS data for all work types (WFO, WFH, WFA)
-                $latitude = $request->has('latitude') && !empty($request->latitude) ? $request->latitude : null;
-                $longitude = $request->has('longitude') && !empty($request->longitude) ? $request->longitude : null;
+                $latitude = $request->has('latitude') && !empty($request->latitude) 
+                     ? $request->latitude : null;
+                $longitude = $request->has('longitude') && !empty($request->longitude) 
+                     ? $request->longitude : null;
                 
-                $photoPath = null;
-                if ($request->filled('photo_data')) {
-                    $image_parts = explode(";base64,", $request->photo_data);
-                    if (count($image_parts) == 2) {
-                        $image_type_aux = explode("image/", $image_parts[0]);
-                        $image_type = $image_type_aux[1];
-                        $image_base64 = base64_decode($image_parts[1]);
-                        
-                        $fileName = 'presence_' . $employeeId . '_' . time() . '.' . $image_type;
-                        $folderPath = 'presence_photos/' . date('Y-m'); 
-                        
-                        \Illuminate\Support\Facades\Storage::disk('public')->put($folderPath . '/' . $fileName, $image_base64);
-                        $photoPath = $folderPath . '/' . $fileName;
-                    }
-                }
-
                 $dummyPresence = new Presence([
                     'status' => 'present', 
                     'work_type' => $workType, 
@@ -316,8 +301,7 @@ class PresencesController extends Controller
                     'date' => $checkInTime->format('Y-m-d'),
                     'status' => 'present',
                     'work_type' => $workType,
-                    'is_late' => $isLate,
-                    'photo_path' => $photoPath, 
+                    'is_late' => $isLate 
                 ];
                 
                 // Add GPS data if it exists
@@ -338,27 +322,27 @@ class PresencesController extends Controller
                     'sql_error' => $e->getSql(),
                     'bindings' => $e->getBindings()
                 ]);
-                return redirect()->back()->with('error', 'Failed to save attendance data to the database. Please try again or contact the administrator.');
+                return redirect()->back()->with('error', 'Gagal menyimpan data presensi ke database. Silakan coba lagi atau hubungi administrator.');
             } catch (\Exception $e) {
                 \Log::error('Error creating presence: ' . $e->getMessage(), [
                     'employee_id' => $employeeId,
                     'work_type' => $workType,
                     'error' => $e->getTraceAsString()
                 ]);
-                return redirect()->back()->with('error', 'Failed to save attendance data: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Gagal menyimpan data presensi: ' . $e->getMessage());
             }
 
             // Show warning if late
             if ($isLate) {
                 $lateMinutes = $checkInTime->diffInMinutes($workStartTime->copy()->addMinutes($lateThreshold));
                 $targetRoute = in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]) ? 'presences.index' : 'dashboard';
-                return redirect()->route($targetRoute)->with('warning', "Attendance recorded successfully. You are {$lateMinutes} minutes late.");
+                return redirect()->route($targetRoute)->with('warning', "Presensi berhasil dicatat. Anda terlambat {$lateMinutes} menit.");
             }
             
         }
 
         $targetRoute = in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]) ? 'presences.index' : 'dashboard';
-        return redirect()->route($targetRoute)->with('success', 'Attendance recorded successfully.');
+        return redirect()->route($targetRoute)->with('success', 'Presensi berhasil dicatat.');
     }
 
     private function getSelectableWfoOfficeLocations(): array
@@ -421,12 +405,12 @@ class PresencesController extends Controller
     {
         return [
             'id' => null,
-            'name' => 'Head Office',
+            'name' => 'Kantor Pusat',
             'latitude' => (float) config('presence.office_latitude', -6.200000),
             'longitude' => (float) config('presence.office_longitude', 106.816666),
             'radius' => (int) config('presence.location_radius', 1000),
-            'allowed_ssids' => ['WIFI KANTOR'], // Can be left empty []
-            'allowed_ips' => [], // Default IP values
+            'allowed_ssids' => ['WIFI KANTOR'], // Bisa diganti kosong []
+            'allowed_ips' => [], // Nilai bawaan IP
             'address' => null,
         ];
     }
@@ -454,12 +438,12 @@ class PresencesController extends Controller
     private function buildInvalidSsidMessage(string $officeName, array $allowedSSIDs): string
     {
         if (empty($allowedSSIDs)) {
-            return 'You must be connected to the registered office WiFi for WFO attendance.';
+            return 'Anda harus terhubung ke WiFi kantor yang terdaftar untuk absen WFO.';
         }
 
         $ssidList = implode(', ', array_map(fn ($ssid) => '"' . $ssid . '"', $allowedSSIDs));
 
-        return "You must be connected to the {$officeName} WiFi ({$ssidList}) for WFO attendance.";
+        return "Anda harus terhubung ke WiFi {$officeName} ({$ssidList}) untuk absen WFO.";
     }
 
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)
@@ -510,19 +494,15 @@ class PresencesController extends Controller
 
         $presence->update($request->all());
 
-        return redirect()->route('presences.index')->with('success', 'Attendance data updated successfully.');
+        return redirect()->route('presences.index')->with('success', 'Data presensi berhasil diperbarui.');
     }
 
     // Delete an attendance record
     public function destroy(Presence $presence)
     {
-        if ($presence->photo_path && Storage::disk('public')->exists($presence->photo_path)) {
-            Storage::disk('public')->delete($presence->photo_path);
-        }
-
         $presence->delete();
-        
-        return redirect()->route('presences.index')->with('success', 'Attendance data delted successfully');
+
+        return redirect()->route('presences.index')->with('success', 'Data presensi berhasil dihapus.');
     }
 
     // Check-out functionality - Show form
@@ -549,11 +529,7 @@ class PresencesController extends Controller
             return redirect()->route('presences.index')->with('error', 'No check-in record found for today. Please check in first.');
         }
 
-        $workType = $presence->work_type ?? 'WFO';
-        // Only resolve office location config for WFO; WFH/WFA don't need it
-        $officeLocationConfig = $workType === 'WFO'
-            ? $this->resolveOfficeLocationForPresence($presence, $employee)
-            : $this->defaultOfficeLocationConfig();
+        $officeLocationConfig = $this->resolveOfficeLocationForPresence($presence, $employee);
         $checkInTime = Carbon::parse($presence->check_in)->format('H:i:s');
 
         return view('presences.checkout', compact('presence', 'checkInTime', 'officeLocationConfig'));
@@ -583,11 +559,7 @@ class PresencesController extends Controller
             return redirect()->route('presences.index')->with('error', 'No check-in record found for today. Please check in first.');
         }
 
-        $workType = $presence->work_type ?? 'WFO';
-        // Only resolve office location config for WFO; WFH/WFA don't need geofencing
-        $officeLocationConfig = $workType === 'WFO'
-            ? $this->resolveOfficeLocationForPresence($presence, $employee)
-            : $this->defaultOfficeLocationConfig();
+        $officeLocationConfig = $this->resolveOfficeLocationForPresence($presence, $employee);
 
         // Validate check-out cannot be before check-in
         $checkInTime = Carbon::parse($presence->check_in);
@@ -642,7 +614,7 @@ class PresencesController extends Controller
         $presence->load(['employee.department', 'employee.role', 'officeLocation']);
         $officeConfig = $this->resolveOfficeLocationForPresence($presence, $presence->employee);
         
-        // 1. Check late status using the controller's built-in function
+        // 1. Cek status keterlambatan (Late) menggunakan fungsi bawaan controller
         $isLate = $this->isLateCheckIn($presence);
 
         // 2. Check-In Geofence Calculations
@@ -669,7 +641,7 @@ class PresencesController extends Controller
             'presence', 'officeConfig', 
             'checkInDistance', 'isCheckInOutOfRadius', 
             'checkOutDistance', 'isCheckOutOutOfRadius',
-            'isLate' // <-- Ensure this variable is sent to the view
+            'isLate' // <-- Pastikan variabel ini ikut dikirim ke view
         ));
     }
 
@@ -818,10 +790,10 @@ class PresencesController extends Controller
 
             $workType = strtolower($presence->work_type ?? 'wfo');
             
-            // Get toggle status according to work type (wfo, wfh, wfa)
+            // Ambil status toggle sesuai tipe kerja (wfo, wfh, wfa)
             $isLateEnabled = \App\Models\Setting::getValue('enable_late_' . $workType, '0');
             
-            // If disabled from master presence, it is automatically never late
+            // Jika dimatikan dari master presence, maka otomatis tidak pernah telat
             if ($isLateEnabled == '0') {
                 return false;
             }
@@ -834,12 +806,12 @@ class PresencesController extends Controller
             $workStartTimeStr = \App\Models\Setting::getValue('work_start_time', '08:00');
             $workStartTime = Carbon::parse($dateStr . ' ' . $workStartTimeStr);
             
-            // Get specific minute tolerance according to the work type
+            // Ambil toleransi menit spesifik sesuai tipe kerjanya
             $lateThreshold = (int) \App\Models\Setting::getValue('late_threshold_' . $workType, 15);
 
             return $checkInTime->gt($workStartTime->copy()->addMinutes($lateThreshold));
         } catch (\Exception $e) {
-            \Log::warning('Error checking late status: ' . $e->getMessage());
+            \Log::warning('Galat saat memeriksa keterlambatan: ' . $e->getMessage());
             return false;
         }
     }

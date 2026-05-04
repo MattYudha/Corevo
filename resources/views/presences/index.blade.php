@@ -1,9 +1,6 @@
 @extends('layouts.dashboard')
 
 @section('content')
-
-
-
 <div class="page-heading">
     <div class="page-title">
         <div class="row">
@@ -140,7 +137,7 @@
         // delete confirmation standard
         $(document).on('submit', '.delete-form', function (e) {
             e.preventDefault();
-            window.confirmDelete(this, 'Hapus data presensi ini?');
+            window.confirmDelete(this, 'Delete this presence record?');
         });
     });
 </script>

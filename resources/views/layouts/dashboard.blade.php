@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>HRIS Aratech</title>
+    <title>COREVO Aratech</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Expires" content="0">
 
-    <link rel="shortcut icon" href="{{ asset('img/HRIS ARATECH logo tr.png') }}" type="image/png">
+    <link rel="shortcut icon" href="{{ asset('corevo-logo.png') }}" type="image/png">
 
     <!-- Mazer CSS -->
     <link rel="stylesheet" href="{{ asset('mazer/assets/compiled/css/app.css') }}?v={{ time() }}">
@@ -1017,8 +1017,8 @@
         <header class="mobile-nav-header d-xl-none">
             <div class="mobile-top-bar">
                 <div class="app-brand">
-                    <img src="{{ asset('img/HRIS ARATECH logo tr.png') }}" style="height: 28px;" alt="Logo" onerror="this.style.display='none'">
-                    <span class="fw-bolder" style="color: #1a1f3c; font-size: 1.05rem; letter-spacing: -0.02em;">Aratech </span>
+                    <img src="{{ asset('corevo-logo.png') }}" style="height: 30px;" alt="Logo" onerror="this.style.display='none'">
+                    {{-- <span class="fw-bolder" style="color: #1a1f3c; font-size: 1.05rem; letter-spacing: -0.02em;">Aratech </span> --}}
                 </div>
                 <button class="burger-btn mobile-burger-btn" aria-label="Buka menu navigasi">
                     <i class="bi bi-list"></i>

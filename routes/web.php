@@ -116,6 +116,7 @@ Route::middleware(['auth'])->group(function () {
     
     // Presence routes (accessible to all)
     Route::get('presences', [PresencesController::class, 'index'])->name('presences.index');
+    Route::get('presences/{presence}/show', [PresencesController::class, 'show'])->name('presences.show');
     Route::get('presences/create', [PresencesController::class, 'create'])->name('presences.create');
     Route::post('presences', [PresencesController::class, 'store'])->name('presences.store')
         ->middleware(['throttle:60,1']);
@@ -236,21 +237,20 @@ Route::middleware(['auth'])->group(function () {
         ->name('master-presences.settings.update')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
 
-    // Manajemen Lembur (Overtime)
-
-    Route::post('overtimes/settings', [App\Http\Controllers\OvertimeController::class, 'updateSettings'])
+    // Overtimes Management
+    Route::post('overtimes/settings', [OvertimeController::class, 'updateSettings'])
         ->name('overtimes.settings')
-        ->middleware(['role:' . \App\Constants\Roles::HR_ADMINISTRATOR . ',' . \App\Constants\Roles::MASTER_ADMIN]);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
 
-    Route::post('overtimes/approve-batch', [App\Http\Controllers\OvertimeController::class, 'approveBatch'])
+    Route::post('overtimes/approve-batch', [OvertimeController::class, 'approveBatch'])
         ->name('overtimes.approve-batch')
-        ->middleware(['role:' . \App\Constants\Roles::HR_ADMINISTRATOR . ',' . \App\Constants\Roles::MASTER_ADMIN]);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
         
-    Route::post('overtimes/reject-batch', [App\Http\Controllers\OvertimeController::class, 'rejectBatch'])
+    Route::post('overtimes/reject-batch', [OvertimeController::class, 'rejectBatch'])
         ->name('overtimes.reject-batch')
-        ->middleware(['role:' . \App\Constants\Roles::HR_ADMINISTRATOR . ',' . \App\Constants\Roles::MASTER_ADMIN]);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
 
-    Route::resource('overtimes', App\Http\Controllers\OvertimeController::class);
+    Route::resource('overtimes', OvertimeController::class);
 });
 
 

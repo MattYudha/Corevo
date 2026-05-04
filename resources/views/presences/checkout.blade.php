@@ -1,15 +1,12 @@
 @extends('layouts.dashboard')
 
 @section('content')
-
-
-
 <div class="page-heading">
     <div class="page-title">
         <div class="row">
             <div class="col-12 col-md-6 order-md-1 order-last">
                 <h3>Check Out</h3>
-                <p class="text-subtitle text-muted">Record your check-out time.</p>
+                <p class="text-subtitle text-muted">Record your check-out time and location.</p>
             </div>
             <div class="col-12 col-md-6 order-md-2 order-first">
                 <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
@@ -26,75 +23,54 @@
     <section class="section">
         <div class="card">
             <div class="card-body">
-                @if(session('success'))
-                    <div class="alert alert-success">{{ session('success') }}</div>
-                @endif
-
-                @if(session('warning'))
-                    <div class="alert alert-warning">{{ session('warning') }}</div>
-                @endif
-
-                @if(session('error'))
-                    <div class="alert alert-danger">{{ session('error') }}</div>
-                @endif
-
-                @if ($errors->any())
-                    <div class="alert alert-danger">
-                        <ul>
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+                @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
+                @if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
 
                 <form action="{{ route('presences.checkout.process') }}" method="POST" id="checkout-form">
                     @csrf
                     
-                    <!-- GPS Section (only for WFO) -->
                     <div id="gps-section" class="mb-3" style="display: none;">
-                        <div id="location-warning" class="alert alert-warning d-none">
-                            <b>Note</b> : Mohon izinkan akses lokasi untuk check-out WFO.
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Latitude</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" name="latitude" id="latitude" readonly>
-                                <button type="button" class="btn btn-outline-secondary" onclick="getGPSLocation()">
-                                    <i class="bi bi-geo-alt"></i> Ambil Lokasi
-                                </button>
+                        <div id="location-warning" class="alert d-none"></div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Latitude</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control bg-light" name="latitude" id="latitude" readonly>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="getGPSLocation()">
+                                        <i class="bi bi-geo-alt"></i> Get Location
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Longitude</label>
+                                <input type="text" class="form-control bg-light" name="longitude" id="longitude" readonly>
                             </div>
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label">Longitude</label>
-                            <input type="text" class="form-control" name="longitude" id="longitude" readonly>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label"><b>Jarak ke Kantor</b></label>
+                        
+                        <div class="mb-3" id="distance-wrapper">
+                            <label class="form-label"><b>Distance to Office</b></label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="distance-display" readonly placeholder="Mencari lokasi...">
-                                <span class="input-group-text">Meter</span>
+                                <input type="text" class="form-control font-monospace" id="distance-display" readonly placeholder="Locating...">
+                                <span class="input-group-text">Meters</span>
                             </div>
-                            <small class="text-muted" id="distance-info">Maksimum untuk {{ $officeLocationConfig['name'] }}: {{ $officeLocationConfig['radius'] }}m</small>
+                            <small class="text-muted" id="distance-info">Allowed radius for {{ $officeLocationConfig['name'] ?? 'Office' }}: {{ $officeLocationConfig['radius'] ?? 0 }}m</small>
                         </div>
-
                         <input type="hidden" name="accuracy" id="accuracy">
                     </div>
 
-                    <div class="mb-3">
-                        <p><strong>Check-in Time:</strong> {{ $checkInTime ?? 'N/A' }}</p>
-                        <p><strong>Work Type:</strong> <span class="badge {{ ($presence->work_type ?? 'WFO') === 'WFO' ? 'bg-primary' : 'bg-secondary' }}">{{ $presence->work_type ?? 'WFO' }}</span></p>
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <p class="mb-1"><strong>Check-in Time:</strong> {{ $checkInTime ?? 'N/A' }}</p>
+                        <p class="mb-1"><strong>Work Type:</strong> <span class="badge bg-primary">{{ $presence->work_type ?? 'WFO' }}</span></p>
                         @if(($presence->work_type ?? 'WFO') === 'WFO')
-                        <p><strong>Office Location:</strong> {{ $officeLocationConfig['name'] }}</p>
+                            <p class="mb-1"><strong>Office Location:</strong> {{ $officeLocationConfig['name'] ?? 'N/A' }}</p>
                         @endif
-                        <p><strong>Current Time:</strong> <span id="current-time"></span></p>
+                        <p class="mb-0"><strong>Current Time:</strong> <span id="current-time" class="text-danger fw-bold"></span></p>
                     </div>
 
-                    <button type="submit" id="btn-checkout" class="btn btn-success">Check Out</button>
-                    <a href="{{ route('presences.index') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" id="btn-checkout" class="btn btn-success px-4" disabled>
+                        <i class="bi bi-box-arrow-right me-1"></i> Confirm Check Out
+                    </button>
+                    <a href="{{ route('presences.index') }}" class="btn btn-light-secondary ms-2">Cancel</a>
                 </form>
             </div>
         </div>
@@ -102,150 +78,67 @@
 </div>
 
 <script>
-    // Configuration
-    const officeLat = @json($officeLocationConfig['latitude']);
-    const officeLon = @json($officeLocationConfig['longitude']);
-    const thresholdMeters = @json($officeLocationConfig['radius']);
-    // Only validate GPS & disable button for WFO
-    const isWFO = @json(($presence->work_type ?? 'WFO') === 'WFO');
+    const officeLat = @json($officeLocationConfig['latitude'] ?? 0);
+    const officeLon = @json($officeLocationConfig['longitude'] ?? 0);
+    const thresholdMeters = @json($officeLocationConfig['radius'] ?? 0);
+    const workType = @json($presence->work_type ?? 'WFO');
 
-    // GPS State
-    let gpsWatchId = null;
-    let gpsRetryInterval = null;
-    let gpsLastUpdateTime = 0;
+    setInterval(() => {
+        document.getElementById('current-time').textContent = new Date().toLocaleTimeString();
+    }, 1000);
 
-    // 🚀 AGGRESSIVE GPS: Auto-start on page load (WFO only)
-    function startAggressiveGPS() {
-        console.log("🚀 AGGRESSIVE GPS: Starting continuous location tracking...");
-        
-        if (typeof window !== 'undefined' && window.isSecureContext === false) {
-            console.error('🔒 GPS BLOCKED: Site must use HTTPS');
-            alert('⚠️ GPS hanya bekerja di HTTPS. Hubungi IT untuk mengaktifkan SSL.');
-            return;
-        }
-
-        if (!navigator.geolocation) {
-            console.error('❌ Geolocation not supported');
-            return;
-        }
-
-        const onSuccess = (position) => {
-            gpsLastUpdateTime = Date.now();
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            const acc = position.coords.accuracy;
-            
-            console.log(`📍 GPS UPDATE: ${lat.toFixed(6)}, ${lon.toFixed(6)} (±${Math.round(acc)}m)`);
-
-            document.getElementById('latitude').value = lat;
-            document.getElementById('longitude').value = lon;
-            document.getElementById('accuracy').value = acc;
-
-            if (acc <= 1) {
-                alert('⚠️ Akurasi GPS mencurigakan. Jangan gunakan Fake GPS!');
-            }
-
-            const distDegrees = Math.sqrt(Math.pow(lat - officeLat, 2) + Math.pow(lon - officeLon, 2));
-            const distMeters = Math.round(distDegrees * 111320);
-            
-            const distDisplay = document.getElementById('distance-display');
-            if (distDisplay) distDisplay.value = distMeters;
-
-            // Only enforce distance restriction for WFO
-            if (isWFO) {
-                const btnCheckout = document.getElementById('btn-checkout');
-                if (distMeters <= thresholdMeters) {
-                    console.log(`✅ Location OK: ${distMeters}m`);
-                    if (btnCheckout) btnCheckout.removeAttribute('disabled');
-                } else {
-                    console.warn(`❌ Outside radius: ${distMeters}m > ${thresholdMeters}m`);
-                    if (btnCheckout) btnCheckout.setAttribute('disabled', 'disabled');
-                }
-            }
-        };
-
-        const onError = (error) => {
-            let msg = '❌ GPS Error: ';
-            switch (error.code) {
-                case error.PERMISSION_DENIED:
-                    msg += 'Izin ditolak. Aktifkan di Settings → Site Permissions → Location';
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    msg += 'Sinyal tidak tersedia. Aktifkan GPS mode High Accuracy';
-                    break;
-                case error.TIMEOUT:
-                    msg += 'Timeout. Pindah ke area terbuka';
-                    break;
-                default:
-                    msg += 'Unknown error';
-                    break;
-            }
-            console.error(msg);
-            alert(msg);
-        };
-
-        if (gpsWatchId !== null) {
-            navigator.geolocation.clearWatch(gpsWatchId);
-        }
-
-        try {
-            gpsWatchId = navigator.geolocation.watchPosition(
-                onSuccess,
-                onError,
-                {
-                    enableHighAccuracy: true,
-                    timeout: 45000,
-                    maximumAge: 5000
-                }
-            );
-            console.log(`📡 GPS Watch started (ID: ${gpsWatchId})`);
-        } catch (e) {
-            console.error(`Exception: ${e.message}`);
-        }
-
-        // Auto-restart if stalled
-        if (gpsRetryInterval) clearInterval(gpsRetryInterval);
-        gpsRetryInterval = setInterval(() => {
-            const timeSinceUpdate = Date.now() - gpsLastUpdateTime;
-            if (timeSinceUpdate > 60000 && gpsWatchId !== null) {
-                console.warn('⏱️ GPS stalled for 60s, restarting...');
-                navigator.geolocation.clearWatch(gpsWatchId);
-                gpsWatchId = null;
-                startAggressiveGPS();
-            }
-        }, 30000);
-    }
-
-    // Manual button (fallback)
     function getGPSLocation() {
-        console.log('🔄 Manual GPS refresh');
+        if (!navigator.geolocation) {
+            alert('Geolocation is not supported by your browser.');
+            return;
+        }
+
+        document.getElementById('btn-checkout').disabled = true; 
+
         navigator.geolocation.getCurrentPosition(
-            (pos) => console.log('Manual GPS OK: ' + pos.coords.latitude),
-            (err) => console.error('Manual GPS failed: ' + err.message),
+            (pos) => {
+                document.getElementById('latitude').value = pos.coords.latitude;
+                document.getElementById('longitude').value = pos.coords.longitude;
+                document.getElementById('accuracy').value = pos.coords.accuracy;
+                
+                document.getElementById('btn-checkout').disabled = false; 
+
+                if (workType === 'WFO') {
+                    const distDegrees = Math.sqrt(Math.pow(pos.coords.latitude - officeLat, 2) + Math.pow(pos.coords.longitude - officeLon, 2));
+                    const distMeters = Math.round(distDegrees * 111320);
+                    document.getElementById('distance-display').value = distMeters;
+                    
+                    const warningEl = document.getElementById('location-warning');
+                    if (distMeters <= thresholdMeters) {
+                        warningEl.classList.add('d-none');
+                    } else {
+                        warningEl.classList.remove('d-none');
+                        warningEl.className = 'alert alert-danger';
+                        warningEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> <b>Out of Radius</b>: You are <b>${distMeters}m</b> away from the office. You may still check out, but it will be flagged.`;
+                    }
+                }
+            },
+            (err) => {
+                console.error('GPS Error:', err.message);
+                alert('Failed to get location: ' + err.message);
+            },
             { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
         );
     }
 
-    // 🚀 AUTO-START ON PAGE LOAD (GPS only needed for WFO)
     document.addEventListener('DOMContentLoaded', () => {
-        if (isWFO) {
-            console.log("🚀 Checkout page (WFO): Auto-starting GPS...");
-            startAggressiveGPS();
+        if (workType === 'WFO' || workType === 'WFA') {
+            document.getElementById('gps-section').style.display = 'block';
+            
+            if (workType === 'WFA') {
+                document.getElementById('distance-wrapper').style.display = 'none'; 
+            }
+            
+            getGPSLocation();
         } else {
-            console.log("ℹ️ Checkout page: WFH/WFA — skipping GPS validation.");
+            document.getElementById('gps-section').style.display = 'none';
+            document.getElementById('btn-checkout').disabled = false;
         }
-
-        // Live clock
-        function updateClock() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const el = document.getElementById('current-time');
-            if (el) el.textContent = timeStr;
-        }
-        updateClock();
-        setInterval(updateClock, 1000);
     });
 </script>
-
 @endsection
-

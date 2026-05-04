@@ -1,9 +1,6 @@
 @extends('layouts.dashboard')
 
 @section('content')
-
-
-
 <div class="page-heading">
     <div class="page-title">
         <div class="row">
@@ -130,6 +127,4 @@
         </div>
     </section>
 </div>
-
 @endsection
-

@@ -13,8 +13,8 @@
                 <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-                        <li class="breadcrumb-item">Presences</li>
-                        <li class="breadcrumb-item active" aria-current="page">Index</li>
+                        <li class="breadcrumb-item"><a href="{{ route('presences.index') }}">Presences</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">New Presences</li>
                     </ol>
                 </nav>
             </div>
@@ -85,14 +85,14 @@
 
                 @else
                     <div id="step-choose-type">
-                        <h5 class="mb-3">📍 Pilih Tipe Kerja Hari Ini</h5>
+                        <h5 class="mb-3">📍 Select Today's Work Type</h5>
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <div class="card border-primary h-100" style="cursor: pointer;" onclick="selectWorkType('WFO')">
                                     <div class="card-body text-center">
                                         <span class="badge bg-primary mb-2" style="font-size: 1.2rem;">WFO</span>
                                         <h6>Work From Office</h6>
-                                        <p class="text-muted small">Bekerja dari kantor<br>(GPS + Jaringan IP + Wajah + Fingerprint)</p>
+                                        <p class="text-muted small">Work from the office<br>(GPS + IP Network + Face + Fingerprint)</p>
                                     </div>
                                 </div>
                             </div>
@@ -101,7 +101,7 @@
                                     <div class="card-body text-center">
                                         <span class="badge bg-success mb-2" style="font-size: 1.2rem;">WFH</span>
                                         <h6>Work From Home</h6>
-                                        <p class="text-muted small">Bekerja dari rumah<br>(GPS + Wajah + Fingerprint)</p>
+                                        <p class="text-muted small">Work from home<br>(GPS + Face + Fingerprint)</p>
                                     </div>
                                 </div>
                             </div>
@@ -110,7 +110,7 @@
                                     <div class="card-body text-center">
                                         <span class="badge bg-info mb-2" style="font-size: 1.2rem;">WFA</span>
                                         <h6>Work From Anywhere</h6>
-                                        <p class="text-muted small">Bekerja dari mana saja<br>(GPS + Wajah + Fingerprint)</p>
+                                        <p class="text-muted small">Work from anywhere<br>(GPS + Face + Fingerprint)</p>
                                     </div>
                                 </div>
                             </div>
@@ -120,7 +120,7 @@
                     <div id="form-wfo" style="display: none;">
                         <h5 class="mb-3">
                             <span class="badge bg-primary">WFO</span> Work From Office
-                            <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="backToChooseType()">← Ganti Tipe</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="backToChooseType()">← Change Type</button>
                         </h5>
                         
                         <form action="{{ route('presences.store') }}" method="POST" id="form-wfo-submit">
@@ -131,71 +131,72 @@
                             <input type="hidden" name="latitude" id="latitude-wfo">
                             <input type="hidden" name="longitude" id="longitude-wfo">
                             <input type="hidden" name="accuracy" id="accuracy-wfo">
+                            <input type="hidden" name="photo_data" id="photo_data-wfo">
 
                             <div class="mb-3">
-                                <label class="form-label"><i class="bi bi-building"></i> <strong>Site Kantor WFO</strong></label>
+                                <label class="form-label"><i class="bi bi-building"></i> <strong>WFO Office Site</strong></label>
                                 <select class="form-select" name="office_location_id" id="office-location-wfo" {{ !empty($wfoOfficeLocations) ? 'required' : 'disabled' }}>
-                                    <option value="">-- Pilih Kantor Terdekat --</option>
+                                    <option value="">-- Select Nearest Office --</option>
                                     @forelse($wfoOfficeLocations as $officeLocation)
                                         <option value="{{ $officeLocation['id'] }}" {{ (string) old('office_location_id', $selectedWfoOfficeLocation['id'] ?? '') === (string) $officeLocation['id'] ? 'selected' : '' }}>
                                             {{ $officeLocation['name'] }}
                                         </option>
                                     @empty
-                                        <option value="">Belum ada lokasi kantor aktif</option>
+                                        <option value="">No active office location</option>
                                     @endforelse
                                 </select>
-                                <small class="text-muted">Pilih site kantor untuk mencocokkan Jarak GPS dan Jaringan IP Anda.</small>
+                                <small class="text-muted">Select an office site to match your GPS Distance and IP Network.</small>
                             </div>
 
                             <div class="alert alert-info">
-                                <strong>📋 Validasi WFO:</strong> Pilih site kantor + GPS + Jaringan IP + Verifikasi Wajah + Fingerprint
+                                <strong>📋 WFO Validation:</strong> Select office site + GPS + IP Network + Face Verification + Fingerprint
                                 <div class="small mt-2">
-                                    Lokasi kerja aktif: <strong id="wfo-office-name">{{ $selectedWfoOfficeLocation['name'] ?? 'Belum ada lokasi kantor aktif' }}</strong>
+                                    Active work location: <strong id="wfo-office-name">{{ $selectedWfoOfficeLocation['name'] ?? 'No active office location' }}</strong>
                                     <span id="wfo-office-address-wrapper" @if(empty($selectedWfoOfficeLocation['address'])) style="display: none;" @endif>
                                         <br><span id="wfo-office-address">{{ $selectedWfoOfficeLocation['address'] ?? '' }}</span>
                                     </span>
-                                    <br>Radius validasi: <strong><span id="wfo-office-radius">{{ $selectedWfoOfficeLocation['radius'] ?? 0 }}</span> meter</strong>
+                                    <br>Validation radius: <strong><span id="wfo-office-radius">{{ $selectedWfoOfficeLocation['radius'] ?? 0 }}</span> meters</strong>
                                 </div>
                             </div>
 
                             <div class="card mb-3 border-primary">
                                 <div class="card-body">
-                                    <h6><i class="bi bi-shield-check text-primary"></i> Keamanan Jaringan (IP)</h6>
+                                    <h6><i class="bi bi-shield-check text-primary"></i> Network Security (IP)</h6>
                                     
                                     <div id="network-status-wfo" class="mb-2">
-                                        <span class="badge bg-warning">⏳ Memeriksa Jaringan...</span>
+                                        <span class="badge bg-warning">⏳ Checking Network...</span>
                                     </div>
                                     
                                     <div class="mb-2" id="network-details-wfo" style="display: none;">
                                         <ul class="list-group list-group-flush mb-2">
                                             <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
-                                                <small class="text-muted">IP Perangkat</small>
+                                                <small class="text-muted">Device Network IP</small>
                                                 <span id="ip-display-wfo" class="badge bg-secondary">{{ request()->ip() }}</span>
                                             </li>
                                             <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1 border-bottom-0">
-                                                <small class="text-muted">Status Keamanan</small>
+                                                <small class="text-muted">Security Status</small>
                                                 <span id="ip-status-text-wfo">-</span>
                                             </li>
                                         </ul>
                                     </div>
                                     
                                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshNetwork(true)">
-                                        <i class="bi bi-arrow-clockwise"></i> Refresh Jaringan
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh Network
                                     </button>
                                 </div>
                             </div>
 
                             <div class="card mb-3 bg-light">
                                 <div class="card-body">
-                                    <h6><i class="bi bi-geo-alt"></i> Lokasi GPS</h6>
+                                    <h6><i class="bi bi-geo-alt"></i> GPS Location</h6>
                                     <div id="gps-status-wfo" class="mb-2">
-                                        <span class="badge bg-warning">Memuat GPS...</span>
+                                        <span class="badge bg-warning">Loading GPS...</span>
                                     </div>
                                     <div class="mb-2">
                                         <small class="text-muted">Latitude: <span id="lat-display-wfo">-</span></small><br>
                                         <small class="text-muted">Longitude: <span id="lon-display-wfo">-</span></small><br>
-                                        <small class="text-muted">Jarak: <span id="dist-display-wfo">-</span> meter</small><br>
-                                        <small class="text-muted">Site acuan: <span id="wfo-distance-office-name">{{ $selectedWfoOfficeLocation['name'] ?? '-' }}</span></small>
+                                        <small class="text-muted">Distance: <span id="dist-display-wfo">-</span> meters</small><br>
+                                        <small class="text-muted">Reference site: <span id="wfo-distance-office-name">{{ $selectedWfoOfficeLocation['name'] ?? '-' }}</span></small>
                                     </div>
                                     <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshGPS()">
                                         <i class="bi bi-arrow-clockwise"></i> Refresh GPS
@@ -204,19 +205,39 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label"><i class="bi bi-camera"></i> <strong>Verifikasi Wajah</strong></label>
-                                <div class="position-relative" style="width: 100%; max-width: 400px;">
-                                    <video id="video-wfo" autoplay muted playsinline style="width: 100%; max-width: 400px; height: auto; border-radius: 10px; border: 2px solid #ddd;"></video>
+                                <label class="form-label"><i class="bi bi-camera"></i> <strong>Face Verification</strong></label>
+                                
+                                <div class="alert alert-light-info py-2 px-3 mb-3 small border-info border-start border-3">
+                                    <i class="bi bi-info-circle-fill text-info me-1"></i>
+                                    <strong>Info:</strong> A photo will be automatically taken once your face is verified and saved as proof of attendance.
                                 </div>
-                                <div id="face-status-wfo" class="mt-2">
-                                    <span class="badge bg-secondary">Menunggu Kamera...</span>
+
+                                <div id="video-container-wfo" class="position-relative text-center bg-dark rounded-3 overflow-hidden mb-2" style="width: 100%; max-width: 400px; margin: auto;">
+                                    <video id="video-wfo" autoplay muted playsinline style="width: 100%; max-height: 300px; object-fit: cover; transform: scaleX(-1);"></video>
+                                    
+                                    <div class="position-absolute top-50 start-50 translate-middle pe-none" style="width: 180px; height: 220px; border: 2px dashed rgba(255,255,255,0.4); border-radius: 50%;"></div>
+                                </div>
+
+                                <div id="preview-container-wfo" class="text-center mb-2" style="display: none;">
+                                    <p class="text-success fw-bold small mb-2"><i class="bi bi-check-circle-fill"></i> This photo will be saved</p>
+                                    <img id="preview-img-wfo" class="rounded-3 shadow-sm border border-3 border-success mb-3" style="width: 100%; max-width: 400px; max-height: 300px; object-fit: cover;">
+                                    
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfo')">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Retake Photo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="face-status-wfo" class="text-center mt-2">
+                                    <span class="badge bg-secondary">Waiting for Camera...</span>
                                 </div>
                             </div>
 
                             <div class="card mb-3 bg-light">
                                 <div class="card-body text-center">
                                     <div id="fingerprint-status-wfo" class="mb-2">
-                                        <span class="badge bg-warning">Memuat Fingerprint...</span>
+                                        <span class="badge bg-warning">Loading Fingerprint...</span>
                                     </div>
                                 </div>
                             </div>
@@ -230,7 +251,7 @@
                     <div id="form-wfh" style="display: none;">
                         <h5 class="mb-3">
                             <span class="badge bg-success">WFH</span> Work From Home
-                            <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="backToChooseType()">← Ganti Tipe</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="backToChooseType()">← Change Type</button>
                         </h5>
                         
                         <form action="{{ route('presences.store') }}" method="POST" id="form-wfh-submit">
@@ -241,16 +262,17 @@
                             <input type="hidden" name="latitude" id="latitude-wfh">
                             <input type="hidden" name="longitude" id="longitude-wfh">
                             <input type="hidden" name="accuracy" id="accuracy-wfh">
+                            <input type="hidden" name="photo_data" id="photo_data-wfh">
 
                             <div class="alert alert-success">
-                                <strong>📋 Validasi WFH:</strong> GPS + Verifikasi Wajah + Fingerprint
+                                <strong>📋 WFH Validation:</strong> GPS + Face Verification + Fingerprint
                             </div>
 
                             <div class="card mb-3 bg-light">
                                 <div class="card-body">
-                                    <h6><i class="bi bi-geo-alt"></i> Lokasi GPS</h6>
+                                    <h6><i class="bi bi-geo-alt"></i> GPS Location</h6>
                                     <div id="gps-status-wfh" class="mb-2">
-                                        <span class="badge bg-warning">Memuat GPS...</span>
+                                        <span class="badge bg-warning">Loading GPS...</span>
                                     </div>
                                     <div class="mb-2">
                                         <small class="text-muted">Latitude: <span id="lat-display-wfh">-</span></small><br>
@@ -263,19 +285,39 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label"><i class="bi bi-camera"></i> <strong>Verifikasi Wajah</strong></label>
-                                <div class="position-relative" style="width: 100%; max-width: 400px;">
-                                    <video id="video-wfh" autoplay muted playsinline style="width: 100%; max-width: 400px; height: auto; border-radius: 10px; border: 2px solid #ddd;"></video>
+                                <label class="form-label"><i class="bi bi-camera"></i> <strong>Face Verification</strong></label>
+                                
+                                <div class="alert alert-light-info py-2 px-3 mb-3 small border-info border-start border-3">
+                                    <i class="bi bi-info-circle-fill text-info me-1"></i>
+                                    <strong>Info:</strong> A photo will be automatically taken once your face is verified and saved as proof of attendance.
                                 </div>
-                                <div id="face-status-wfh" class="mt-2">
-                                    <span class="badge bg-secondary">Menunggu Kamera...</span>
+
+                                <div id="video-container-wfh" class="position-relative text-center bg-dark rounded-3 overflow-hidden mb-2" style="width: 100%; max-width: 400px; margin: auto;">
+                                    <video id="video-wfh" autoplay muted playsinline style="width: 100%; max-height: 300px; object-fit: cover; transform: scaleX(-1);"></video>
+                                    
+                                    <div class="position-absolute top-50 start-50 translate-middle pe-none" style="width: 180px; height: 220px; border: 2px dashed rgba(255,255,255,0.4); border-radius: 50%;"></div>
+                                </div>
+
+                                <div id="preview-container-wfh" class="text-center mb-2" style="display: none;">
+                                    <p class="text-success fw-bold small mb-2"><i class="bi bi-check-circle-fill"></i> This photo will be saved</p>
+                                    <img id="preview-img-wfh" class="rounded-3 shadow-sm border border-3 border-success mb-3" style="width: 100%; max-width: 400px; max-height: 300px; object-fit: cover;">
+                                    
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfo')">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Retake Photo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="face-status-wfh" class="text-center mt-2">
+                                    <span class="badge bg-secondary">Waiting for Camera...</span>
                                 </div>
                             </div>
 
                             <div class="card mb-3 bg-light">
                                 <div class="card-body text-center">
                                     <div id="fingerprint-status-wfh" class="mb-2">
-                                        <span class="badge bg-warning">Memuat Fingerprint...</span>
+                                        <span class="badge bg-warning">Loading Fingerprint...</span>
                                     </div>
                                 </div>
                             </div>
@@ -289,7 +331,7 @@
                     <div id="form-wfa" style="display: none;">
                         <h5 class="mb-3">
                             <span class="badge bg-info">WFA</span> Work From Anywhere
-                            <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="backToChooseType()">← Ganti Tipe</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary float-end" onclick="backToChooseType()">← Change Type</button>
                         </h5>
                         
                         <form action="{{ route('presences.store') }}" method="POST" id="form-wfa-submit">
@@ -300,16 +342,17 @@
                             <input type="hidden" name="latitude" id="latitude-wfa">
                             <input type="hidden" name="longitude" id="longitude-wfa">
                             <input type="hidden" name="accuracy" id="accuracy-wfa">
+                            <input type="hidden" name="photo_data" id="photo_data-wfa">
 
                             <div class="alert alert-info">
-                                <strong>📋 Validasi WFA:</strong> GPS + Verifikasi Wajah + Fingerprint
+                                <strong>📋 WFA Validation:</strong> GPS + Face Verification + Fingerprint
                             </div>
 
                             <div class="card mb-3 bg-light">
                                 <div class="card-body">
-                                    <h6><i class="bi bi-geo-alt"></i> Lokasi GPS</h6>
+                                    <h6><i class="bi bi-geo-alt"></i> GPS Location</h6>
                                     <div id="gps-status-wfa" class="mb-2">
-                                        <span class="badge bg-warning">Memuat GPS...</span>
+                                        <span class="badge bg-warning">Loading GPS...</span>
                                     </div>
                                     <div class="mb-2">
                                         <small class="text-muted">Latitude: <span id="lat-display-wfa">-</span></small><br>
@@ -322,19 +365,39 @@
                             </div>
 
                             <div class="mb-3">
-                                <label class="form-label"><i class="bi bi-camera"></i> <strong>Verifikasi Wajah</strong></label>
-                                <div class="position-relative" style="width: 100%; max-width: 400px;">
-                                    <video id="video-wfa" autoplay muted playsinline style="width: 100%; max-width: 400px; height: auto; border-radius: 10px; border: 2px solid #ddd;"></video>
+                                <label class="form-label"><i class="bi bi-camera"></i> <strong>Face Verification</strong></label>
+                                
+                                <div class="alert alert-light-info py-2 px-3 mb-3 small border-info border-start border-3">
+                                    <i class="bi bi-info-circle-fill text-info me-1"></i>
+                                    <strong>Info:</strong> A photo will be automatically taken once your face is verified and saved as proof of attendance.
                                 </div>
-                                <div id="face-status-wfa" class="mt-2">
-                                    <span class="badge bg-secondary">Menunggu Kamera...</span>
+
+                                <div id="video-container-wfa" class="position-relative text-center bg-dark rounded-3 overflow-hidden mb-2" style="width: 100%; max-width: 400px; margin: auto;">
+                                    <video id="video-wfa" autoplay muted playsinline style="width: 100%; max-height: 300px; object-fit: cover; transform: scaleX(-1);"></video>
+                                    
+                                    <div class="position-absolute top-50 start-50 translate-middle pe-none" style="width: 180px; height: 220px; border: 2px dashed rgba(255,255,255,0.4); border-radius: 50%;"></div>
+                                </div>
+
+                                <div id="preview-container-wfa" class="text-center mb-2" style="display: none;">
+                                    <p class="text-success fw-bold small mb-2"><i class="bi bi-check-circle-fill"></i> This photo will be saved</p>
+                                    <img id="preview-img-wfa" class="rounded-3 shadow-sm border border-3 border-success mb-3" style="width: 100%; max-width: 400px; max-height: 300px; object-fit: cover;">
+                                    
+                                    <div>
+                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfo')">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Retake Photo
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div id="face-status-wfa" class="text-center mt-2">
+                                    <span class="badge bg-secondary">Waiting for Camera...</span>
                                 </div>
                             </div>
 
                             <div class="card mb-3 bg-light">
                                 <div class="card-body text-center">
                                     <div id="fingerprint-status-wfa" class="mb-2">
-                                        <span class="badge bg-warning">Memuat Fingerprint...</span>
+                                        <span class="badge bg-warning">Loading Fingerprint...</span>
                                     </div>
                                 </div>
                             </div>
@@ -359,7 +422,7 @@
     const userIp = "{{ request()->ip() }}";
     const wfoOfficeLocations = @json($wfoOfficeLocations);
 
-    // FIX: SSID dihilangkan dari WFH dan WFA! Cuma butuh GPS, Face, dan Fingerprint.
+    // FIX: SSID removed from WFH and WFA! Only requires GPS, Face, and Fingerprint.
     const modeState = {
         wfo: { gps: false, fingerprint: false, network: false, face: false },
         wfh: { gps: false, fingerprint: false, face: false },
@@ -392,7 +455,7 @@
 
         if (isManualRefresh) {
             statusEl.style.display = 'block';
-            statusEl.innerHTML = '<span class="badge bg-warning">⏳ Memeriksa Jaringan...</span>';
+            statusEl.innerHTML = '<span class="badge bg-warning">⏳ Checking Network...</span>';
             detailsEl.style.display = 'none';
             modeState.wfo.network = false;
             checkReady('wfo');
@@ -403,19 +466,19 @@
             detailsEl.style.display = 'block';
 
             if (!office) {
-                textEl.innerHTML = '<span class="text-warning small"><i class="bi bi-exclamation-triangle"></i> Pilih site kantor dulu</span>';
+                textEl.innerHTML = '<span class="text-warning small"><i class="bi bi-exclamation-triangle"></i> Select office site first</span>';
                 modeState.wfo.network = false;
             } else {
                 const allowedIps = office.allowed_ips || [];
                 
                 if (allowedIps.length === 0) {
-                    textEl.innerHTML = '<span class="text-info small"><i class="bi bi-info-circle"></i> Kantor tidak membatasi IP</span>';
+                    textEl.innerHTML = '<span class="text-info small"><i class="bi bi-info-circle"></i> Office does not restrict IPs</span>';
                     modeState.wfo.network = true;
                 } else if (allowedIps.includes(userIp)) {
-                    textEl.innerHTML = '<span class="text-success fw-bold small"><i class="bi bi-check-circle-fill"></i> Terverifikasi (Aman)</span>';
+                    textEl.innerHTML = '<span class="text-success fw-bold small"><i class="bi bi-check-circle-fill"></i> Verified (Secure)</span>';
                     modeState.wfo.network = true;
                 } else {
-                    textEl.innerHTML = '<span class="text-danger fw-bold small"><i class="bi bi-x-circle-fill"></i> Jaringan Tidak Dikenal</span>';
+                    textEl.innerHTML = '<span class="text-danger fw-bold small"><i class="bi bi-x-circle-fill"></i> Unknown Network</span>';
                     modeState.wfo.network = false;
                 }
             }
@@ -425,7 +488,7 @@
 
     function renderWfoOfficeDetails() {
         const office = getSelectedWfoOffice();
-        const officeName = office ? office.name : 'Belum ada lokasi kantor aktif';
+        const officeName = office ? office.name : 'No active office location';
         const officeAddress = office?.address ?? '';
         const officeRadius = office?.radius ?? 0;
 
@@ -452,7 +515,7 @@
         if (office && latitude && longitude) {
             updateWfoDistanceStatus(Number(latitude), Number(longitude), Number(accuracy || 0));
         } else if (!office) {
-            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ Belum ada lokasi kantor aktif</span>';
+            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ No active office location</span>';
             document.getElementById('dist-display-wfo').textContent = '-';
             modeState.wfo.gps = false;
             checkReady('wfo');
@@ -467,7 +530,7 @@
     function updateWfoDistanceStatus(lat, lon, acc) {
         const office = getSelectedWfoOffice();
         if (!office) {
-            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ Belum ada lokasi kantor aktif</span>';
+            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ No active office location</span>';
             document.getElementById('dist-display-wfo').textContent = '-';
             modeState.wfo.gps = false;
             checkReady('wfo');
@@ -488,7 +551,7 @@
             document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-success">✅ GPS OK (' + distMeters + 'm)</span>';
             modeState.wfo.gps = true;
         } else {
-            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ Terlalu jauh (' + distMeters + 'm)</span>';
+            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ Too far (' + distMeters + 'm)</span>';
             modeState.wfo.gps = false;
         }
 
@@ -555,7 +618,7 @@
         if (mode === 'wfo') {
             isReady = state.gps && state.fingerprint && state.network && state.face;
         } else {
-            // FIX: WFH & WFA sudah tidak butuh SSID lagi!
+            // FIX: WFH & WFA no longer need SSID!
             isReady = state.gps && state.fingerprint && state.face;
         }
         
@@ -585,10 +648,10 @@
             return;
         }
 
-        document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-warning">🔍 Mencari GPS...</span>';
+        document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-warning">🔍 Locating GPS...</span>';
 
         if (!navigator.geolocation) {
-            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ GPS tidak didukung</span>';
+            document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ GPS is not supported</span>';
             return;
         }
 
@@ -601,8 +664,8 @@
 
         const onError = (error) => {
             let msg = 'GPS Error: ';
-            if (error.code === error.PERMISSION_DENIED) msg += 'Izin ditolak';
-            else if (error.code === error.POSITION_UNAVAILABLE) msg += 'Tidak tersedia';
+            if (error.code === error.PERMISSION_DENIED) msg += 'Permission denied';
+            else if (error.code === error.POSITION_UNAVAILABLE) msg += 'Unavailable';
             else if (error.code === error.TIMEOUT) msg += 'Timeout';
 
             document.getElementById('gps-status-wfo').innerHTML = '<span class="badge bg-danger">❌ ' + msg + '</span>';
@@ -641,10 +704,10 @@
 
     // ============ GPS FREE (WFH/WFA) ============
     function startGPSFree(mode) {
-        document.getElementById('gps-status-' + mode).innerHTML = '<span class="badge bg-warning">🔍 Mencari GPS...</span>';
+        document.getElementById('gps-status-' + mode).innerHTML = '<span class="badge bg-warning">🔍 Locating GPS...</span>';
 
         if (!navigator.geolocation) {
-            document.getElementById('gps-status-' + mode).innerHTML = '<span class="badge bg-danger">❌ GPS tidak didukung</span>';
+            document.getElementById('gps-status-' + mode).innerHTML = '<span class="badge bg-danger">❌ GPS is not supported</span>';
             return;
         }
 
@@ -667,8 +730,8 @@
 
         const onError = (error) => {
             let msg = 'GPS Error: ';
-            if (error.code === error.PERMISSION_DENIED) msg += 'Izin ditolak';
-            else if (error.code === error.POSITION_UNAVAILABLE) msg += 'Tidak tersedia';
+            if (error.code === error.PERMISSION_DENIED) msg += 'Permission denied';
+            else if (error.code === error.POSITION_UNAVAILABLE) msg += 'Unavailable';
             else if (error.code === error.TIMEOUT) msg += 'Timeout';
 
             document.getElementById('gps-status-' + mode).innerHTML = '<span class="badge bg-danger">❌ ' + msg + '</span>';
@@ -692,47 +755,106 @@
     // ============ FACE DETECTION (All Modes) ============
     async function initFaceDetectionForMode(mode) {
         const statusEl = document.getElementById('face-status-' + mode);
-        statusEl.innerHTML = '<span class="badge bg-warning">⏳ Memuat AI Model...</span>';
+        const videoContainer = document.getElementById('video-container-' + mode);
+        const previewContainer = document.getElementById('preview-container-' + mode);
+        const previewImg = document.getElementById('preview-img-' + mode);
+
+        statusEl.innerHTML = '<span class="badge bg-warning">Loading AI Model...</span>';
 
         try {
-            const MODEL_URL = '{{ asset('vendor/face-api/weights') }}';
+            const MODEL_URL = '{{ asset("vendor/face-api/weights") }}';
             await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+            
+            // Check if the camera is already on to avoid double requesting camera access
+            let stream = mode === 'wfo' ? videoStream : videoStreams[mode];
+            if (!stream) {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                if (mode === 'wfo') videoStream = stream;
+                else videoStreams[mode] = stream;
+            }
 
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
             const videoEl = document.getElementById('video-' + mode);
             videoEl.srcObject = stream;
 
-            if (mode === 'wfo') {
-                videoStream = stream;
-            } else {
-                videoStreams[mode] = stream;
-            }
+            statusEl.innerHTML = '<span class="badge bg-info">Waiting for face movement...</span>';
 
-            statusEl.innerHTML = '<span class="badge bg-info">👤 Deteksi wajah...</span>';
+            // Call the detection loop function
+            startFaceDetectionLoop(mode, videoEl, statusEl, videoContainer, previewContainer, previewImg);
 
-            let detectionCount = 0;
-            const interval = setInterval(async () => {
-                const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions());
-
-                if (detections.length > 0) {
-                    detectionCount++;
-                    if (detectionCount >= 10) {
-                        statusEl.innerHTML = '<span class="badge bg-success">✅ Wajah Terverifikasi</span>';
-                        clearInterval(interval);
-                        modeState[mode].face = true;
-                        checkReady(mode);
-                    }
-                }
-            }, 500);
-
-            if (mode === 'wfo') {
-                faceDetectionInterval = interval;
-            } else {
-                faceDetectionIntervals[mode] = interval;
-            }
         } catch (err) {
-            statusEl.innerHTML = '<span class="badge bg-danger">❌ Kamera gagal: ' + err.message + '</span>';
+            statusEl.innerHTML = '<span class="badge bg-danger">Camera failed: ' + err.message + '</span>';
         }
+    }
+
+    function startFaceDetectionLoop(mode, videoEl, statusEl, videoContainer, previewContainer, previewImg) {
+        let detectionCount = 0;
+        const interval = setInterval(async () => {
+            const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions());
+            
+            if (detections.length > 0) {
+                detectionCount++;
+                if (detectionCount >= 10) {
+                    clearInterval(interval); // Stop detection
+                    statusEl.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Face Verified!</span>';
+
+                    // --- CAPTURE LOGIC (RESIZE 480p, MIRROR, COMPRESS) ---
+                    const canvas = document.createElement('canvas');
+                    const targetWidth = 480; 
+                    const scale = targetWidth / videoEl.videoWidth;
+                    const targetHeight = videoEl.videoHeight * scale;
+
+                    canvas.width = targetWidth;
+                    canvas.height = targetHeight;
+                    const ctx = canvas.getContext('2d');
+
+                    // Mirror the image on the canvas so the saved image matches the screen display
+                    ctx.translate(targetWidth, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(videoEl, 0, 0, targetWidth, targetHeight);
+
+                    // Compress to lightweight JPEG (70% quality)
+                    const photoData = canvas.toDataURL('image/jpeg', 0.7);
+
+                    const photoInput = document.getElementById('photo_data-' + mode);
+                    if (photoInput) photoInput.value = photoData;
+
+                    // --- CHANGE DISPLAY TO PREVIEW ---
+                    previewImg.src = photoData; // Paste base64 image to img tag
+                    videoContainer.style.display = 'none'; // Hide live camera
+                    previewContainer.style.display = 'block'; // Show photo result
+
+                    // Pass Face Validation
+                    modeState[mode].face = true;
+                    checkReady(mode); // <--- THIS IS THE FIX BRO
+                }
+            }
+        }, 500);
+
+        if (mode === 'wfo') faceDetectionInterval = interval;
+        else faceDetectionIntervals[mode] = interval;
+    }
+
+    // Function 3: Retake Button
+    function retakePhoto(mode) {
+        // Reset state & clear old photo data
+        modeState[mode].face = false;
+        document.getElementById('photo_data-' + mode).value = '';
+        checkReady(mode); // <--- THIS IS THE FIX BRO
+
+        // Revert UI from Preview mode to Video (Camera) mode
+        document.getElementById('preview-container-' + mode).style.display = 'none';
+        document.getElementById('video-container-' + mode).style.display = 'block';
+        
+        const videoEl = document.getElementById('video-' + mode);
+        const statusEl = document.getElementById('face-status-' + mode);
+        const videoContainer = document.getElementById('video-container-' + mode);
+        const previewContainer = document.getElementById('preview-container-' + mode);
+        const previewImg = document.getElementById('preview-img-' + mode);
+        
+        statusEl.innerHTML = '<span class="badge bg-info">Waiting for face movement...</span>';
+
+        // Restart detection loop
+        startFaceDetectionLoop(mode, videoEl, statusEl, videoContainer, previewContainer, previewImg);
     }
 
     // ============ FINGERPRINT (All Modes) ============
