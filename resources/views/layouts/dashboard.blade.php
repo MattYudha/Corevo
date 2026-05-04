@@ -491,8 +491,8 @@
                 {{-- Logo — centered --}}
                 <div class="d-flex justify-content-center align-items-center w-100">
                     <a href="{{ url('/dashboard') }}" class="d-inline-flex align-items-center justify-content-center text-decoration-none">
-                        <img src="{{ asset('img/HRIS ARATECH logo tr.png') }}" id="sidebar-logo"
-                             style="height:140px; width:auto; max-width:220px; object-fit:contain;">
+                        <img src="{{ asset('corevo-logo.png') }}" id="sidebar-logo"
+                             style="height:80px; width:auto; max-width:150px; object-fit:contain;">
                     </a>
                 </div>
 
