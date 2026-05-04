@@ -521,7 +521,7 @@ class PresencesController extends Controller
 
         $presence->delete();
         
-        return redirect()->route('presences.index')->with('success', 'Attendance data delted successfully');
+        return redirect()->route('presences.index')->with('success', 'Attendance data deleted successfully');
     }
 
     // Check-out functionality - Show form
