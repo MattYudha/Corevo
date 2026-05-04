@@ -303,7 +303,7 @@
                                     <img id="preview-img-wfh" class="rounded-3 shadow-sm border border-3 border-success mb-3" style="width: 100%; max-width: 400px; max-height: 300px; object-fit: cover;">
                                     
                                     <div>
-                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfo')">
+                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfh')">
                                             <i class="bi bi-arrow-counterclockwise"></i> Retake Photo
                                         </button>
                                     </div>
@@ -383,7 +383,7 @@
                                     <img id="preview-img-wfa" class="rounded-3 shadow-sm border border-3 border-success mb-3" style="width: 100%; max-width: 400px; max-height: 300px; object-fit: cover;">
                                     
                                     <div>
-                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfo')">
+                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfa')">
                                             <i class="bi bi-arrow-counterclockwise"></i> Retake Photo
                                         </button>
                                     </div>
@@ -839,7 +839,7 @@
         // Reset state & clear old photo data
         modeState[mode].face = false;
         document.getElementById('photo_data-' + mode).value = '';
-        checkReady(mode); // <--- THIS IS THE FIX BRO
+        checkReady(mode); 
 
         // Revert UI from Preview mode to Video (Camera) mode
         document.getElementById('preview-container-' + mode).style.display = 'none';
