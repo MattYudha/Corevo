@@ -424,8 +424,8 @@ class PresencesController extends Controller
             'latitude' => (float) config('presence.office_latitude', -6.200000),
             'longitude' => (float) config('presence.office_longitude', 106.816666),
             'radius' => (int) config('presence.location_radius', 1000),
-            'allowed_ssids' => ['WIFI KANTOR'], // Can be left empty []
-            'allowed_ips' => [], // Default IP values
+            'allowed_ssids' => [], 
+            'allowed_ips' => [], 
             'address' => null,
         ];
     }

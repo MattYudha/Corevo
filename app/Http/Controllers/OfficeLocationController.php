@@ -74,7 +74,7 @@ class OfficeLocationController extends Controller
             'notes' => ['nullable', 'string'],
         ]);
 
-        $data['allowed_ssids'] = $this->normalizeTextArray($request->input('allowed_ssids_text'));
+        $data['allowed_ssids'] = [];
         $data['allowed_ips'] = $this->normalizeTextArray($request->input('allowed_ips_text'));
 
         return $data;
@@ -90,22 +90,4 @@ class OfficeLocationController extends Controller
         }
         return array_values(array_unique($items));
     }
-
-//     protected function normalizeSsids(?string $value): array
-//     {
-//         $lines = preg_split('/
-// |
-// |
-// /', (string) $value) ?: [];
-//         $ssids = [];
-
-//         foreach ($lines as $line) {
-//             $line = trim($line);
-//             if ($line !== '') {
-//                 $ssids[] = $line;
-//             }
-//         }
-
-//         return array_values(array_unique($ssids));
-//     }
 }
