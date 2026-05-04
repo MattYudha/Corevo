@@ -57,9 +57,8 @@ class PresencesController extends Controller
                     };
                     $badge = '<span class="badge '.$class.'">'.ucfirst($row->status).'</span>';
                     
-                    // Add late indicator if applicable
-                    if ($row->status === 'present' && $this->isLateCheckIn($row)) {
-                        $badge .= ' <span class="badge bg-warning">Late</span>';
+                    if ($row->status === 'present' && $row->is_late) {
+                        $badge .= ' <span class="badge bg-warning text-dark">Late</span>';
                     }
                     
                     return $badge;
@@ -643,7 +642,7 @@ class PresencesController extends Controller
         $officeConfig = $this->resolveOfficeLocationForPresence($presence, $presence->employee);
         
         // 1. Check late status using the controller's built-in function
-        $isLate = $this->isLateCheckIn($presence);
+        $isLate = $presence->is_late;
 
         // 2. Check-In Geofence Calculations
         $checkInDistance = 0;
@@ -741,7 +740,7 @@ class PresencesController extends Controller
                     'check_out' => $checkOut,
                     'status' => $presence->status,
                     'work_type' => $presence->work_type ?? 'WFO',
-                    'is_late' => $this->isLateCheckIn($presence),
+                    'is_late' => $presence->is_late, 
                 ];
             } catch (\Exception $e) {
                 \Log::error('Error processing presence in calendar: ' . $e->getMessage(), [
@@ -785,9 +784,10 @@ class PresencesController extends Controller
             'present' => $presences->where('status', 'present')->count(),
             'absent' => $presences->where('status', 'absent')->count(),
             'leave' => $presences->where('status', 'leave')->count(),
-            'late_checkins' => $presences->filter(function ($presence) {
-                return $this->isLateCheckIn($presence);
-            })->count(),
+            // 'late_checkins' => $presences->filter(function ($presence) {
+            //     return $this->isLateCheckIn($presence);
+            // })->count(), --> old checking
+            'late_checkins' => $presences->where('is_late', true)->count(),
             'average_hours' => $presences->filter(function ($presence) {
                 return $presence->check_in && $presence->check_out;
             })->map(function ($presence) {
@@ -879,7 +879,7 @@ class PresencesController extends Controller
                 $presence->check_out ? Carbon::parse($presence->check_out)->format('H:i:s') : '-',
                 $presence->work_type ?? 'WFO',
                 ucfirst($presence->status),
-                $this->isLateCheckIn($presence) ? 'Yes' : 'No'
+                $presence->is_late ? 'Yes' : 'No' 
             ]);
         }
 
