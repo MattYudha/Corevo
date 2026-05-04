@@ -99,8 +99,8 @@
                     <td class="d-none d-md-table-cell"><span class="fw-bold text-xs" style="color:#8392ab">#{{ $claim->id }}</span></td>
                     @if($isAdmin)
                     <td>
-                        <p class="fw-bold mb-0 text-sm" style="color:#344767">{{ $claim->employee->full_name }}</p>
-                        <p class="text-xs text-muted mb-0">{{ $claim->employee->employee_id }}</p>
+                        <p class="fw-bold mb-0 text-sm" style="color:#344767">{{ $claim->employee?->fullname ?? 'Admin/Unknown' }}</p>
+                        <p class="text-xs text-muted mb-0">{{ $claim->employee?->nik ?? '-' }}</p>
                     </td>
                     @endif
                     <td>
@@ -118,6 +118,9 @@
                     </td>
                     <td class="text-center">
                         <a href="{{ route('finance.claims.show', $claim->id) }}" class="btn btn-xs btn-outline-primary mb-0" style="font-size:.65rem">Detail</a>
+                        @if($claim->status === 'pending' || $claim->status === 'draft')
+                            <a href="{{ route('finance.claims.edit', $claim->id) }}" class="btn btn-xs btn-outline-warning mb-0" style="font-size:.65rem" title="Edit"><i class="bi bi-pencil"></i></a>
+                        @endif
                     </td>
                 </tr>
                 @empty

@@ -1,328 +1,856 @@
 @extends('layouts.dashboard')
 
 @section('content')
-<div class="page-heading">
-    <h3>My KPI Dashboard</h3>
+@push('styles')
+<style>
+/* ════════════════════════════════════════════════════
+   KPI DASHBOARD — Premium Enterprise UI
+   ════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+    --kpi-primary: #0f172a;       /* Slate 900 */
+    --kpi-primary-light: #1e293b; /* Slate 800 */
+    --kpi-accent: #3b82f6;        /* Blue 500 */
+    --kpi-accent-soft: rgba(59, 130, 246, 0.1);
+    --kpi-success: #10b981;       /* Emerald 500 */
+    --kpi-success-soft: rgba(16, 185, 129, 0.1);
+    --kpi-warning: #f59e0b;       /* Amber 500 */
+    --kpi-warning-soft: rgba(245, 158, 11, 0.1);
+    --kpi-danger: #ef4444;        /* Red 500 */
+    --kpi-danger-soft: rgba(239, 68, 68, 0.1);
+    --kpi-surface: #ffffff;
+    --kpi-bg: #f8fafc;
+    --kpi-border: #e2e8f0;
+    --kpi-text-main: #0f172a;
+    --kpi-text-muted: #64748b;
+    --kpi-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --kpi-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --kpi-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --kpi-radius: 20px;
+    --kpi-radius-md: 12px;
+    --kpi-radius-sm: 8px;
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--kpi-bg);
+    color: var(--kpi-text-main);
+}
+
+/* Page Header */
+.kpi-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 2.5rem;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+}
+.kpi-page-title {
+    font-size: 1.875rem;
+    font-weight: 800;
+    color: var(--kpi-text-main);
+    letter-spacing: -0.025em;
+    margin-bottom: 0.25rem;
+}
+.kpi-page-subtitle {
+    font-size: 0.9375rem;
+    color: var(--kpi-text-muted);
+    font-weight: 500;
+}
+
+/* Action Buttons */
+.btn-kpi {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: var(--kpi-radius-md);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1.5px solid transparent;
+}
+.btn-kpi-primary {
+    background: var(--kpi-primary);
+    color: #fff;
+    box-shadow: var(--kpi-shadow-md);
+}
+.btn-kpi-primary:hover {
+    background: var(--kpi-primary-light);
+    transform: translateY(-2px);
+    box-shadow: var(--kpi-shadow-lg);
+    color: #fff;
+}
+.btn-kpi-outline {
+    background: var(--kpi-surface);
+    color: var(--kpi-text-main);
+    border-color: var(--kpi-border);
+}
+.btn-kpi-outline:hover {
+    background: #f1f5f9;
+    border-color: var(--kpi-text-muted);
+    transform: translateY(-2px);
+}
+
+/* Summary Cards */
+.kpi-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2.5rem;
+}
+.kpi-summary-card {
+    background: var(--kpi-surface);
+    border-radius: var(--kpi-radius);
+    padding: 1.75rem;
+    box-shadow: var(--kpi-shadow-sm);
+    position: relative;
+    border: 1px solid var(--kpi-border);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+}
+.kpi-summary-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--kpi-shadow-lg);
+    border-color: var(--kpi-accent);
+}
+.kpi-summary-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 100px; height: 100px;
+    background: radial-gradient(circle, var(--kpi-accent-soft) 0%, transparent 70%);
+    opacity: 0.5;
+    z-index: 0;
+}
+
+.kpi-summary-title {
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--kpi-text-muted);
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    z-index: 1;
+}
+.kpi-summary-value {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--kpi-text-main);
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.025em;
+    z-index: 1;
+}
+.kpi-summary-sub {
+    font-size: 0.875rem;
+    color: var(--kpi-text-muted);
+    font-weight: 500;
+    z-index: 1;
+}
+
+/* Badges */
+.kpi-badge {
+    padding: 0.4rem 0.875rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+.badge-soft-success { background: var(--kpi-success-soft); color: var(--kpi-success); }
+.badge-soft-info { background: var(--kpi-accent-soft); color: var(--kpi-accent); }
+.badge-soft-warning { background: var(--kpi-warning-soft); color: var(--kpi-warning); }
+.badge-soft-danger { background: var(--kpi-danger-soft); color: var(--kpi-danger); }
+
+/* Status Banner */
+.kpi-status-banner {
+    border-radius: var(--kpi-radius);
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    border: 1px solid var(--kpi-border);
+    background: var(--kpi-surface);
+    position: relative;
+    overflow: hidden;
+}
+.kpi-status-banner::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 6px;
+}
+.status-draft::before { background: var(--kpi-text-muted); }
+.status-submitted::before { background: var(--kpi-accent); }
+.status-approved::before { background: var(--kpi-success); }
+.status-rejected::before { background: var(--kpi-danger); }
+
+.kpi-status-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+/* Data Cards & Tables */
+.kpi-data-card {
+    background: var(--kpi-surface);
+    border-radius: var(--kpi-radius);
+    box-shadow: var(--kpi-shadow-sm);
+    margin-bottom: 2.5rem;
+    border: 1px solid var(--kpi-border);
+}
+.kpi-data-header {
+    padding: 1.5rem 1.75rem;
+    border-bottom: 1px solid var(--kpi-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.kpi-data-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--kpi-text-main);
+}
+.kpi-table th {
+    background: #f8fafc;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--kpi-text-muted);
+    letter-spacing: 0.05em;
+    padding: 1rem 1.75rem;
+}
+.kpi-table td {
+    padding: 1.5rem 1.75rem;
+    border-bottom: 1px solid var(--kpi-border);
+    vertical-align: middle;
+}
+.kpi-table tr:hover { background-color: #fbfcfd; }
+
+/* Progress Bar */
+.kpi-progress {
+    height: 10px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    overflow: hidden;
+    position: relative;
+}
+.kpi-progress-bar {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Premium Alerts */
+.kpi-alert {
+    border: none;
+    border-radius: 16px;
+    padding: 1.125rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: alertSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes alertSlideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.kpi-alert-success {
+    background: rgba(240, 253, 244, 0.9);
+    border: 1px solid rgba(187, 247, 208, 0.5);
+    color: #166534;
+}
+
+.kpi-alert-error {
+    background: rgba(254, 242, 242, 0.9);
+    border: 1px solid rgba(FECACA, 0.5);
+    color: #991B1B;
+}
+
+.kpi-alert-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.kpi-alert-success .kpi-alert-icon {
+    background: #DCFCE7;
+    color: #16A34A;
+}
+
+.kpi-alert-error .kpi-alert-icon {
+    background: #FEE2E2;
+    color: #DC2626;
+}
+
+.kpi-alert-message {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    letter-spacing: -0.01em;
+}
+
+/* Modals & Backdrop Fixes */
+.modal-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 2000 !important; /* Ensure it is above sidebar (1050) and header */
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(4px);
+}
+
+.modal {
+    z-index: 2001 !important; /* Above backdrop */
+}
+
+.modal-content {
+    border: none;
+    border-radius: 24px;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5);
+    overflow: hidden;
+}
+.modal-header {
+    padding: 2rem 2rem 1.5rem;
+    border-bottom: none;
+}
+.modal-body {
+    padding: 0 2rem 2rem;
+}
+.modal-footer {
+    padding: 1.5rem 2rem 2rem;
+    border-top: 1px solid var(--kpi-border);
+    background: #f8fafc;
+    border-bottom-left-radius: 24px;
+    border-bottom-right-radius: 24px;
+}
+.form-label {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--kpi-text-main);
+    margin-bottom: 0.5rem;
+}
+.form-control, .form-select {
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    border: 1.5px solid var(--kpi-border);
+    font-weight: 500;
+}
+.form-control:focus, .form-select:focus {
+    border-color: var(--kpi-accent);
+    box-shadow: 0 0 0 4px var(--kpi-accent-soft);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 1024px) {
+    .kpi-summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+    .kpi-page-header { flex-direction: column; align-items: stretch; }
+    .kpi-summary-grid { grid-template-columns: 1fr; }
+    .kpi-status-banner { flex-direction: column; gap: 1.5rem; align-items: flex-start; }
+    .kpi-status-banner .btn-kpi { width: 100%; justify-content: center; }
+    .kpi-table th:nth-child(2), .kpi-table td:nth-child(2),
+    .kpi-table th:nth-child(5), .kpi-table td:nth-child(5) { display: none; }
+}
+</style>
+@endpush
+
+<div class="kpi-page-header">
+    <div>
+        <h1 class="kpi-page-title">My KPI Dashboard</h1>
+        <p class="kpi-page-subtitle">Monitoring and managing your performance metrics for this period</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        @if(\App\Constants\Roles::isAdmin(session('role')) || ($user->employee?->role?->title ?? '') === \App\Constants\Roles::MANAGER_UNIT_HEAD)
+        <button type="button" class="btn-kpi btn-kpi-primary" data-bs-toggle="modal" data-bs-target="#addKPIModal">
+            <i class="bi bi-plus-circle-fill"></i> Tambah KPI Manual
+        </button>
+        @endif
+        <a href="{{ route('reports.export-pdf', $employee->id) }}?period={{ $period }}" class="btn-kpi btn-kpi-outline" target="_blank">
+            <i class="bi bi-file-earmark-pdf-fill text-danger"></i> Export PDF
+        </a>
+        <a href="{{ route('kpi.dashboard') }}" class="btn-kpi btn-kpi-outline" title="Refresh">
+            <i class="bi bi-arrow-clockwise"></i>
+        </a>
+    </div>
 </div>
 
-<div class="page-content">
-    <div class="container-fluid">
-        <!-- Summary Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card border-left-primary">
-                    <div class="card-body">
-                        <h6 class="text-primary font-weight-bold mb-1">Composite Score</h6>
-                        <h2 class="mb-0">{{ round($compositeScore, 2) }}/100</h2>
-                        <small class="text-muted">Overall Performance</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-left-success">
-                    <div class="card-body">
-                        <h6 class="text-success font-weight-bold mb-1">Performance Level</h6>
-                        <h4 class="mb-0">
-                            @switch($performanceLevel)
-                                @case('excellent')
-                                    <span class="badge badge-success">Excellent</span>
-                                    @break
-                                @case('good')
-                                    <span class="badge badge-info">Good</span>
-                                    @break
-                                @case('satisfactory')
-                                    <span class="badge badge-warning">Satisfactory</span>
-                                    @break
-                                @case('needs_improvement')
-                                    <span class="badge badge-warning">Needs Improvement</span>
-                                    @break
-                                @default
-                                    <span class="badge badge-danger">Unsatisfactory</span>
-                            @endswitch
-                        </h4>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-left-info">
-                    <div class="card-body">
-                        <h6 class="text-info font-weight-bold mb-1">KPIs Achieved</h6>
-                        <h2 class="mb-0">{{ $kpiRecords->where('status', 'achieved')->count() }}/{{ $kpiRecords->count() }}</h2>
-                        <small class="text-muted">Targets Met</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-left-warning">
-                    <div class="card-body">
-                        <h6 class="text-warning font-weight-bold mb-1">Period</h6>
-                        <h4 class="mb-0">{{ \Carbon\Carbon::createFromFormat('Y-m', $period)->format('M Y') }}</h4>
-                        <small class="text-muted">{{ $period }}</small>
-                    </div>
-                </div>
+@if(session('success'))
+<div class="kpi-alert kpi-alert-success alert-dismissible fade show" role="alert">
+    <div class="kpi-alert-icon">
+        <i class="bi bi-check-circle-fill"></i>
+    </div>
+    <div class="kpi-alert-message">{{ session('success') }}</div>
+    <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+
+@if(session('error'))
+<div class="kpi-alert kpi-alert-error alert-dismissible fade show" role="alert">
+    <div class="kpi-alert-icon">
+        <i class="bi bi-exclamation-octagon-fill"></i>
+    </div>
+    <div class="kpi-alert-message">{{ session('error') }}</div>
+    <button type="button" class="btn-close ms-auto shadow-none" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+
+<!-- Summary Grid -->
+<div class="kpi-summary-grid">
+    <!-- Composite Score -->
+    <div class="kpi-summary-card">
+        <div>
+            <div class="kpi-summary-title">Composite Score</div>
+            <div class="kpi-summary-value">{{ round($compositeScore, 2) }}<span class="fs-6 text-muted fw-medium">/100</span></div>
+            <div class="kpi-summary-sub">Overall performance score</div>
+        </div>
+        <div class="position-absolute top-0 end-0 p-4 opacity-10">
+            <i class="bi bi-bar-chart-fill fs-1"></i>
+        </div>
+    </div>
+
+    <!-- Performance Level -->
+    <div class="kpi-summary-card">
+        <div>
+            <div class="kpi-summary-title">Performance Level</div>
+            <div class="mt-2">
+                @switch($performanceLevel)
+                    @case('excellent')
+                        <span class="kpi-badge badge-soft-success fs-5 py-2 px-3"><i class="bi bi-stars"></i> Excellent</span>
+                        @break
+                    @case('good')
+                        <span class="kpi-badge badge-soft-info fs-5 py-2 px-3"><i class="bi bi-hand-thumbs-up-fill"></i> Good</span>
+                        @break
+                    @case('satisfactory')
+                        <span class="kpi-badge badge-soft-warning fs-5 py-2 px-3"><i class="bi bi-check-circle-fill"></i> Satisfactory</span>
+                        @break
+                    @case('needs_improvement')
+                        <span class="kpi-badge badge-soft-warning fs-5 py-2 px-3"><i class="bi bi-exclamation-triangle-fill"></i> Needs Improvement</span>
+                        @break
+                    @default
+                        <span class="kpi-badge badge-soft-danger fs-5 py-2 px-3"><i class="bi bi-x-circle-fill"></i> Unsatisfactory</span>
+                @endswitch
             </div>
         </div>
-
-        @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="position-absolute top-0 end-0 p-4 opacity-10">
+            <i class="bi bi-trophy-fill fs-1"></i>
         </div>
-        @endif
+    </div>
 
-        <!-- Submission Status -->
-        @php
-            $firstRecord = $kpiRecords->first();
-            $submissionStatus = $firstRecord->submission_status ?? 'draft';
-            $reviewerNotes = $firstRecord->reviewer_notes ?? null;
-        @endphp
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card {{ $submissionStatus === 'approved' ? 'border-success' : ($submissionStatus === 'rejected' ? 'border-danger' : ($submissionStatus === 'submitted' ? 'border-info' : 'border-secondary')) }}">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Status Pengajuan KPI</h6>
-                            @switch($submissionStatus)
-                                @case('draft')
-                                    <span class="badge bg-secondary">Draft</span>
-                                    <small class="text-muted ms-2">Belum disubmit ke atasan</small>
-                                    @break
-                                @case('submitted')
-                                    <span class="badge bg-info">Submitted</span>
-                                    <small class="text-muted ms-2">Menunggu persetujuan atasan</small>
-                                    @break
-                                @case('approved')
-                                    <span class="badge bg-success">Approved</span>
-                                    <small class="text-muted ms-2">KPI telah disetujui</small>
-                                    @break
-                                @case('rejected')
-                                    <span class="badge bg-danger">Rejected</span>
-                                    <small class="text-muted ms-2">KPI ditolak - silakan perbaiki</small>
-                                    @break
-                            @endswitch
-
-                            @if($submissionStatus === 'rejected' && $reviewerNotes)
-                            <div class="alert alert-warning mt-2 mb-0">
-                                <i class="bi bi-exclamation-triangle"></i>
-                                <strong>Catatan dari Atasan:</strong> {{ $reviewerNotes }}
-                            </div>
-                            @endif
-                        </div>
-                        <div>
-                            @if($submissionStatus === 'draft' || $submissionStatus === 'rejected')
-                                @if($employee->supervisor_id)
-                                <form action="{{ route('kpi.submit', $employee->id) }}" method="POST" class="d-inline">
-                                    @csrf
-                                    <input type="hidden" name="period" value="{{ $period }}">
-                                    <button type="submit" class="btn btn-outline-primary submit-confirm" data-message="Submit KPI untuk review oleh atasan?">
-                                        <i class="bi bi-send"></i> Submit untuk Review
-                                    </button>
-                                </form>
-                                @else
-                                <span class="text-muted"><i class="bi bi-info-circle"></i> Tidak ada atasan langsung</span>
-                                @endif
-                            @endif
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- KPIs Achieved -->
+    <div class="kpi-summary-card">
+        <div>
+            <div class="kpi-summary-title">KPIs Achieved</div>
+            <div class="kpi-summary-value">{{ $kpiRecords->where('status', 'achieved')->count() }}<span class="fs-6 text-muted fw-medium">/{{ $kpiRecords->count() }}</span></div>
+            <div class="kpi-summary-sub">Metrics hitting the target</div>
         </div>
-
-        <!-- KPI Categories -->
-        @foreach($kpisByCategory as $category => $records)
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">{{ $category }} Metrics</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>KPI</th>
-                                        <th>Actual Value</th>
-                                        <th>Target Value</th>
-                                        <th>Achievement %</th>
-                                        <th>Status</th>
-                                        <th>Notes</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($records as $record)
-                                    <tr>
-                                        <td>
-                                            <strong>{{ $record->kpi->name }}</strong><br>
-                                            <small class="text-muted">{{ $record->kpi->unit }}</small>
-                                        </td>
-                                        <td>{{ $record->actual_value }}</td>
-                                        <td>{{ $record->target_value }}</td>
-                                        <td>
-                                            @php
-                                                $achievement = $record->getAchievementPercentage();
-                                            @endphp
-                                            <div class="progress" style="height: 20px;">
-                                                <div class="progress-bar {{ $achievement >= 100 ? 'bg-success' : ($achievement >= 80 ? 'bg-warning' : 'bg-danger') }}" 
-                                                     role="progressbar" 
-                                                     style="width: {{ min($achievement, 100) }}%" 
-                                                     aria-valuenow="{{ $achievement }}" 
-                                                     aria-valuemin="0" 
-                                                     aria-valuemax="100">
-                                                    {{ round($achievement, 1) }}%
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            @switch($record->status)
-                                                @case('achieved')
-                                                    <span class="badge badge-success">Achieved</span>
-                                                    @break
-                                                @case('warning')
-                                                    <span class="badge badge-warning">Warning</span>
-                                                    @break
-                                                @default
-                                                    <span class="badge badge-danger">Critical</span>
-                                            @endswitch
-                                        </td>
-                                        <td>
-                                            @if($record->notes)
-                                                <small class="text-muted d-block text-truncate" style="max-width: 150px;" title="{{ $record->notes }}">
-                                                    {{ $record->notes }}
-                                                </small>
-                                            @else
-                                                <span class="text-muted small">-</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if(in_array($submissionStatus, ['draft', 'rejected']))
-                                            <button type="button" class="btn btn-sm btn-outline-primary edit-kpi" 
-                                                data-id="{{ $record->id }}"
-                                                data-name="{{ $record->kpi->name }}"
-                                                data-actual="{{ $record->actual_value }}"
-                                                data-notes="{{ $record->notes }}"
-                                                data-auto="{{ $record->kpi->metric_category ? 'true' : 'false' }}"
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#editKPIModal">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            @else
-                                            <span class="text-muted small"><i class="bi bi-lock"></i></span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="position-absolute top-0 end-0 p-4 opacity-10">
+            <i class="bi bi-check-all fs-1"></i>
         </div>
-        @endforeach
+    </div>
 
-        <!-- Incidents -->
-        @if($incidents->count() > 0)
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Active Incidents</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>Type</th>
-                                        <th>Date</th>
-                                        <th>Severity</th>
-                                        <th>Status</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($incidents as $incident)
-                                    <tr>
-                                        <td>{{ ucfirst(str_replace('_', ' ', $incident->type)) }}</td>
-                                        <td>{{ $incident->incident_date->format('d M Y') }}</td>
-                                        <td>
-                                            @switch($incident->severity)
-                                                @case('low')
-                                                    <span class="badge badge-info">Low</span>
-                                                    @break
-                                                @case('medium')
-                                                    <span class="badge badge-warning">Medium</span>
-                                                    @break
-                                                @case('high')
-                                                    <span class="badge badge-danger">High</span>
-                                                    @break
-                                                @default
-                                                    <span class="badge badge-dark">Critical</span>
-                                            @endswitch
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-{{ $incident->status === 'resolved' ? 'success' : 'warning' }}">
-                                                {{ ucfirst($incident->status) }}
-                                            </span>
-                                        </td>
-                                        <td><small>{{ $incident->description }}</small></td>
-                                    </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Period -->
+    <div class="kpi-summary-card">
+        <div>
+            <div class="kpi-summary-title">Review Period</div>
+            <div class="kpi-summary-value fs-3">{{ \Carbon\Carbon::createFromFormat('Y-m', $period)->format('M Y') }}</div>
+            <div class="kpi-summary-sub">Period code: {{ $period }}</div>
         </div>
-        @endif
-
-        <div class="row mt-4">
-            <div class="col-md-12">
-                <a href="{{ route('reports.export-pdf', $employee->id) }}?period={{ $period }}" class="btn btn-outline-primary" target="_blank">
-                    <i class="bi bi-file-earmark-pdf"></i> Export PDF Report
-                </a>
-                <a href="{{ route('kpi.dashboard') }}" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                </a>
-            </div>
+        <div class="position-absolute top-0 end-0 p-4 opacity-10">
+            <i class="bi bi-calendar3 fs-1"></i>
         </div>
     </div>
 </div>
 
+<!-- Submission Status Banner -->
+@php
+    $firstRecord = $kpiRecords->first();
+    $submissionStatus = $firstRecord->submission_status ?? 'draft';
+    $reviewerNotes = $firstRecord->reviewer_notes ?? null;
+@endphp
+
+<div class="kpi-status-banner status-{{ $submissionStatus }}">
+    <div class="d-flex align-items-center gap-4">
+        <div class="kpi-status-icon 
+            @if($submissionStatus === 'draft') bg-light text-secondary 
+            @elseif($submissionStatus === 'submitted') bg-primary text-white 
+            @elseif($submissionStatus === 'approved') bg-success text-white 
+            @else bg-danger text-white @endif">
+            @switch($submissionStatus)
+                @case('draft') <i class="bi bi-pencil-fill"></i> @break
+                @case('submitted') <i class="bi bi-send-check-fill"></i> @break
+                @case('approved') <i class="bi bi-shield-check"></i> @break
+                @case('rejected') <i class="bi bi-exclamation-octagon-fill"></i> @break
+            @endswitch
+        </div>
+        <div>
+            <h6 class="mb-1 fw-bold text-dark">Status Pengajuan: <span class="text-uppercase text-primary">{{ $submissionStatus }}</span></h6>
+            <p class="mb-0 text-muted small">
+                @if($submissionStatus === 'draft') Lengapi nilai aktual Anda dan ajukan untuk peninjauan.
+                @elseif($submissionStatus === 'submitted') KPI Anda sedang dalam tahap peninjauan oleh manajemen.
+                @elseif($submissionStatus === 'approved') KPI periode ini telah disetujui secara resmi.
+                @elseif($submissionStatus === 'rejected') Pengajuan ditolak. Silakan perbaiki berdasarkan catatan di bawah.
+                @endif
+            </p>
+            @if($submissionStatus === 'rejected' && $reviewerNotes)
+                <div class="mt-2 p-2 bg-danger bg-opacity-10 rounded border border-danger border-opacity-10">
+                    <span class="text-danger fw-bold small"><i class="bi bi-chat-dots-fill me-1"></i> Note: {{ $reviewerNotes }}</span>
+                </div>
+            @endif
+        </div>
+    </div>
+    <div class="mt-3 mt-md-0">
+        @if($submissionStatus === 'draft' || $submissionStatus === 'rejected')
+            @if($employee->supervisor_id)
+            <form action="{{ route('kpi.submit', $employee->id) }}" method="POST" class="d-inline">
+                @csrf
+                <input type="hidden" name="period" value="{{ $period }}">
+                <button type="submit" class="btn-kpi btn-kpi-primary submit-confirm" data-message="Submit KPI untuk review oleh atasan?">
+                    <i class="bi bi-rocket-takeoff-fill"></i> Ajukan Sekarang
+                </button>
+            </form>
+            @else
+            <span class="kpi-badge badge-soft-secondary"><i class="bi bi-person-x-fill"></i> Supervisor belum diatur</span>
+            @endif
+        @endif
+    </div>
+</div>
+
+<!-- KPI Metrics Tables -->
+@forelse($kpisByCategory as $category => $records)
+<div class="kpi-data-card shadow-sm border-0 mb-5">
+    <div class="kpi-data-header bg-white py-3 px-4 rounded-top border-bottom">
+        <div class="d-flex align-items-center gap-2">
+            <div style="width: 4px; height: 24px; background: var(--kpi-accent); border-radius: 2px;"></div>
+            <h3 class="kpi-data-title mb-0 fs-5 fw-800 text-dark">{{ $category }} Metrics</h3>
+        </div>
+        <span class="badge bg-light text-primary fw-bold">{{ $records->count() }} Metrics</span>
+    </div>
+    <div class="table-responsive">
+        <table class="kpi-table table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th class="border-0 text-muted small fw-800">METRIC DETAILS</th>
+                    <th class="border-0 text-muted small fw-800 text-center">TARGET</th>
+                    <th class="border-0 text-muted small fw-800 text-center">ACTUAL</th>
+                    <th class="border-0 text-muted small fw-800">ACHIEVEMENT</th>
+                    <th class="border-0 text-muted small fw-800 text-center">STATUS</th>
+                    <th class="border-0 text-muted small fw-800 text-end">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody class="border-top-0">
+                @foreach($records as $record)
+                <tr>
+                    <td>
+                        <div class="fw-bold text-dark mb-1">{{ $record->kpi->name }}</div>
+                        <div class="text-muted small lh-sm" style="max-width: 300px;">{{ $record->kpi->description ?: 'No description provided' }}</div>
+                    </td>
+                    <td class="text-center">
+                        <div class="fw-800 text-dark">{{ $record->target_value }}</div>
+                        <div class="extra-small text-muted text-uppercase fw-bold">{{ $record->kpi->unit }}</div>
+                    </td>
+                    <td class="text-center">
+                        <div class="fw-800 text-primary">{{ $record->actual_value }}</div>
+                        <div class="extra-small text-muted text-uppercase fw-bold">{{ $record->kpi->unit }}</div>
+                    </td>
+                    <td style="min-width: 200px;">
+                        @php $achievement = $record->getAchievementPercentage(); @endphp
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="flex-grow-1">
+                                <div class="kpi-progress shadow-none" style="height: 6px; background: #f1f5f9;">
+                                    <div class="kpi-progress-bar @if($achievement >= 100) bg-success @elseif($achievement >= 80) bg-primary @else bg-danger @endif" 
+                                         style="width: {{ min($achievement, 100) }}%"></div>
+                                </div>
+                            </div>
+                            <span class="fw-800 small @if($achievement >= 100) text-success @elseif($achievement >= 80) text-primary @else text-danger @endif">
+                                {{ round($achievement, 1) }}%
+                            </span>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        @switch($record->status)
+                            @case('achieved')
+                                <span class="kpi-badge badge-soft-success small fw-bold">Achieved</span>
+                                @break
+                            @case('warning')
+                                <span class="kpi-badge badge-soft-warning small fw-bold">Warning</span>
+                                @break
+                            @default
+                                <span class="kpi-badge badge-soft-danger small fw-bold">Critical</span>
+                        @endswitch
+                    </td>
+                    <td class="text-end">
+                        @if(in_array($submissionStatus, ['draft', 'rejected']))
+                        <div class="d-flex justify-content-end gap-1">
+                            <button type="button" class="btn btn-sm btn-light border-0 edit-kpi rounded-3 p-2" 
+                                style="background: #f8fafc;"
+                                title="Update Nilai/Catatan"
+                                data-id="{{ $record->id }}"
+                                data-name="{{ $record->kpi->name }}"
+                                data-actual="{{ $record->actual_value }}"
+                                data-notes="{{ $record->notes }}"
+                                data-auto="{{ $record->kpi->metric_category ? 'true' : 'false' }}"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#editKPIModal">
+                                <i class="bi bi-pencil-square text-primary fs-6"></i>
+                            </button>
+                            
+                            <form action="{{ route('kpi.destroy-record', $record->id) }}" method="POST" class="delete-kpi-form">
+                                @csrf
+                                @method('DELETE')
+                                <button type="button" class="btn btn-sm btn-light border-0 delete-kpi rounded-3 p-2" 
+                                    style="background: #fff1f2;"
+                                    title="Hapus Metrik">
+                                    <i class="bi bi-trash text-danger fs-6"></i>
+                                </button>
+                            </form>
+                        </div>
+                        @else
+                        <span class="text-muted opacity-50"><i class="bi bi-lock-fill"></i></span>
+                        @endif
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@empty
+<div class="text-center py-5 bg-white rounded-4 border shadow-sm">
+    <div class="mb-3">
+        <i class="bi bi-clipboard2-x text-muted opacity-25" style="font-size: 4rem;"></i>
+    </div>
+    <h5 class="text-dark fw-800">Belum Ada Metrik KPI</h5>
+    <p class="text-muted">Tidak ada KPI yang terdaftar untuk periode ini.</p>
+</div>
+@endforelse
+
+<!-- Incidents -->
+@if($incidents->count() > 0)
+<div class="kpi-data-card border border-danger border-opacity-25 shadow-none">
+    <div class="kpi-data-header bg-danger bg-opacity-10 border-danger border-opacity-25">
+        <h3 class="kpi-data-title text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> Active Incidents / SP</h3>
+    </div>
+    <div class="table-responsive">
+        <table class="kpi-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Date</th>
+                    <th>Severity</th>
+                    <th>Status</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($incidents as $incident)
+                <tr>
+                    <td class="fw-bold">{{ ucfirst(str_replace('_', ' ', $incident->type)) }}</td>
+                    <td>{{ $incident->incident_date->format('d M Y') }}</td>
+                    <td>
+                        @switch($incident->severity)
+                            @case('low') <span class="kpi-badge badge-soft-info">Low</span> @break
+                            @case('medium') <span class="kpi-badge badge-soft-warning">Medium</span> @break
+                            @case('high') <span class="kpi-badge badge-soft-danger">High</span> @break
+                            @default <span class="kpi-badge badge-soft-danger bg-danger text-white">Critical</span>
+                        @endswitch
+                    </td>
+                    <td>
+                        <span class="kpi-badge {{ $incident->status === 'resolved' ? 'badge-soft-success' : 'badge-soft-warning' }}">
+                            {{ ucfirst($incident->status) }}
+                        </span>
+                    </td>
+                    <td class="text-muted" style="font-size:0.8rem">{{ $incident->description }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@endif
+
 <!-- Edit KPI Modal -->
-<div class="modal fade" id="editKPIModal" tabindex="-1" aria-labelledby="editKPIModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+<div class="modal fade" id="editKPIModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form id="editKPIForm" method="POST">
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editKPIModalLabel">Update KPI: <span id="modalKPIName"></span></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="actualValueGroup" class="mb-3">
-                        <label for="actual_value" class="form-label">Nilai Aktual</label>
-                        <input type="number" step="0.01" class="form-control" id="actual_value" name="actual_value">
-                        <div id="autoCalculatedHint" class="form-text text-info d-none">
-                            <i class="bi bi-info-circle"></i> Nilai ini dihitung otomatis oleh sistem dan tidak dapat diubah manual.
+                <div class="modal-header border-0 pb-0">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="bg-primary-soft text-primary rounded-4 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: var(--kpi-accent-soft);">
+                            <i class="bi bi-pencil-square fs-4 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-800 text-dark mb-0">Update Nilai KPI</h5>
+                            <p class="mb-0 text-muted extra-small fw-600" id="modalKPIName"></p>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Catatan/Penjelasan</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Tambahkan penjelasan mengenai pencapaian Anda..."></textarea>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body py-4">
+                    <div class="mb-4 mt-2">
+                        <label for="actual_value" class="form-label text-muted extra-small fw-800 ls-1">NILAI AKTUAL</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text bg-light border-end-0 text-primary"><i class="bi bi-graph-up-arrow"></i></span>
+                            <input type="number" step="0.01" class="form-control border-start-0 ps-1 fw-800" id="actual_value" name="actual_value" placeholder="0.00">
+                        </div>
+                        <div id="autoCalculatedHint" class="mt-2 d-none">
+                            <div class="d-flex align-items-center gap-2 p-2 rounded-3 bg-info bg-opacity-10 border border-info border-opacity-10">
+                                <i class="bi bi-robot text-info"></i>
+                                <span class="text-info extra-small fw-semibold">Nilai ini dihitung otomatis oleh sistem.</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label for="notes" class="form-label text-muted extra-small fw-800 ls-1">CATATAN PENDUKUNG</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" placeholder="Berikan penjelasan atau justifikasi pencapaian..."></textarea>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+
+                <div class="modal-footer border-0 bg-light bg-opacity-50">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none px-4" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn-kpi btn-kpi-primary px-4 shadow-sm">
+                        <i class="bi bi-save2-fill"></i> Simpan Perubahan
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Add KPI Modal -->
+<div class="modal fade" id="addKPIModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <form action="{{ route('kpi.store') }}" method="POST">
+                @csrf
+                <input type="hidden" name="employee_id" value="{{ $employee->id }}">
+                <input type="hidden" name="period" value="{{ $period }}">
+                
+                <div class="modal-header border-0 pb-0 bg-white">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-4 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; background: #EEF2FF;">
+                            <i class="bi bi-plus-circle-fill fs-3 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-800 text-dark ls-tight" style="letter-spacing: -0.5px;">Tambah KPI Manual</h5>
+                            <p class="mb-0 text-muted extra-small fw-600">Assign metrik penilaian baru ke periode berjalan.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body py-4">
+                    <div class="mb-4" id="selectKpiContainer">
+                        <label for="kpi_id" class="form-label text-muted extra-small fw-800 ls-1">PILIH METRIK KPI</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-primary"><i class="bi bi-list-stars"></i></span>
+                            <select class="form-select border-start-0 ps-1 fw-600" id="kpi_id" name="kpi_id">
+                                <option value="">-- Silakan Pilih KPI --</option>
+                                @foreach($allKpis ?? [] as $k)
+                                    <option value="{{ $k->id }}">[{{ $k->category }}] {{ $k->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mt-2 text-end">
+                            <button type="button" class="btn btn-link btn-sm text-primary fw-bold text-decoration-none p-0" id="btnShowNewKpi">
+                                <i class="bi bi-plus-lg"></i> Atau buat metrik baru...
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- New KPI Fields (Hidden by default) -->
+                    <div id="newKpiContainer" class="d-none">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <label class="form-label text-muted extra-small fw-800 ls-1 mb-0">BUAT METRIK BARU</label>
+                            <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none p-0" id="btnShowSelectKpi">
+                                <i class="bi bi-arrow-left"></i> Kembali pilih list
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <input type="text" class="form-control fw-600" name="new_kpi_name" id="new_kpi_name" placeholder="Nama Metrik (misal: Customer Satisfaction)">
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-6">
+                                <select class="form-select small fw-600" name="new_kpi_category">
+                                    <option value="Attendance">Attendance</option>
+                                    <option value="Productivity">Productivity</option>
+                                    <option value="Quality" selected>Quality</option>
+                                    <option value="Behavior">Behavior</option>
+                                    <option value="Leave">Leave</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <input type="text" class="form-control small fw-600" name="new_kpi_unit" placeholder="Satuan (%, Jam, Rp)">
+                            </div>
+                        </div>
+                        <input type="hidden" name="is_new_kpi" id="is_new_kpi" value="0">
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label for="add_target_value" class="form-label text-muted extra-small fw-800 ls-1">NILAI TARGET</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-bullseye"></i></span>
+                                <input type="number" step="0.01" class="form-control border-start-0 ps-1 fw-700" id="add_target_value" name="target_value" value="100" required>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="add_actual_value" class="form-label text-muted extra-small fw-800 ls-1">NILAI AKTUAL</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-warning"><i class="bi bi-lightning-charge-fill"></i></span>
+                                <input type="number" step="0.01" class="form-control border-start-0 ps-1 fw-800 text-dark" id="add_actual_value" name="actual_value" required placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label for="add_notes" class="form-label text-muted extra-small fw-800 ls-1">CATATAN PENDUKUNG (OPSIONAL)</label>
+                        <textarea class="form-control" id="add_notes" name="notes" rows="3" placeholder="Tuliskan justifikasi atau keterangan nilai aktual..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-0 bg-light bg-opacity-50">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none px-4" data-bs-dismiss="modal">Batalkan</button>
+                    <button type="submit" class="btn-kpi btn-kpi-primary px-4 shadow-sm">
+                        <i class="bi bi-cloud-arrow-up-fill"></i> Simpan Data KPI
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 $(function() {
@@ -340,7 +868,7 @@ $(function() {
         const form = $('#editKPIForm');
         form.attr('action', `/kpi/record/${id}`);
 
-        if (isAuto) {
+        if (isAuto && isAuto !== false && isAuto !== 'false') {
             $('#actual_value').val(actual).attr('readonly', true).addClass('bg-light');
             $('#autoCalculatedHint').removeClass('d-none');
         } else {
@@ -355,19 +883,67 @@ $(function() {
         const msg = $(this).data('message') || 'Konfirmasi tindakan ini?';
         
         Swal.fire({
-            title: 'Konfirmasi',
+            title: 'Konfirmasi Pengajuan',
             text: msg,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#aaa',
-            confirmButtonText: 'Ya, Lanjutkan',
-            cancelButtonText: 'Batal'
+            confirmButtonColor: '#1e3a8a',
+            cancelButtonColor: '#cbd5e1',
+            confirmButtonText: 'Ya, Ajukan!',
+            cancelButtonText: 'Batal',
+            customClass: {
+                confirmButton: 'btn btn-primary px-4',
+                cancelButton: 'btn btn-light px-4'
+            },
+            buttonsStyling: false
         }).then((result) => {
             if (result.isConfirmed) {
                 form.submit();
             }
         });
+    });
+
+    // Delete KPI confirmation
+    $('.delete-kpi').on('click', function(e) {
+        e.preventDefault();
+        const form = $(this).closest('form');
+        
+        Swal.fire({
+            title: 'Hapus Metrik KPI?',
+            text: "Data metrik ini akan dihapus permanen dari periode ini.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, Hapus!',
+            cancelButtonText: 'Batal',
+            customClass: {
+                confirmButton: 'btn btn-danger px-4',
+                cancelButton: 'btn btn-light px-4'
+            },
+            buttonsStyling: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+
+    // Toggle New KPI fields
+    $('#btnShowNewKpi').on('click', function() {
+        $('#selectKpiContainer').addClass('d-none');
+        $('#newKpiContainer').removeClass('d-none');
+        $('#is_new_kpi').val('1');
+        $('#kpi_id').val('').prop('required', false);
+        $('#new_kpi_name').prop('required', true);
+    });
+
+    $('#btnShowSelectKpi').on('click', function() {
+        $('#newKpiContainer').addClass('d-none');
+        $('#selectKpiContainer').removeClass('d-none');
+        $('#is_new_kpi').val('0');
+        $('#kpi_id').prop('required', true);
+        $('#new_kpi_name').prop('required', false);
     });
 });
 </script>

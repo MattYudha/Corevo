@@ -187,7 +187,7 @@ class ReportingController extends Controller
     public function exportPDF($id)
     {
         $user = Auth::user();
-        $employee = Employee::findOrFail($id);
+        $employee = Employee::with(['department', 'role', 'supervisor'])->findOrFail($id);
         $config = LetterConfiguration::first() ?: new LetterConfiguration([
             'company_name' => 'ARATECHNOLOGY',
             'company_address' => 'Jakarta, Indonesia',
@@ -198,15 +198,12 @@ class ReportingController extends Controller
         }
 
         $period = request('period', now()->format('Y-m'));
-        $records = EmployeeKPIRecord::where('employee_id', $employee->id)
+        $records = EmployeeKPIRecord::with('kpi')
+            ->where('employee_id', $employee->id)
             ->where('period', $period)
             ->get();
 
-        if ($records->count() === 0) {
-            abort(404, 'No KPI records found for this employee in the specified period');
-        }
-
-        // Use centralized weighted calculation for the aggregate
+        // Calculate summary using service (it handles empty records by returning 0/Unsatisfactory)
         $summary = \App\Services\KPICalculationService::calculateWeightedScore($records);
         
         $record = (object) [
@@ -217,41 +214,39 @@ class ReportingController extends Controller
             'created_at' => now(),
         ];
         
-        // Calculate category scores (averages for detail)
-        $categoryScores = [];
-        foreach ($records as $r) {
-            $kpi = $r->kpi;
-            if ($kpi) {
-                if (!isset($categoryScores[$kpi->category])) {
-                    $categoryScores[$kpi->category] = [];
-                }
-                $categoryScores[$kpi->category][] = $r->composite_score;
+        // Group records by category for the report breakdown
+        $kpisByCategory = $records->groupBy(function($r) {
+            return $r->kpi->category ?? 'General';
+        });
+        
+        // Calculate category scores for the breakdown table
+        $categoryBreakdown = [];
+        foreach ($kpisByCategory as $category => $items) {
+            $totalAchievement = 0;
+            foreach ($items as $item) {
+                $totalAchievement += $item->getAchievementPercentage();
             }
+            $avg = $items->count() > 0 ? $totalAchievement / $items->count() : 0;
+            
+            $categoryBreakdown[] = [
+                'name' => $category,
+                'score' => $avg,
+                'count' => $items->count()
+            ];
         }
-        
-        $record->attendance_score = !empty($categoryScores['Attendance']) ? array_sum($categoryScores['Attendance']) / count($categoryScores['Attendance']) : 0;
-        $record->tasks_score = !empty($categoryScores['Productivity']) ? array_sum($categoryScores['Productivity']) / count($categoryScores['Productivity']) : 0;
-        $record->compliance_score = !empty($categoryScores['Department']) ? array_sum($categoryScores['Department']) / count($categoryScores['Department']) : 0;
-        $record->quality_score = !empty($categoryScores['Quality']) ? array_sum($categoryScores['Quality']) / count($categoryScores['Quality']) : 0;
-        $record->conduct_score = !empty($categoryScores['Behavior']) ? array_sum($categoryScores['Behavior']) / count($categoryScores['Behavior']) : 0;
-        
-        // Calculate real metrics from service
-        $kpiService = new \App\Services\KPICalculationService($employee, $period);
-        $flatMetrics = $kpiService->getFlatMetrics();
-        
-        $record->present_days = $flatMetrics['attendance.present_days'] ?? 0;
-        $record->absent_days = $flatMetrics['attendance.absent_days'] ?? 0;
-        $record->late_count = $flatMetrics['attendance.late_count'] ?? 0;
-        $record->tasks_completed = $flatMetrics['productivity.completed_tasks_count'] ?? 0;
-        $record->on_time_percentage = $flatMetrics['productivity.on_time_delivery_rate'] ?? 0;
 
         $incidents = Incident::where('employee_id', $employee->id)
+            ->whereYear('incident_date', substr($period, 0, 4))
+            ->whereMonth('incident_date', substr($period, 5, 2))
             ->orderByDesc('incident_date')
             ->get();
 
-        $pdf = Pdf::loadView('reports/kpi-pdf', compact('record', 'incidents', 'config'));
+        $pdf = Pdf::loadView('reports/kpi-pdf', compact('record', 'records', 'kpisByCategory', 'categoryBreakdown', 'incidents', 'config'))
+                  ->setPaper('a4', 'portrait')
+                  ->setOption('margin-top', 0)
+                  ->setOption('margin-bottom', 0);
 
-        return $pdf->download('KPI_Report_' . $employee->fullname . '_' . $period . '.pdf');
+        return $pdf->download('KPI_Report_' . str_replace(' ', '_', $employee->fullname) . '_' . $period . '.pdf');
     }
 
     /**

@@ -15,6 +15,7 @@ use App\Models\Department;
 use App\Models\Payroll;
 use App\Models\Presence;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class KPIController extends Controller
 {
@@ -61,7 +62,9 @@ class KPIController extends Controller
             $incidents = collect([]);
         }
 
-        return view('kpi.dashboard', compact('employee', 'period', 'kpiRecords', 'compositeScore', 'performanceLevel', 'kpisByCategory', 'incidents'));
+        $allKpis = \App\Models\KPI::where('status', 'active')->get();
+
+        return view('kpi.dashboard', compact('employee', 'period', 'kpiRecords', 'compositeScore', 'performanceLevel', 'kpisByCategory', 'incidents', 'allKpis'));
     }
 
     /**
@@ -105,7 +108,9 @@ class KPIController extends Controller
             $performanceReview = null;
         }
 
-        return view('kpi.show', compact('employee', 'period', 'kpiRecords', 'kpisByCategory', 'performanceReview', 'compositeScore', 'performanceLevel'));
+        $allKpis = \App\Models\KPI::where('is_active', true)->get();
+
+        return view('kpi.show', compact('employee', 'period', 'kpiRecords', 'kpisByCategory', 'performanceReview', 'compositeScore', 'performanceLevel', 'allKpis'));
     }
 
     /**
@@ -235,27 +240,27 @@ class KPIController extends Controller
             'updated_at' => now(),
         ];
 
-        // Only allow updating actual_value if it's not an auto-calculated KPI
-        if ($record->kpi && is_null($record->kpi->metric_category)) {
-            if ($request->has('actual_value')) {
-                $data['actual_value'] = $request->input('actual_value');
-                
-                // Recalculate achievement and performance level
-                $target = $record->target_value > 0 ? $record->target_value : 100;
-                $achievement = ($data['actual_value'] / $target) * 100;
-                $data['composite_score'] = round($achievement, 2);
-                $data['performance_level'] = KPICalculationService::getPerformanceLevel($achievement);
-                
-                // Status mapping
-                if ($achievement >= 90) {
-                    $data['status'] = 'achieved';
-                } elseif ($achievement >= 75) {
-                    $data['status'] = 'achieved';
-                } elseif ($achievement >= 60) {
-                    $data['status'] = 'warning';
-                } else {
-                    $data['status'] = 'critical';
-                }
+        // Allow updating actual_value if provided in request
+        if ($request->has('actual_value')) {
+            // Check if we should allow manual override (always allow if metric_category is empty)
+            // or if it's a draft/rejected record where we allow manual correction
+            $data['actual_value'] = $request->input('actual_value');
+            
+            // Recalculate achievement and performance level
+            $target = $record->target_value > 0 ? $record->target_value : 100;
+            $achievement = ($data['actual_value'] / $target) * 100;
+            $data['composite_score'] = round($achievement, 2);
+            $data['performance_level'] = KPICalculationService::getPerformanceLevel($achievement);
+            
+            // Status mapping
+            if ($achievement >= 90) {
+                $data['status'] = 'achieved';
+            } elseif ($achievement >= 75) {
+                $data['status'] = 'achieved';
+            } elseif ($achievement >= 60) {
+                $data['status'] = 'warning';
+            } else {
+                $data['status'] = 'critical';
             }
         }
 
@@ -582,6 +587,35 @@ class KPIController extends Controller
     }
 
     /**
+     * Delete a specific KPI record
+     */
+    public function destroy($id)
+    {
+        $user = Auth::user();
+        $record = EmployeeKPIRecord::findOrFail($id);
+
+        // Authorization: Admin, Manager of the employee, or the Employee themselves (if in draft)
+        $isAdmin = \App\Constants\Roles::isAdmin(session('role'));
+        $isManager = ($user->employee->id ?? null) === $record->employee->supervisor_id;
+        $isOwner = ($user->employee->id ?? null) === $record->employee_id;
+
+        if (!$isAdmin && !$isManager && !$isOwner) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Additional check for owner: only if in draft or rejected
+        if ($isOwner && !$isAdmin && !$isManager) {
+            if (!in_array($record->submission_status, ['draft', 'rejected'])) {
+                return redirect()->back()->with('error', 'KPI sudah disubmit dan tidak bisa dihapus.');
+            }
+        }
+
+        $record->delete();
+
+        return redirect()->back()->with('success', 'Data KPI berhasil dihapus.');
+    }
+
+    /**
      * Admin: Show edit form for a specific KPI record.
      */
     public function adminEdit(Request $request, $employeeId, $recordId)
@@ -641,5 +675,80 @@ class KPIController extends Controller
 
         return redirect()->route('kpi.show', $employeeId)
             ->with('success', 'KPI record berhasil diperbarui oleh admin.');
+    }
+
+    /**
+     * Admin/Manager: Store new KPI record manually
+     */
+    public function store(Request $request)
+    {
+        $user = Auth::user();
+        if (!\App\Constants\Roles::isAdmin(session('role')) && ($user->employee?->role?->title ?? '') !== \App\Constants\Roles::MANAGER_UNIT_HEAD) {
+            abort(403, 'Unauthorized');
+        }
+
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'kpi_id'      => 'nullable|required_if:is_new_kpi,0|exists:kpis,id',
+            'new_kpi_name'=> 'nullable|required_if:is_new_kpi,1|string|max:255',
+            'period'      => 'required|date_format:Y-m',
+            'target_value'=> 'required|numeric|min:0',
+            'actual_value'=> 'required|numeric|min:0',
+            'notes'       => 'nullable|string'
+        ]);
+
+        $kpiId = $request->kpi_id;
+
+        // Create new KPI if requested
+        if ($request->input('is_new_kpi') == '1') {
+            $kpi = \App\Models\KPI::where('name', $request->new_kpi_name)->first();
+            
+            if (!$kpi) {
+                $kpi = \App\Models\KPI::create([
+                    'code' => 'KPI-M-' . strtoupper(Str::random(6)),
+                    'name' => $request->new_kpi_name,
+                    'category' => $request->input('new_kpi_category', 'Quality'),
+                    'unit' => $request->input('new_kpi_unit', '%'),
+                    'status' => 'active',
+                    'target_value' => $request->target_value,
+                    'weight' => 0,
+                ]);
+            }
+            $kpiId = $kpi->id;
+        }
+
+        $achievement = ($request->actual_value / ($request->target_value > 0 ? $request->target_value : 100)) * 100;
+        $perf = KPICalculationService::getPerformanceLevel($achievement);
+
+        if ($achievement >= 90) {
+            $status = 'achieved';
+        } elseif ($achievement >= 75) {
+            $status = 'achieved';
+        } elseif ($achievement >= 60) {
+            $status = 'warning';
+        } else {
+            $status = 'critical';
+        }
+
+        EmployeeKPIRecord::updateOrCreate(
+            [
+                'employee_id' => $request->employee_id,
+                'kpi_id'      => $kpiId,
+                'period'      => $request->period,
+            ],
+            [
+                'target_value'      => $request->target_value,
+                'actual_value'      => $request->actual_value,
+                'composite_score'   => round($achievement, 2),
+                'status'            => $status,
+                'performance_level' => $perf,
+                'submission_status' => 'approved', // Auto approved if added by admin/manager
+                'reviewed_by'       => auth()->user()->employee->id ?? null,
+                'reviewed_at'       => now(),
+                'notes'             => $request->notes,
+            ]
+        );
+
+        return redirect()->back()->with('success', 'KPI manual berhasil ditambahkan.');
     }
 }

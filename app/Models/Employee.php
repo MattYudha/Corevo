@@ -74,6 +74,11 @@ class Employee extends Model
         return $this->belongsTo(Role::class);
     }
 
+    public function supervisor()
+    {
+        return $this->belongsTo(Employee::class, 'supervisor_id');
+    }
+
     /**
      * Relationship: this employee has one user account.
      *

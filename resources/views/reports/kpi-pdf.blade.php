@@ -1,319 +1,422 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>KPI Report - {{ $record->employee->fullname }}</title>
+    <title>KPI_Report_{{ $record->employee->fullname }}_{{ $record->period }}</title>
     <style>
+        /* Enterprise Design System for DomPDF */
         @page {
-            margin: 1cm;
+            margin: 0;
         }
         body {
             font-family: 'Helvetica', 'Arial', sans-serif;
-            color: #333;
-            line-height: 1.4;
-            font-size: 11pt;
+            color: #1e293b;
+            line-height: 1.5;
+            font-size: 10pt;
             margin: 0;
             padding: 0;
+            background-color: #ffffff;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
+        
+        /* Layout Components */
+        .container {
+            padding: 40px 50px;
         }
-        .header-table td {
-            vertical-align: middle;
+        
+        /* Header Section */
+        .header {
+            background-color: #0f172a; /* Slate 900 */
+            color: white;
+            padding: 40px 50px;
+            position: relative;
+        }
+        .header-logo {
+            float: left;
+            width: 180px;
+        }
+        .header-company {
+            float: right;
+            text-align: right;
         }
         .company-name {
-            font-size: 18pt;
-            font-weight: bold;
-            color: #1a365d;
-            text-transform: uppercase;
-        }
-        .company-info {
-            font-size: 9pt;
-            color: #4a5568;
-        }
-        .report-title {
-            text-align: center;
             font-size: 16pt;
             font-weight: bold;
-            margin: 20px 0;
-            color: #2b6cb0;
-            border-bottom: 2px solid #2b6cb0;
-            padding-bottom: 5px;
+            margin-bottom: 5px;
+            color: #ffffff;
         }
-        .section-header {
-            background-color: #ebf8ff;
-            color: #2c5282;
-            padding: 8px 12px;
-            font-weight: bold;
-            font-size: 12pt;
-            margin-bottom: 10px;
-            border-left: 5px solid #3182ce;
+        .company-info {
+            font-size: 8pt;
+            color: #94a3b8;
+            line-height: 1.3;
         }
-        .info-table td {
-            padding: 6px 10px;
-            border-bottom: 1px solid #edf2f7;
+        .clearfix {
+            clear: both;
         }
-        .label {
-            font-weight: bold;
-            width: 30%;
-            color: #4a5568;
-            background-color: #f7fafc;
+        
+        /* Title & Period */
+        .report-title-container {
+            margin-top: 30px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
         }
-        .value {
-            width: 70%;
+        .report-title {
+            font-size: 20pt;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0;
         }
-        .summary-box {
-            background-color: #2b6cb0;
-            color: white;
-            padding: 20px;
+        .report-period {
+            font-size: 11pt;
+            color: #64748b;
+            font-weight: 500;
+        }
+        
+        /* Employee Info Table */
+        .employee-info-grid {
+            width: 100%;
+            margin-top: 25px;
+            border-collapse: collapse;
+        }
+        .info-cell {
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .info-label {
+            font-size: 8pt;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .info-value {
+            font-size: 11pt;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        /* Summary Section */
+        .summary-section {
+            margin-top: 35px;
+            background-color: #f8fafc;
+            border-radius: 16px;
+            padding: 30px;
             text-align: center;
-            border-radius: 8px;
-            margin: 20px 0;
         }
-        .summary-score {
-            font-size: 32pt;
-            font-weight: bold;
-            display: block;
-        }
-        .summary-label {
-            font-size: 12pt;
+        .summary-title {
+            font-size: 10pt;
+            font-weight: 700;
+            color: #64748b;
             text-transform: uppercase;
             letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        .score-display {
+            font-size: 48pt;
+            font-weight: 900;
+            color: #0f172a;
+            line-height: 1;
+            margin-bottom: 15px;
+        }
+        .score-suffix {
+            font-size: 20pt;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .level-badge {
+            display: inline-block;
+            padding: 8px 24px;
+            border-radius: 99px;
+            font-weight: 800;
+            font-size: 10pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .level-excellent { background-color: #dcfce7; color: #166534; }
+        .level-good { background-color: #dbeafe; color: #1e40af; }
+        .level-satisfactory { background-color: #fef9c3; color: #854d0e; }
+        .level-needs_improvement { background-color: #ffedd5; color: #9a3412; }
+        .level-unsatisfactory { background-color: #fee2e2; color: #991b1b; }
+        
+        /* KPI Table Section */
+        .section-header {
+            margin-top: 40px;
+            margin-bottom: 15px;
+        }
+        .section-title {
+            font-size: 12pt;
+            font-weight: 800;
+            color: #0f172a;
+            border-left: 4px solid #3b82f6;
+            padding-left: 12px;
+        }
+        
+        .kpi-table {
+            width: 100%;
+            border-collapse: collapse;
         }
         .kpi-table th {
-            background-color: #edf2f7;
-            color: #2d3748;
-            padding: 10px;
             text-align: left;
-            font-size: 10pt;
-            border-bottom: 2px solid #cbd5e0;
+            font-size: 8pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            padding: 12px 15px;
+            background-color: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
         }
         .kpi-table td {
-            padding: 10px;
-            border-bottom: 1px solid #edf2f7;
+            padding: 15px;
+            border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
         }
-        .progress-container {
-            width: 100%;
-            background-color: #edf2f7;
-            height: 12px;
-            border-radius: 6px;
-            overflow: hidden;
+        .kpi-name {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 10pt;
         }
-        .progress-bar {
-            height: 100%;
-            background-color: #4299e1;
+        .kpi-desc {
+            font-size: 8pt;
+            color: #64748b;
+            margin-top: 2px;
         }
-        .score-box {
-            font-weight: bold;
-            text-align: right;
-            color: #2b6cb0;
-        }
-        .badge {
-            padding: 3px 8px;
+        
+        /* Progress Bar Styling */
+        .progress-track {
+            width: 100px;
+            height: 8px;
+            background-color: #e2e8f0;
             border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #3b82f6;
+        }
+        .progress-fill-success { background-color: #22c55e; }
+        .progress-fill-warning { background-color: #f59e0b; }
+        .progress-fill-danger { background-color: #ef4444; }
+        
+        /* Category Groups */
+        .category-row {
+            background-color: #f1f5f9;
+        }
+        .category-name {
+            font-weight: 800;
+            color: #475569;
             font-size: 9pt;
-            color: white;
-            font-weight: bold;
+            padding: 8px 15px !important;
         }
-        .badge-excellent { background-color: #38a169; }
-        .badge-good { background-color: #3182ce; }
-        .badge-satisfactory { background-color: #d69e2e; }
-        .badge-improvement { background-color: #dd6b20; }
-        .badge-poor { background-color: #e53e3e; }
-
-        .signature-table {
-            margin-top: 50px;
+        
+        /* Incidents */
+        .incident-card {
+            border: 1px solid #fee2e2;
+            background-color: #fffafb;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
         }
-        .signature-table td {
-            width: 50%;
+        .incident-date {
+            font-size: 8pt;
+            font-weight: 700;
+            color: #ef4444;
+        }
+        .incident-title {
+            font-weight: 700;
+            color: #991b1b;
+            margin-bottom: 4px;
+        }
+        
+        /* Signatures */
+        .signature-section {
+            margin-top: 60px;
+            width: 100%;
+        }
+        .signature-box {
+            width: 45%;
             text-align: center;
-            vertical-align: bottom;
-            padding-top: 80px;
         }
-        .signature-line {
-            width: 70%;
-            border-top: 1px solid #333;
-            margin: 0 auto;
-            margin-bottom: 5px;
+        .sig-line {
+            border-top: 1px solid #cbd5e1;
+            margin-bottom: 8px;
+            margin-top: 80px;
         }
+        .sig-name {
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .sig-role {
+            font-size: 8pt;
+            color: #64748b;
+        }
+        
+        /* Footer */
         .footer {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            font-size: 8pt;
-            color: #a0aec0;
+            bottom: 30px;
+            left: 50px;
+            right: 50px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 15px;
             text-align: center;
-            border-top: 1px solid #edf2f7;
-            padding-top: 10px;
+            font-size: 7pt;
+            color: #94a3b8;
         }
     </style>
 </head>
 <body>
-    <table class="header-table">
-        <tr>
-            <td width="150">
-                @if($config->logo_path && file_exists(public_path($config->logo_path)))
-                    <img src="{{ public_path($config->logo_path) }}" height="60">
-                @else
-                    <img src="{{ public_path('img/HRIS ARATECH logo tr.png') }}" height="60">
-                @endif
-            </td>
-            <td align="right">
-                <div class="company-name">{{ $config->company_name ?? 'ARATECHNOLOGY' }}</div>
-                <div class="company-info">
-                    {{ $config->company_address }}<br>
-                    @if($config->company_phone) Tel: {{ $config->company_phone }} @endif
-                    @if($config->company_email) | Email: {{ $config->company_email }} @endif
-                </div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="report-title">MONTHLY KPI REPORT</div>
-
-    <div class="section-header">Employee Personal Data</div>
-    <table class="info-table">
-        <tr>
-            <td class="label">Name</td>
-            <td class="value">{{ $record->employee->fullname }}</td>
-            <td class="label">Period</td>
-            <td class="value">{{ \Carbon\Carbon::createFromFormat('Y-m', $record->period)->format('F Y') }}</td>
-        </tr>
-        <tr>
-            <td class="label">Employee ID</td>
-            <td class="value">{{ $record->employee->employee_id ?? 'ARA-'.str_pad($record->employee->id, 4, '0', STR_PAD_LEFT) }}</td>
-            <td class="label">Department</td>
-            <td class="value">{{ $record->employee->department->name }}</td>
-        </tr>
-        <tr>
-            <td class="label">Position</td>
-            <td class="value">{{ $record->employee->role?->title ?? 'N/A' }}</td>
-            <td class="label">Supervisor</td>
-            <td class="value">{{ $record->employee->supervisor?->fullname ?? 'Management' }}</td>
-        </tr>
-    </table>
-
-    <div class="summary-box">
-        <span class="summary-label">OVERALL PERFORMANCE SCORE</span>
-        <span class="summary-score">{{ number_format($record->composite_score, 1) }}%</span>
-        <span class="badge {{ 
-            $record->composite_score >= 90 ? 'badge-excellent' : 
-            ($record->composite_score >= 75 ? 'badge-good' : 
-            ($record->composite_score >= 60 ? 'badge-satisfactory' : 
-            ($record->composite_score >= 45 ? 'badge-improvement' : 'badge-poor')))
-        }}">
-            @if($record->composite_score >= 90) EXCELLENT PERFORMANCE
-            @elseif($record->composite_score >= 75) GOOD PERFORMANCE
-            @elseif($record->composite_score >= 60) SATISFACTORY PERFORMANCE
-            @elseif($record->composite_score >= 45) NEEDS IMPROVEMENT
-            @else UNSATISFACTORY PERFORMANCE
+    <div class="header">
+        <div class="header-logo">
+            @if($config->logo_path && file_exists(public_path($config->logo_path)))
+                <img src="{{ public_path($config->logo_path) }}" height="50">
+            @else
+                {{-- Fallback text logo if file not found --}}
+                <div style="font-size: 24pt; font-weight: 900; letter-spacing: -1px;">COREVO</div>
             @endif
-        </span>
+        </div>
+        <div class="header-company">
+            <div class="company-name">{{ $config->company_name ?? 'ARATECHNOLOGY' }}</div>
+            <div class="company-info">
+                {{ $config->company_address }}<br>
+                @if($config->company_phone) Tel: {{ $config->company_phone }} @endif
+                @if($config->company_email) | Email: {{ $config->company_email }} @endif
+            </div>
+        </div>
+        <div class="clearfix"></div>
     </div>
 
-    <div class="section-header">KPI Item Breakdown</div>
-    <table class="kpi-table">
-        <thead>
-            <tr>
-                <th width="30%">KPI Category</th>
-                <th width="45%">Achievement Level</th>
-                <th width="25%" align="right">Score (%)</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td><strong>Attendance</strong></td>
-                <td>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width: {{ $record->attendance_score }}%;"></div>
-                    </div>
-                </td>
-                <td align="right" class="score-box">{{ number_format($record->attendance_score, 1) }}%</td>
-            </tr>
-            <tr>
-                <td><strong>Productivity / Tasks</strong></td>
-                <td>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width: {{ $record->tasks_score }}%;"></div>
-                    </div>
-                </td>
-                <td align="right" class="score-box">{{ number_format($record->tasks_score, 1) }}%</td>
-            </tr>
-            <tr>
-                <td><strong>Quality</strong></td>
-                <td>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width: {{ $record->quality_score }}%;"></div>
-                    </div>
-                </td>
-                <td align="right" class="score-box">{{ number_format($record->quality_score, 1) }}%</td>
-            </tr>
-            <tr>
-                <td><strong>Conduct & Behavior</strong></td>
-                <td>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width: {{ $record->conduct_score }}%;"></div>
-                    </div>
-                </td>
-                <td align="right" class="score-box">{{ number_format($record->conduct_score, 1) }}%</td>
-            </tr>
-            <tr>
-                <td><strong>Department Compliance</strong></td>
-                <td>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width: {{ $record->compliance_score }}%;"></div>
-                    </div>
-                </td>
-                <td align="right" class="score-box">{{ number_format($record->compliance_score, 1) }}%</td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="container">
+        <div class="report-title-container">
+            <h1 class="report-title">Employee Performance Report</h1>
+            <div class="report-period">Assessment Period: {{ \Carbon\Carbon::createFromFormat('Y-m', $record->period)->format('F Y') }}</div>
+        </div>
 
-    @if(isset($incidents) && $incidents->count() > 0)
-    <div class="section-header" style="background-color: #fff5f5; color: #c53030; border-left-color: #f56565;">Recorded Incidents</div>
-    <table class="kpi-table" style="font-size: 9pt;">
-        <thead>
+        <table class="employee-info-grid">
             <tr>
-                <th width="15%">Date</th>
-                <th width="20%">Type</th>
-                <th width="15%">Severity</th>
-                <th>Description</th>
+                <td class="info-cell" width="50%">
+                    <div class="info-label">Full Name</div>
+                    <div class="info-value">{{ $record->employee->fullname }}</div>
+                </td>
+                <td class="info-cell" width="50%">
+                    <div class="info-label">Employee ID</div>
+                    <div class="info-value">{{ $record->employee->employee_id ?? 'ARA-'.str_pad($record->employee->id, 4, '0', STR_PAD_LEFT) }}</div>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            @foreach($incidents as $incident)
             <tr>
-                <td>{{ $incident->incident_date->format('d/m/Y') }}</td>
-                <td>{{ ucfirst(str_replace('_', ' ', $incident->type)) }}</td>
-                <td>{{ ucfirst($incident->severity) }}</td>
-                <td>{{ $incident->description }}</td>
+                <td class="info-cell">
+                    <div class="info-label">Department</div>
+                    <div class="info-value">{{ $record->employee->department->name ?? 'N/A' }}</div>
+                </td>
+                <td class="info-cell">
+                    <div class="info-label">Position / Role</div>
+                    <div class="info-value">{{ $record->employee->role?->title ?? 'N/A' }}</div>
+                </td>
             </tr>
-            @endforeach
-        </tbody>
-    </table>
-    @endif
+            <tr>
+                <td class="info-cell">
+                    <div class="info-label">Direct Supervisor</div>
+                    <div class="info-value">{{ $record->employee->supervisor?->fullname ?? 'Management' }}</div>
+                </td>
+                <td class="info-cell">
+                    <div class="info-label">Report Generated</div>
+                    <div class="info-value">{{ now()->format('d M Y, H:i') }}</div>
+                </td>
+            </tr>
+        </table>
 
-    <table class="signature-table">
-        <tr>
-            <td>
-                <div class="signature-line"></div>
-                <strong>{{ $record->employee->fullname }}</strong><br>
-                Employee
-            </td>
-            <td>
-                <div class="signature-line"></div>
-                <strong>{{ $record->employee->supervisor?->fullname ?? 'Human Resources Department' }}</strong><br>
-                Manager / Unit Head / HR AdministratorD
-            </td>
-        </tr>
-    </table>
+        <div class="summary-section">
+            <div class="summary-title">Overall Performance Summary</div>
+            <div class="score-display">
+                {{ number_format($record->composite_score, 1) }}<span class="score-suffix">%</span>
+            </div>
+            <div class="level-badge level-{{ $record->performance_level }}">
+                {{ str_replace('_', ' ', strtoupper($record->performance_level)) }} PERFORMANCE
+            </div>
+        </div>
+
+        <div class="section-header">
+            <div class="section-title">KPI Metric Breakdown</div>
+        </div>
+
+        <table class="kpi-table">
+            <thead>
+                <tr>
+                    <th width="50%">Metric Details</th>
+                    <th width="20%" style="text-align: center;">Target</th>
+                    <th width="20%" style="text-align: center;">Actual</th>
+                    <th width="10%" style="text-align: right;">Score</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($kpisByCategory as $category => $items)
+                    <tr class="category-row">
+                        <td colspan="4" class="category-name">{{ strtoupper($category) }}</td>
+                    </tr>
+                    @foreach($items as $item)
+                        <tr>
+                            <td>
+                                <div class="kpi-name">{{ $item->kpi->name }}</div>
+                                <div class="kpi-desc">{{ $item->kpi->description ?: 'No description provided' }}</div>
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="info-value" style="font-size: 9pt;">{{ $item->target_value }}</div>
+                                <div style="font-size: 7pt; color: #94a3b8; font-weight: bold;">{{ strtoupper($item->kpi->unit) }}</div>
+                            </td>
+                            <td style="text-align: center;">
+                                <div class="info-value" style="font-size: 9pt; color: #3b82f6;">{{ $item->actual_value }}</div>
+                                <div style="font-size: 7pt; color: #94a3b8; font-weight: bold;">{{ strtoupper($item->kpi->unit) }}</div>
+                            </td>
+                            <td style="text-align: right;">
+                                <div class="info-value" style="font-size: 10pt;">{{ round($item->getAchievementPercentage(), 1) }}%</div>
+                            </td>
+                        </tr>
+                    @endforeach
+                @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 30px; color: #94a3b8;">
+                            No KPI records found for this period.
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        @if($incidents->count() > 0)
+        <div class="section-header">
+            <div class="section-title" style="border-left-color: #ef4444;">Disciplinary & Incident Records</div>
+        </div>
+        @foreach($incidents as $incident)
+            <div class="incident-card">
+                <div class="incident-date">{{ $incident->incident_date->format('d M Y') }} • {{ strtoupper($incident->severity) }}</div>
+                <div class="incident-title">{{ ucfirst(str_replace('_', ' ', $incident->type)) }}</div>
+                <div style="font-size: 9pt; color: #475569;">{{ $incident->description }}</div>
+            </div>
+        @endforeach
+        @endif
+
+        <table class="signature-section">
+            <tr>
+                <td class="signature-box" style="padding-right: 40px;">
+                    <div class="sig-line"></div>
+                    <div class="sig-name">{{ $record->employee->fullname }}</div>
+                    <div class="sig-role">Employee Signature</div>
+                </td>
+                <td width="10%"></td>
+                <td class="signature-box" style="padding-left: 40px;">
+                    <div class="sig-line"></div>
+                    <div class="sig-name">{{ $record->employee->supervisor?->fullname ?? 'Authorized Personnel' }}</div>
+                    <div class="sig-role">Manager / Supervisor Signature</div>
+                </td>
+            </tr>
+        </table>
+    </div>
 
     <div class="footer">
-        Generated on {{ date('d F Y H:i:s') }} | Ref: KPI/{{ $record->employee->id }}/{{ str_replace('-', '', $record->period) }}
+        Confidential Document • Generated by COREVO Aratech ERP System • Ref: KPI/{{ $record->employee->id }}/{{ str_replace('-', '', $record->period) }}<br>
+        © {{ date('Y') }} {{ $config->company_name ?? 'ARATECHNOLOGY' }}. All rights reserved.
     </div>
 </body>
 </html>

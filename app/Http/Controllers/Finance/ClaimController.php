@@ -20,17 +20,32 @@ class ClaimController extends Controller
         $employee = $user->employee;
 
         $query = FinancialClaim::with(['employee', 'reviewer', 'account'])
-            ->when(!$isAdmin, fn($q) => $q->where('employee_id', $employee?->id))  // non-admin: milik sendiri
+            ->when(!$isAdmin, function($q) use ($employee) {
+                if ($employee) {
+                    $q->where('employee_id', $employee->id);
+                } else {
+                    $q->where(fn($sq) => $sq->whereNull('employee_id')->orWhere('employee_id', 0));
+                }
+            })
             ->when($request->status, fn($q, $s) => $q->where('status', $s))
             ->when($request->category, fn($q, $c) => $q->where('category', $c))
             ->latest()
             ->paginate(15);
 
+        $statsQuery = FinancialClaim::query()
+            ->when(!$isAdmin, function($q) use ($employee) {
+                if ($employee) {
+                    $q->where('employee_id', $employee->id);
+                } else {
+                    $q->where(fn($sq) => $sq->whereNull('employee_id')->orWhere('employee_id', 0));
+                }
+            });
+
         $stats = [
-            'pending'  => FinancialClaim::when(!$isAdmin, fn($q) => $q->where('employee_id', $employee?->id))->pending()->count(),
-            'approved' => FinancialClaim::when(!$isAdmin, fn($q) => $q->where('employee_id', $employee?->id))->approved()->count(),
-            'rejected' => FinancialClaim::when(!$isAdmin, fn($q) => $q->where('employee_id', $employee?->id))->rejected()->count(),
-            'total_approved_amount' => FinancialClaim::when(!$isAdmin, fn($q) => $q->where('employee_id', $employee?->id))->approved()->sum('amount'),
+            'pending'  => (clone $statsQuery)->pending()->count(),
+            'approved' => (clone $statsQuery)->approved()->count(),
+            'rejected' => (clone $statsQuery)->rejected()->count(),
+            'total_approved_amount' => (clone $statsQuery)->approved()->sum('amount'),
         ];
 
         return view('finance.claims.index', compact('query', 'stats', 'isAdmin'));
@@ -108,6 +123,83 @@ class ClaimController extends Controller
 
         return redirect()->route('finance.claims.index')
             ->with('success', 'Klaim biaya berhasil diajukan dan sedang menunggu persetujuan.');
+    }
+
+    // ── Edit (tampilkan form edit) ───────────────────────────────
+    public function edit(FinancialClaim $claim)
+    {
+        $this->authorizeClaimAccess($claim);
+        
+        if (!$claim->isPending()) {
+            return redirect()->route('finance.claims.index')->with('error', 'Hanya klaim dengan status pending yang dapat diedit.');
+        }
+
+        $accounts = FinancialAccount::where('category', 'expense')->orderBy('code')->get();
+        return view('finance.claims.edit', compact('claim', 'accounts'));
+    }
+
+    // ── Update (simpan perubahan klaim) ──────────────────────────
+    public function update(Request $request, FinancialClaim $claim)
+    {
+        $this->authorizeClaimAccess($claim);
+
+        if (!$claim->isPending()) {
+            return redirect()->route('finance.claims.index')->with('error', 'Hanya klaim dengan status pending yang dapat diedit.');
+        }
+
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'category'    => 'required|in:transport,meals,operational,equipment,other',
+            'amount'      => 'required|numeric|min:1000',
+            'description' => 'nullable|string|max:1000',
+            'account_id'  => 'required|exists:financial_accounts,id',
+            'attachment'  => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120', // 5MB max
+        ]);
+
+        unset($validated['attachment']);
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            
+            if (!$file->isValid()) {
+                return back()->withErrors(['attachment' => 'File tidak valid. Error code PHP: ' . $file->getError()])->withInput();
+            }
+
+            $filename = $file->hashName();
+            $subPath  = 'claims/attachments/' . $filename;
+
+            try {
+                $content = file_get_contents($file->getRealPath());
+                if ($content === false) {
+                    return back()->withErrors(['attachment' => 'Gagal membaca isi file dari directory temp.'])->withInput();
+                }
+
+                $fullPath = storage_path("app/public/" . $subPath);
+                $dir = dirname($fullPath);
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0777, true);
+                }
+
+                $stored = file_put_contents($fullPath, $content);
+                if ($stored === false) {
+                    return back()->withErrors(['attachment' => "Gagal write file."])->withInput();
+                }
+
+                // Hapus attachment lama jika ada
+                if ($claim->attachment_path && file_exists(storage_path("app/public/" . $claim->attachment_path))) {
+                    @unlink(storage_path("app/public/" . $claim->attachment_path));
+                }
+
+                $validated['attachment_path'] = $subPath;
+            } catch (\Exception $e) {
+                return back()->withErrors(['attachment' => 'Exception: ' . $e->getMessage()])->withInput();
+            }
+        }
+
+        $claim->update($validated);
+
+        return redirect()->route('finance.claims.index')
+            ->with('success', 'Klaim biaya berhasil diperbarui.');
     }
 
     public function show(FinancialClaim $claim)

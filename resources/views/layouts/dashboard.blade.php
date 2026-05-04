@@ -578,9 +578,9 @@
 
                         // Visibility helpers
                         $isMasterAdmin = $user->isMasterAdmin();
-                        $showPayrollGroup = $isMasterAdmin || $isAdmin || $isManager || $hasKpiAccess;
+                        $showPayrollGroup = $isMasterAdmin || $isAdmin || $isFinanceRole || $isManager || $hasKpiAccess;
                         $showInventoryLogs = $isMasterAdmin || $isAdmin || $isManager || $user->hasAccess('inventory_logs');
-                        $showInventoryAdmin = $isMasterAdmin || $isAdmin || $user->hasAccess('inventory');
+                        $showInventoryAdmin = $isMasterAdmin || $isAdmin || $isFinanceRole || $user->hasAccess('inventory');
 
                         $systemMenuActive = $activeRoles || request()->is('audit-trail*') || request()->is('system*');
                         $hrMenuActive = $activeEmployees || $activeEmployeeApprovals || $activeDepartments || $activeOfficeLocations || $activeTasks || $activeLeaveRequests || $activeIncidents;
@@ -697,7 +697,7 @@
                             <i class="bi bi-chevron-right chevron"></i>
                         </div>
                         <ul class="menu-group-items">
-                            @if($isMasterAdmin || $isAdmin || $isManager)
+                            @if($isAdmin || $isMasterAdmin || $isFinanceRole)
                             <li class="sidebar-item {{ $activePayroll ? 'active' : '' }}">
                                 <a href="{{ url('/payrolls') }}" class="sidebar-link">
                                     <i class="bi bi-currency-dollar"></i>
@@ -737,12 +737,12 @@
                     </li>
                     @endif
 
-                    <!-- BUKU KAS & KEUANGAN MODULE (RBAC) -->
-                    @if($isAdmin || $isMasterAdmin || $isManager || $isMarketing || $isSupervisor || $isFinanceRole)
+                    <!-- BUKU KAS & INVENTORY MODULE -->
+                    @if($isAdmin || $isMasterAdmin || $isManager || $isMarketing || $isSupervisor || $isFinanceRole || $hasInventoryAccess)
                     <li class="menu-group expanded">
                         <div class="menu-group-header">
                             <i class="bi bi-wallet2 group-icon"></i>
-                            <span>Cashbook & Finance</span>
+                            <span>Finance & Inventory</span>
                             <i class="bi bi-chevron-right chevron"></i>
                         </div>
                         <ul class="menu-group-items">
@@ -795,18 +795,10 @@
                                 </a>
                             </li>
                             @endif
-                        </ul>
-                    </li>
-                    @endif
-
-                    <!-- INVENTORY -->
-                    <li class="menu-group expanded">
-                        <div class="menu-group-header">
-                            <i class="bi bi-boxes group-icon"></i>
-                            <span>Inventory</span>
-                            <i class="bi bi-chevron-right chevron"></i>
-                        </div>
-                        <ul class="menu-group-items">
+                            @if($hasInventoryAccess || $showInventoryAdmin || $showInventoryLogs)
+                            <hr class="mx-3 my-1 border-light opacity-25">
+                            <li class="px-3 text-xs fw-bold mt-2 mb-1" style="color:var(--sidebar-muted);">INVENTORY</li>
+                            @endif
                             @if($showInventoryAdmin)
                             <li class="sidebar-item {{ $activeInventoryCategories ? 'active' : '' }}">
                                 <a href="{{ url('/inventory-categories') }}" class="sidebar-link">
@@ -835,7 +827,7 @@
                                     <span>Requests</span>
                                 </a>
                             </li>
-                            @if($isMasterAdmin || false || $user->hasAccess('inventory'))
+                            @if($isMasterAdmin || $isFinanceRole || $user->hasAccess('inventory'))
                             <hr class="mx-3 my-1 border-light opacity-25">
                             <li class="sidebar-item {{ $activeVendors ? 'active' : '' }}">
                                 <a href="{{ url('/vendors') }}" class="sidebar-link">
@@ -864,6 +856,7 @@
                             @endif
                         </ul>
                     </li>
+                    @endif
 
                     <!-- LETTERS -->
                     <li class="menu-group expanded">

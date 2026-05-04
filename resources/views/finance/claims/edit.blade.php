@@ -1,6 +1,6 @@
 @extends('layouts.dashboard')
 
-@section('title', 'Ajukan Klaim Biaya')
+@section('title', 'Edit Klaim Biaya')
 
 @push('styles')
 <style>
@@ -44,8 +44,8 @@
 <div class="form-hero shadow">
     <div class="d-flex align-items-center justify-content-between">
         <div>
-            <p class="fh-title">➕ Ajukan Klaim Biaya Baru</p>
-            <p class="fh-sub">Lengkapi formulir di bawah untuk mengajukan reimbursement biaya operasional</p>
+            <p class="fh-title">✏️ Edit Klaim Biaya</p>
+            <p class="fh-sub">Perbarui informasi klaim biaya operasional Anda</p>
         </div>
         <a href="{{ route('finance.claims.index') }}" class="btn btn-sm mb-0"
            style="background:rgba(255,255,255,.15);color:#fff;border-radius:8px;font-size:.78rem;padding:.4rem 1rem;border:1px solid rgba(255,255,255,.25)">
@@ -70,8 +70,9 @@
     <div class="col-lg-9">
         <div class="card border-0 shadow-sm" style="border-radius:14px">
             <div class="card-body p-4">
-                <form action="{{ route('finance.claims.store') }}" method="POST" enctype="multipart/form-data">
+                <form action="{{ route('finance.claims.update', $claim->id) }}" method="POST" enctype="multipart/form-data">
                     @csrf
+                    @method('PUT')
 
                     <div class="mb-4">
                         <label class="fin-label">Kategori Klaim <span class="text-danger">*</span></label>
@@ -87,7 +88,7 @@
                             @endphp
                             @foreach($categories as $slug => $data)
                             <div class="cat-item">
-                                <input type="radio" name="category" id="cat_{{ $slug }}" value="{{ $slug }}" class="cat-card-opt" required {{ old('category') == $slug ? 'checked' : '' }}>
+                                <input type="radio" name="category" id="cat_{{ $slug }}" value="{{ $slug }}" class="cat-card-opt" required {{ old('category', $claim->category) == $slug ? 'checked' : '' }}>
                                 <label for="cat_{{ $slug }}" class="cat-card-lbl w-100">
                                     <span class="cc-icon">{{ $data[0] }}</span>
                                     <span class="cc-name">{{ $data[1] }}</span>
@@ -100,12 +101,12 @@
                     <div class="row g-3 mb-4">
                         <div class="col-md-8">
                             <label class="fin-label" for="title">Judul Klaim <span class="text-danger">*</span></label>
-                            <input type="text" name="title" id="title" class="fin-input @error('title') is-invalid @enderror" value="{{ old('title') }}" placeholder="Contoh: Transport Meeting Klien" required>
+                            <input type="text" name="title" id="title" class="fin-input @error('title') is-invalid @enderror" value="{{ old('title', $claim->title) }}" placeholder="Contoh: Transport Meeting Klien" required>
                             @error('title')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         <div class="col-md-4">
                             <label class="fin-label" for="amount">Nominal (Rp) <span class="text-danger">*</span></label>
-                            <input type="number" name="amount" id="amount" class="fin-input @error('amount') is-invalid @enderror" value="{{ old('amount') }}" placeholder="0" required>
+                            <input type="number" name="amount" id="amount" class="fin-input @error('amount') is-invalid @enderror" value="{{ old('amount', $claim->amount) }}" placeholder="0" required>
                             @error('amount')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
@@ -122,7 +123,7 @@
                         <select name="account_id" id="account_id" class="fin-input @error('account_id') is-invalid @enderror" required>
                             <option value="">— Pilih Akun Biaya —</option>
                             @foreach($accounts as $acc)
-                                <option value="{{ $acc->id }}" {{ old('account_id') == $acc->id ? 'selected' : '' }}>
+                                <option value="{{ $acc->id }}" {{ old('account_id', $claim->account_id) == $acc->id ? 'selected' : '' }}>
                                     [{{ $acc->code }}] {{ $acc->name }}
                                 </option>
                             @endforeach
@@ -133,19 +134,21 @@
 
                     <div class="mb-4">
                         <label class="fin-label" for="description">Deskripsi Lengkap</label>
-                        <textarea name="description" id="description" rows="3" class="fin-input" placeholder="Jelaskan detail pengeluaran...">{{ old('description') }}</textarea>
+                        <textarea name="description" id="description" rows="3" class="fin-input" placeholder="Jelaskan detail pengeluaran...">{{ old('description', $claim->description) }}</textarea>
                     </div>
 
                     <div class="mb-4">
-                        <label class="fin-label" for="attachment">Bukti Pendukung (Foto Struk/PDF) <span class="text-danger">*</span></label>
-                        <input type="file" name="attachment" id="attachment" class="fin-input" accept="image/*,.pdf" required>
-                        <p class="text-xs text-muted mt-1">Upload foto kuitansi atau struk asli. Max 5MB.</p>
+                        <label class="fin-label" for="attachment">Bukti Pendukung (Foto Struk/PDF) <span class="text-muted fw-normal">(Biarkan kosong jika tidak diubah)</span></label>
+                        <input type="file" name="attachment" id="attachment" class="fin-input" accept="image/*,.pdf">
+                        @if($claim->attachment_path)
+                            <p class="text-xs mt-2">File saat ini: <a href="{{ asset('storage/' . $claim->attachment_path) }}" target="_blank" class="text-primary text-decoration-underline"><i class="bi bi-file-earmark-text"></i> Lihat Bukti</a></p>
+                        @endif
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
                         <a href="{{ route('finance.claims.index') }}" class="btn btn-outline-secondary mb-0" style="border-radius:9px">Batal</a>
-                        <button type="submit" class="btn btn-primary mb-0 px-4" style="border-radius:9px">
-                            <i class="bi bi-send me-1"></i>Kirim Pengajuan
+                        <button type="submit" class="btn btn-warning mb-0 px-4" style="border-radius:9px; color:white;">
+                            <i class="bi bi-save me-1"></i>Simpan Perubahan
                         </button>
                     </div>
                 </form>

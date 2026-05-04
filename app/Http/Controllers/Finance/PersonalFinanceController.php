@@ -15,13 +15,24 @@ class PersonalFinanceController extends Controller
         $user = auth()->user();
         $employee = $user->employee;
 
+        $employeeId = $employee?->id;
+
         // Base data for the employee
-        $claims = FinancialClaim::where('employee_id', $employee?->id)->latest()->take(5)->get();
+        $claimsQuery = FinancialClaim::query();
+        if ($employeeId) {
+            $claimsQuery->where('employee_id', $employeeId);
+        } else {
+            $claimsQuery->where(function($q) {
+                $q->whereNull('employee_id')->orWhere('employee_id', 0);
+            });
+        }
+
+        $claims = (clone $claimsQuery)->latest()->take(5)->get();
 
         $stats = [
-            'total_claims_pending'  => FinancialClaim::where('employee_id', $employee?->id)->pending()->count(),
-            'total_claims_approved' => FinancialClaim::where('employee_id', $employee?->id)->approved()->sum('amount'),
-            'total_claims_rejected' => FinancialClaim::where('employee_id', $employee?->id)->rejected()->count(),
+            'total_claims_pending'  => (clone $claimsQuery)->pending()->count(),
+            'total_claims_approved' => (clone $claimsQuery)->approved()->sum('amount'),
+            'total_claims_rejected' => (clone $claimsQuery)->rejected()->count(),
         ];
 
         // Safely fetch payroll data if the model/table exists

@@ -101,7 +101,8 @@ Route::middleware(['auth'])->group(function () {
     // Resource routes for payroll
     Route::get("payrolls/attendance-data", [PayrollsController::class, "getAttendanceData"])->name("payrolls.attendance-data")->middleware(["role:" . Roles::HR_ADMINISTRATOR . "," . Roles::MASTER_ADMIN]);
     Route::get("payrolls/employee-data", [PayrollsController::class, "getEmployeeData"])->name("payrolls.employee-data")->middleware(["role:" . Roles::HR_ADMINISTRATOR . "," . Roles::MASTER_ADMIN]);
-    Route::resource('payrolls', PayrollsController::class)->only(['index', 'show']);
+    Route::resource('payrolls', PayrollsController::class)->only(['index', 'show'])
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE]);
     Route::resource('payrolls', PayrollsController::class)->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
 
@@ -133,32 +134,32 @@ Route::middleware(['auth'])->group(function () {
     Route::get('leave-requests/reject/{id}', [LeaveRequestController::class, 'reject'])->name('leave-requests.reject')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head']);
     
     // Resource routes for inventory categories
-    Route::resource('inventory-categories', InventoryCategoryController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory']);
+    Route::resource('inventory-categories', InventoryCategoryController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory,' . Roles::FINANCE]);
     
     // Resource routes for inventories
-    Route::resource('inventories', InventoryController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory']);
+    Route::resource('inventories', InventoryController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory,' . Roles::FINANCE]);
     
     // Resource routes for inventory usage logs
-    Route::resource('inventory-usage-logs', InventoryUsageLogController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head,inventory_logs']);
+    Route::resource('inventory-usage-logs', InventoryUsageLogController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head,inventory_logs,' . Roles::FINANCE]);
 
     // Resource routes for inventory requests
     Route::resource('inventory-requests', InventoryRequestController::class);
-    Route::get('inventory-requests/approve/{id}', [InventoryRequestController::class, 'approve'])->name('inventory-requests.approve')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory']);
-    Route::get('inventory-requests/reject/{id}', [InventoryRequestController::class, 'reject'])->name('inventory-requests.reject')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory']);
+    Route::get('inventory-requests/approve/{id}', [InventoryRequestController::class, 'approve'])->name('inventory-requests.approve')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory,' . Roles::FINANCE]);
+    Route::get('inventory-requests/reject/{id}', [InventoryRequestController::class, 'reject'])->name('inventory-requests.reject')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory,' . Roles::FINANCE]);
 
     // Vendor Management
     Route::resource('vendors', VendorController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
 
     // Procurement Workflow
-    Route::resource('procurements', ProcurementController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head,inventory']);
-    Route::get('procurements/order/{id}', [ProcurementController::class, 'markAsOrdered'])->name('procurements.order')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory']);
-    Route::get('procurements/receive/{id}', [ProcurementController::class, 'receive'])->name('procurements.receive')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory']);
+    Route::resource('procurements', ProcurementController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head,inventory,' . Roles::FINANCE]);
+    Route::get('procurements/order/{id}', [ProcurementController::class, 'markAsOrdered'])->name('procurements.order')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory,' . Roles::FINANCE]);
+    Route::get('procurements/receive/{id}', [ProcurementController::class, 'receive'])->name('procurements.receive')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',inventory,' . Roles::FINANCE]);
 
     // Inventory Dispatches (Releases) with Barcode
-    Route::resource('inventory-dispatches', InventoryDispatchController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head,inventory']);
+    Route::resource('inventory-dispatches', InventoryDispatchController::class)->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head,inventory,' . Roles::FINANCE]);
 
     // Logistics Tracking
-    Route::resource('logistics-shipments', LogisticsShipmentController::class)->only(['index', 'edit', 'update'])->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head,inventory']);
+    Route::resource('logistics-shipments', LogisticsShipmentController::class)->only(['index', 'edit', 'update'])->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',Manager / Unit Head,inventory,' . Roles::FINANCE]);
 
     // Resource routes for letters - all authenticated users can create/submit
     Route::resource('letters', LetterController::class)->middleware(['auth']);
@@ -191,6 +192,7 @@ Route::middleware(['auth'])->group(function () {
 
     // KPI and Reporting routes
     Route::get('kpi/dashboard', [KPIController::class, 'dashboard'])->name('kpi.dashboard');
+    Route::post('kpi/store', [KPIController::class, 'store'])->name('kpi.store')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
     Route::get('kpi/employee/{id}', [KPIController::class, 'show'])->name('kpi.show');
     Route::get('kpi/trend/{id}', [KPIController::class, 'trend'])->name('kpi.trend');
     Route::get('kpi/team', [KPIController::class, 'team'])->name('kpi.team')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
@@ -204,6 +206,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('kpi/pending', [KPIController::class, 'pendingApprovals'])->name('kpi.pending')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
     Route::post('kpi/approve/{id}', [KPIController::class, 'approve'])->name('kpi.approve')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
     Route::post('kpi/reject/{id}', [KPIController::class, 'reject'])->name('kpi.reject')->middleware(['role:Manager / Unit Head,' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+    Route::delete('kpi/record/{id}', [KPIController::class, 'destroy'])->name('kpi.destroy-record');
     
     // KPI Admin Manual Edit (Master Admin / HR Administrator only)
     Route::get('kpi/{employee}/records/{record}/admin-edit', [KPIController::class, 'adminEdit'])->name('kpi.admin-edit')->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
