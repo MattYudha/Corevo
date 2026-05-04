@@ -63,7 +63,7 @@
 <body>
     <div class="error-card">
         <div class="logo-box">
-            <img src="{{ asset('img/HRIS ARATECH logo tr.png') }}" alt="Logo">
+            <img src="{{ asset('corevo-logo.png') }}" alt="Logo">
         </div>
         
         <div class="mb-3">
