@@ -752,22 +752,18 @@
         startGPSFree(mode);
     }
 
-    // ============ FACE DETECTION (All Modes) ============
     async function initFaceDetectionForMode(mode) {
         const statusEl = document.getElementById('face-status-' + mode);
         const videoContainer = document.getElementById('video-container-' + mode);
         const previewContainer = document.getElementById('preview-container-' + mode);
         const previewImg = document.getElementById('preview-img-' + mode);
 
-        statusEl.innerHTML = '<span class="badge bg-warning">Loading AI Model...</span>';
+        statusEl.innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Requesting camera access...</span>';
 
         try {
-            const MODEL_URL = '{{ asset("vendor/face-api/weights") }}';
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            
-            // Check if the camera is already on to avoid double requesting camera access
             let stream = mode === 'wfo' ? videoStream : videoStreams[mode];
             if (!stream) {
+                // This will trigger the permission popup instantly
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 if (mode === 'wfo') videoStream = stream;
                 else videoStreams[mode] = stream;
@@ -776,19 +772,34 @@
             const videoEl = document.getElementById('video-' + mode);
             videoEl.srcObject = stream;
 
-            statusEl.innerHTML = `
-                <span class="badge bg-info text-wrap text-start lh-base p-2 w-100 shadow-sm">
-                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Waiting for face movement...
-                </span>`;
+            statusEl.innerHTML = '<span class="badge bg-primary"><i class="bi bi-cpu"></i> Camera is active. Loading AI...</span>';
+            const MODEL_URL = '{{ asset("vendor/face-api/weights") }}';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
 
-            // Call the detection loop function
+            statusEl.innerHTML = '<span class="badge bg-info"><i class="bi bi-person-bounding-box"></i> Waiting for face movement...</span>';
+
             startFaceDetectionLoop(mode, videoEl, statusEl, videoContainer, previewContainer, previewImg);
 
         } catch (err) {
+            let errorMsg = err.message;
+
+            if (err.name === 'NotAllowedError' || errorMsg.includes('not allowed')) {
+                errorMsg = 'Access denied. Please allow camera access, then click Retry below.';
+            } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                errorMsg = 'No camera was found on this device.';
+            } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                errorMsg = 'The camera is currently in use by another application.';
+            }
+
+            // Replace badge with alert + retry button
             statusEl.innerHTML = `
-                <span class="badge bg-danger text-wrap text-start lh-base p-2 w-100 shadow-sm">
-                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Camera Failed: ${errorMsg}
-                </span>`;
+                <div class="alert alert-danger text-wrap text-start lh-base p-2 mt-2 mb-0 shadow-sm" style="font-size: 0.85rem;">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Error:</strong> ${errorMsg}
+                    <hr class="my-2 border-danger" style="opacity: 0.3;">
+                    <button type="button" class="btn btn-sm btn-danger w-100" onclick="initFaceDetectionForMode('${mode}')">
+                        <i class="bi bi-camera-video"></i> Retry Camera
+                    </button>
+                </div>`;
         }
     }
 
