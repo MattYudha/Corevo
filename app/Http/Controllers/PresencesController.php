@@ -537,7 +537,11 @@ class PresencesController extends Controller
             return redirect()->route('presences.index')->with('error', 'No check-in record found for today. Please check in first.');
         }
 
-        $officeLocationConfig = $this->resolveOfficeLocationForPresence($presence, $employee);
+        $workType = $presence->work_type ?? 'WFO';
+        // Only resolve office location config for WFO; WFH/WFA don't need it
+        $officeLocationConfig = $workType === 'WFO'
+            ? $this->resolveOfficeLocationForPresence($presence, $employee)
+            : $this->defaultOfficeLocationConfig();
         $checkInTime = Carbon::parse($presence->check_in)->format('H:i:s');
 
         return view('presences.checkout', compact('presence', 'checkInTime', 'officeLocationConfig'));
@@ -567,7 +571,11 @@ class PresencesController extends Controller
             return redirect()->route('presences.index')->with('error', 'No check-in record found for today. Please check in first.');
         }
 
-        $officeLocationConfig = $this->resolveOfficeLocationForPresence($presence, $employee);
+        $workType = $presence->work_type ?? 'WFO';
+        // Only resolve office location config for WFO; WFH/WFA don't need geofencing
+        $officeLocationConfig = $workType === 'WFO'
+            ? $this->resolveOfficeLocationForPresence($presence, $employee)
+            : $this->defaultOfficeLocationConfig();
 
         // Validate check-out cannot be before check-in
         $checkInTime = Carbon::parse($presence->check_in);
