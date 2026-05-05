@@ -474,7 +474,9 @@
                 </div>
             </div>
             <div class="rpt-card-body">
-                <canvas id="cashflowChart" style="max-height: 260px"></canvas>
+                <div style="position: relative; height: 260px; width: 100%;">
+                    <canvas id="cashflowChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -688,7 +690,7 @@ new Chart(document.getElementById('cashflowChart'), {
     },
     options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: { display: false },
             tooltip: {

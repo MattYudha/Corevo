@@ -21,6 +21,11 @@ class EmployeeKPIRecord extends Model
         'calculation_method',
         'composite_score',
         'performance_level',
+        'submission_status',
+        'submitted_at',
+        'reviewed_by',
+        'reviewed_at',
+        'reviewer_notes',
     ];
 
     protected $casts = [
