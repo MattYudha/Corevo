@@ -103,7 +103,7 @@ class NewPasswordController extends Controller
         $email = session('otp_verified_email');
         if (!$email) return redirect()->route('password.request')->withErrors(['email' => 'Session expired, please request a new OTP code.']);
 
-        return view('auth.password-reset-form.blade', ['email' => $email]);
+        return view('auth.password-reset-form', ['email' => $email]);
     }
 
     // Process Saving the New Password
