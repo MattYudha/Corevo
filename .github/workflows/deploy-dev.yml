@@ -19,11 +19,10 @@ jobs:
           script: |
             cd ~/htdocs/corevo-dev.aratechnology.id
 
-            echo "-- Pulling the new code"
-            git reset --hard HEAD
-
-            echo "-- Pulling the new code"
-            git pull origin billdev
+            echo "-- Force pulling the new code"
+            git fetch --all
+            git reset --hard origin/billdev
+            git clean -fd
 
             echo "-- Update PHP Vendor"
             composer install --no-dev --optimize-autoloader
