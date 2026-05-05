@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="mb-6 text-center">
         <h2 class="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2 tracking-tight">Sign in to your account</h2>
-        <p class="text-sm text-zinc-500 dark:text-zinc-400">Silakan masukkan email dan password Anda.</p>
+        <p class="text-sm text-zinc-500 dark:text-zinc-400">Enter your email and password to continue.</p>
     </div>
 
     <!-- Session Status -->

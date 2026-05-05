@@ -276,6 +276,11 @@
             opacity: 1;
         }
 
+        .logo-dark { display: none; }
+
+        [data-bs-theme='dark'] .logo-light { display: none; }
+        [data-bs-theme='dark'] .logo-dark { display: block; }
+        
         /* ── Desktop Sidebar Layout ── */
         @media screen and (min-width: 992px) {
             #main { margin-left: var(--sidebar-width); transition: margin-left var(--sidebar-transition); }
@@ -491,8 +496,8 @@
                 {{-- Logo — centered --}}
                 <div class="d-flex justify-content-center align-items-center w-100">
                     <a href="{{ url('/dashboard') }}" class="d-inline-flex align-items-center justify-content-center text-decoration-none">
-                        <img src="{{ asset('corevo-logo.png') }}" id="sidebar-logo"
-                             style="height:80px; width:auto; max-width:150px; object-fit:contain;">
+                            <img src="{{ asset('corevo-logo.png') }}" id="sidebar-logo" class="logo-light" style="height:80px; width:auto; max-width:150px; object-fit:contain;">
+                            <img src="{{ asset('corevo-logo-white.png') }}" id="sidebar-logo" class="logo-dark" style="height:80px; width:auto; max-width:150px; object-fit:contain;">
                     </a>
                 </div>
 
@@ -1010,7 +1015,8 @@
         <header class="mobile-nav-header d-xl-none">
             <div class="mobile-top-bar">
                 <div class="app-brand">
-                    <img src="{{ asset('corevo-logo.png') }}" style="height: 30px;" alt="Logo" onerror="this.style.display='none'">
+                    <img src="{{ asset('corevo-logo.png') }}" alt="Logo" class="logo-light" style="height: 30px;" onerror="this.style.display='none'">
+                    <img src="{{ asset('corevo-logo-white.png') }}" alt="Logo" class="logo-dark" style="height: 30px;" onerror="this.style.display='none'">
                     {{-- <span class="fw-bolder" style="color: #1a1f3c; font-size: 1.05rem; letter-spacing: -0.02em;">Aratech </span> --}}
                 </div>
                 <button class="burger-btn mobile-burger-btn" aria-label="Buka menu navigasi">

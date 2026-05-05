@@ -99,18 +99,26 @@
                     <div class="absolute inset-0 bg-white/40 dark:bg-white/10 blur-2xl rounded-full scale-[1.8] z-0 transition-opacity duration-300"></div>
                     <div class="absolute inset-0 bg-primary/10 dark:bg-primary/20 blur-3xl rounded-full scale-[2] z-0 transition-opacity duration-300"></div>
                     <!-- Logo Image -->
-                    <img src="{{ asset('corevo-logo.png') }}" alt="Aratech Logo" class="relative z-10 h-24 md:h-26 w-auto object-contain transition-transform duration-500 group-hover:scale-105">
+                    <img src="{{ asset('corevo-logo.png') }}" alt="Aratech Logo" class="dark:hidden relative z-10 h-24 md:h-26 w-auto object-contain transition-transform duration-500 group-hover:scale-105">
+                    <img src="{{ asset('corevo-logo-white.png') }}" alt="Aratech Logo" class="hidden dark:block relative z-10 h-24 md:h-26 w-auto object-contain transition-transform duration-500 group-hover:scale-105">
                 </div>
 
                 <!-- Headline -->
-                <h1 class="text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-zinc-900 dark:text-white mb-6 leading-[1.15] tracking-tight transition-colors duration-300">
-                    Human Resource<br/>
-                    <span class="text-primary dark:text-primary-focus transition-colors duration-300">Information System.</span>
+                <h1 class="flex flex-col gap-5 text-4xl md:text-5xl lg:text-[3.5rem] font-bold text-zinc-900 dark:text-white mb-6 leading-[1.15] tracking-tight transition-colors duration-300">
+    
+                    <span>
+                        THE CORE OF
+                    </span>
+                    
+                    <span class="text-primary dark:text-primary-focus transition-colors duration-300">
+                        YOUR OPERATIONS
+                    </span>
+
                 </h1>
                 
                 <!-- Description -->
                 <p class="text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-lg leading-relaxed transition-colors duration-300 mx-auto">
-                    Platform terpadu untuk mengelola sumber daya manusia dengan efisien, presisi, dan aman.
+                    Everything you need to run your operations in one place
                 </p>
             </div>
             
@@ -127,26 +135,36 @@
         </section>
 
         <!-- Right Pane: Form Area -->
-        <section class="flex flex-col items-center justify-center p-6 sm:p-12 relative bg-white dark:bg-surface-base transition-colors duration-300 z-0">
-            <div class="w-full max-w-[400px] relative z-10">
+        <section class="flex flex-col items-center justify-center min-h-screen px-4 sm:px-6 lg:px-12 py-8 sm:py-12 relative bg-white dark:bg-surface-base transition-colors duration-300 z-0">
+    
+            <div class="w-full max-w-md sm:max-w-lg lg:max-w-md relative z-10">
                 
                 <!-- Branding Header -->
-                <div class="mb-10 text-center flex flex-col items-center">
-                    <img src="{{ asset('corevo-logo.png') }}" class="h-20 sm:h-20 md:h-20 w-auto max-w-[80vw] object-contain mb-8 transition-transform hover:scale-105" alt="HRIS Aratech Logo">
+                <div class="mb-8 sm:mb-10 text-center flex flex-col items-center">
+                    <img 
+                        src="{{ asset('corevo-logo.png') }}" 
+                        class="dark:hidden h-14 sm:h-16 md:h-20 w-auto object-contain mb-6 sm:mb-8 transition-transform hover:scale-105" 
+                        alt="HRIS Aratech Logo"
+                    >
+                    <img 
+                        src="{{ asset('corevo-logo-white.png') }}" 
+                        class="hidden dark:block h-14 sm:h-16 md:h-20 w-auto object-contain mb-6 sm:mb-8 transition-transform hover:scale-105" 
+                        alt="HRIS Aratech Logo"
+                    >
                 </div>
 
-                <!-- SLOTTED CONTENT GOES HERE -->
-                <div class="bg-surface-lightCard dark:bg-surface-card border border-surface-lightBorder dark:border-surface-border rounded-xl p-8 shadow-xl shadow-zinc-200/50 dark:shadow-black/50 relative overflow-hidden transition-colors duration-300">
-                    <!-- Subtle top inner border for 3D effect in dark mode -->
+                <!-- Card -->
+                <div class="bg-surface-lightCard dark:bg-surface-card border border-surface-lightBorder dark:border-surface-border rounded-xl p-5 sm:p-6 md:p-8 shadow-lg sm:shadow-xl shadow-zinc-200/50 dark:shadow-black/50 relative overflow-hidden transition-colors duration-300">
+                    
+                    <!-- Subtle top inner border -->
                     <div class="absolute top-0 left-0 right-0 h-[1px] bg-white/5 hidden dark:block"></div>
                     
                     {{ $slot }}
-                    
                 </div>
                 
-                <!-- Footer (Mobile) -->
-                <div class="mt-12 text-center lg:hidden">
-                    <p class="text-xs font-semibold text-zinc-500 tracking-[0.2em] uppercase">
+                <!-- Footer -->
+                <div class="mt-8 sm:mt-10 lg:hidden text-center">
+                    <p class="text-[10px] sm:text-xs font-semibold text-zinc-500 tracking-[0.2em] uppercase">
                         PT Aratech Nusantara Indonesia
                     </p>
                 </div>

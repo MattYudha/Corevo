@@ -25,6 +25,14 @@ Route::middleware('guest')->group(function () {
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
+    Route::get('forgot-password/otp', [NewPasswordController::class, 'showOtpForm'])
+        ->name('password.otp.form');
+    Route::post('forgot-password/otp', [NewPasswordController::class, 'verifyOtpOnly'])
+        ->name('password.otp.verify');
+    Route::get('forgot-password/reset', [NewPasswordController::class, 'showResetForm'])
+        ->name('password.reset.form');
+    Route::post('forgot-password/reset', [NewPasswordController::class, 'updatePassword'])
+        ->name('password.reset.submit');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
         ->name('password.email');
