@@ -28,6 +28,10 @@
     --kpi-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --kpi-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     --kpi-radius: 20px;
+    --kpi-blue: #3b82f6;
+    --kpi-green: #10b981;
+    --kpi-purple: #8b5cf6;
+    --kpi-amber: #f59e0b;
     --kpi-radius-md: 12px;
     --kpi-radius-sm: 8px;
 }
@@ -94,17 +98,53 @@ body {
     transform: translateY(-2px);
 }
 
+/* Period Nav Bar */
+.kpi-period-nav {
+    background: var(--kpi-surface);
+    border-radius: var(--kpi-radius-md);
+    padding: 0.875rem 1.25rem;
+    border: 1px solid var(--kpi-border);
+    box-shadow: var(--kpi-shadow-sm);
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.kpi-period-nav .period-label {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: var(--kpi-text-main);
+    letter-spacing: -0.01em;
+    flex: 1;
+    text-align: center;
+}
+.btn-period-nav {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    border: 1.5px solid var(--kpi-border);
+    background: var(--kpi-surface);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--kpi-text-main);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+.btn-period-nav:hover { background: #f1f5f9; border-color: var(--kpi-accent); color: var(--kpi-accent); }
+.btn-period-nav.disabled { opacity: 0.4; pointer-events: none; }
+
 /* Summary Cards */
 .kpi-summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
     margin-bottom: 2.5rem;
 }
 .kpi-summary-card {
     background: var(--kpi-surface);
     border-radius: var(--kpi-radius);
-    padding: 1.75rem;
+    padding: 1.5rem 1.75rem;
     box-shadow: var(--kpi-shadow-sm);
     position: relative;
     border: 1px solid var(--kpi-border);
@@ -113,21 +153,39 @@ body {
     flex-direction: column;
     justify-content: space-between;
     overflow: hidden;
+    animation: cardFadeUp 0.5s ease both;
 }
-.kpi-summary-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--kpi-shadow-lg);
-    border-color: var(--kpi-accent);
+.kpi-summary-card:nth-child(1) { animation-delay: 0.05s; }
+.kpi-summary-card:nth-child(2) { animation-delay: 0.10s; }
+.kpi-summary-card:nth-child(3) { animation-delay: 0.15s; }
+.kpi-summary-card:nth-child(4) { animation-delay: 0.20s; }
+@keyframes cardFadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
-.kpi-summary-card::after {
+.kpi-summary-card:hover { transform: translateY(-4px); box-shadow: var(--kpi-shadow-lg); }
+.kpi-summary-card::before {
     content: '';
     position: absolute;
-    bottom: 0; right: 0;
-    width: 100px; height: 100px;
-    background: radial-gradient(circle, var(--kpi-accent-soft) 0%, transparent 70%);
-    opacity: 0.5;
-    z-index: 0;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    border-radius: var(--kpi-radius) var(--kpi-radius) 0 0;
 }
+.card-blue::before   { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+.card-green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
+.card-purple::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+.card-amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.kpi-card-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+}
+.icon-blue   { background: rgba(59,130,246,0.1);  color: #3b82f6; }
+.icon-green  { background: rgba(16,185,129,0.1);  color: #10b981; }
+.icon-purple { background: rgba(139,92,246,0.1);  color: #8b5cf6; }
+.icon-amber  { background: rgba(245,158,11,0.1);  color: #f59e0b; }
 
 .kpi-summary-title {
     font-size: 0.8125rem;
@@ -379,6 +437,56 @@ body {
     .kpi-table th:nth-child(2), .kpi-table td:nth-child(2),
     .kpi-table th:nth-child(5), .kpi-table td:nth-child(5) { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   MODAL BACKDROP — Premium Full Dark Overlay
+   Fixed to cover 100% screen even when Mazer body zoom is active
+   ═══════════════════════════════════════════════════════ */
+.modal-backdrop {
+    position: fixed !important;
+    top: -20vh !important;
+    left: -20vw !important;
+    width: 140vw !important;
+    height: 140vh !important;
+    z-index: 9998 !important;
+    background-color: rgba(15, 23, 42, 0.85) !important; /* Premium slate-900 */
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+}
+.modal {
+    z-index: 9999 !important;
+}
+body.modal-open #sidebar,
+body.modal-open .sidebar-wrapper,
+body.modal-open .mobile-nav-header {
+    z-index: 1 !important;
+}
+body.modal-open {
+    overflow: hidden !important;
+}
+
+/* Modal Content Refinement */
+.modal-content {
+    border: none;
+    border-radius: 24px;
+    box-shadow: 0 32px 64px -12px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+    overflow: hidden;
+}
+.modal-header {
+    padding: 2rem 2rem 1.25rem;
+    border-bottom: none;
+    background: #fff;
+}
+.modal-body {
+    padding: 0 2rem 1.5rem;
+    background: #fff;
+}
+.modal-footer {
+    padding: 1.25rem 2rem 1.75rem;
+    border-top: 1px solid var(--kpi-border);
+    background: #f8fafc;
+    border-radius: 0 0 24px 24px;
+}
 </style>
 @endpush
 
@@ -400,6 +508,48 @@ body {
             <i class="bi bi-arrow-clockwise"></i>
         </a>
     </div>
+</div>
+
+{{-- ═══ MAZER PAGE HEADING WRAPPER ═══ --}}
+<div class="page-heading">
+<div class="page-title">
+    <div class="row">
+        <div class="col-12 col-md-6 order-md-1 order-last">
+            <h3><i class="bi bi-graph-up-arrow"></i> KPI Dashboard</h3>
+            <p class="text-subtitle text-muted">Monitor kinerja &amp; capaian target Anda</p>
+        </div>
+        <div class="col-12 col-md-6 order-md-2 order-first">
+            <nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url('/dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">KPI</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+</div>
+<section class="section">
+
+{{-- ═══ PERIOD NAVIGATION ═══ --}}
+<div class="kpi-period-nav">
+    <a href="{{ route('kpi.dashboard') }}?period={{ $prevPeriod }}" class="btn-period-nav" title="Bulan Sebelumnya">
+        <i class="bi bi-chevron-left"></i>
+    </a>
+    <div class="period-label">
+        <i class="bi bi-calendar3 text-primary me-2"></i>
+        {{ $periodCarbon->translatedFormat('F Y') ?: \Carbon\Carbon::createFromFormat('Y-m', $period)->format('F Y') }}
+        @if($isCurrentMonth)
+            <span class="badge bg-primary bg-opacity-10 text-primary ms-2" style="font-size:0.7rem;font-weight:700;">Bulan Ini</span>
+        @endif
+    </div>
+    <a href="{{ route('kpi.dashboard') }}?period={{ $nextPeriod }}" class="btn-period-nav {{ $isCurrentMonth ? 'disabled' : '' }}" title="Bulan Berikutnya">
+        <i class="bi bi-chevron-right"></i>
+    </a>
+    @if(!$isCurrentMonth)
+    <a href="{{ route('kpi.dashboard') }}" class="btn btn-sm btn-outline-primary ms-2" style="border-radius:10px;font-size:0.8rem;font-weight:600;">
+        <i class="bi bi-arrow-counterclockwise"></i> Kembali ke Sekarang
+    </a>
+    @endif
 </div>
 
 @if(session('success'))
@@ -425,66 +575,59 @@ body {
 <!-- Summary Grid -->
 <div class="kpi-summary-grid">
     <!-- Composite Score -->
-    <div class="kpi-summary-card">
+    <div class="kpi-summary-card card-blue">
+        <div class="kpi-card-icon icon-blue"><i class="bi bi-bar-chart-fill"></i></div>
         <div>
             <div class="kpi-summary-title">Composite Score</div>
             <div class="kpi-summary-value">{{ round($compositeScore, 2) }}<span class="fs-6 text-muted fw-medium">/100</span></div>
             <div class="kpi-summary-sub">Overall performance score</div>
         </div>
-        <div class="position-absolute top-0 end-0 p-4 opacity-10">
-            <i class="bi bi-bar-chart-fill fs-1"></i>
-        </div>
     </div>
 
     <!-- Performance Level -->
-    <div class="kpi-summary-card">
+    @php
+        $lvlClass = match($performanceLevel) {
+            'excellent' => 'card-green', 'good' => 'card-blue',
+            'satisfactory' => 'card-amber', default => 'card-amber'
+        };
+        $iconClass = match($performanceLevel) {
+            'excellent' => 'icon-green', 'good' => 'icon-blue',
+            'satisfactory' => 'icon-amber', default => 'icon-amber'
+        };
+    @endphp
+    <div class="kpi-summary-card {{ $lvlClass }}">
+        <div class="kpi-card-icon {{ $iconClass }}"><i class="bi bi-trophy-fill"></i></div>
         <div>
             <div class="kpi-summary-title">Performance Level</div>
-            <div class="mt-2">
+            <div class="mt-1">
                 @switch($performanceLevel)
-                    @case('excellent')
-                        <span class="kpi-badge badge-soft-success fs-5 py-2 px-3"><i class="bi bi-stars"></i> Excellent</span>
-                        @break
-                    @case('good')
-                        <span class="kpi-badge badge-soft-info fs-5 py-2 px-3"><i class="bi bi-hand-thumbs-up-fill"></i> Good</span>
-                        @break
-                    @case('satisfactory')
-                        <span class="kpi-badge badge-soft-warning fs-5 py-2 px-3"><i class="bi bi-check-circle-fill"></i> Satisfactory</span>
-                        @break
-                    @case('needs_improvement')
-                        <span class="kpi-badge badge-soft-warning fs-5 py-2 px-3"><i class="bi bi-exclamation-triangle-fill"></i> Needs Improvement</span>
-                        @break
-                    @default
-                        <span class="kpi-badge badge-soft-danger fs-5 py-2 px-3"><i class="bi bi-x-circle-fill"></i> Unsatisfactory</span>
+                    @case('excellent')   <span class="kpi-badge badge-soft-success"><i class="bi bi-stars"></i> Excellent</span> @break
+                    @case('good')        <span class="kpi-badge badge-soft-info"><i class="bi bi-hand-thumbs-up-fill"></i> Good</span> @break
+                    @case('satisfactory')<span class="kpi-badge badge-soft-warning"><i class="bi bi-check-circle-fill"></i> Satisfactory</span> @break
+                    @case('needs_improvement') <span class="kpi-badge badge-soft-warning"><i class="bi bi-exclamation-triangle-fill"></i> Needs Improvement</span> @break
+                    @default             <span class="kpi-badge badge-soft-danger"><i class="bi bi-x-circle-fill"></i> Unsatisfactory</span>
                 @endswitch
             </div>
-        </div>
-        <div class="position-absolute top-0 end-0 p-4 opacity-10">
-            <i class="bi bi-trophy-fill fs-1"></i>
         </div>
     </div>
 
     <!-- KPIs Achieved -->
-    <div class="kpi-summary-card">
+    <div class="kpi-summary-card card-green">
+        <div class="kpi-card-icon icon-green"><i class="bi bi-check-all"></i></div>
         <div>
             <div class="kpi-summary-title">KPIs Achieved</div>
             <div class="kpi-summary-value">{{ $kpiRecords->where('status', 'achieved')->count() }}<span class="fs-6 text-muted fw-medium">/{{ $kpiRecords->count() }}</span></div>
             <div class="kpi-summary-sub">Metrics hitting the target</div>
         </div>
-        <div class="position-absolute top-0 end-0 p-4 opacity-10">
-            <i class="bi bi-check-all fs-1"></i>
-        </div>
     </div>
 
     <!-- Period -->
-    <div class="kpi-summary-card">
+    <div class="kpi-summary-card card-purple">
+        <div class="kpi-card-icon icon-purple"><i class="bi bi-calendar3"></i></div>
         <div>
             <div class="kpi-summary-title">Review Period</div>
             <div class="kpi-summary-value fs-3">{{ \Carbon\Carbon::createFromFormat('Y-m', $period)->format('M Y') }}</div>
             <div class="kpi-summary-sub">Period code: {{ $period }}</div>
-        </div>
-        <div class="position-absolute top-0 end-0 p-4 opacity-10">
-            <i class="bi bi-calendar3 fs-1"></i>
         </div>
     </div>
 </div>
@@ -644,11 +787,18 @@ body {
 </div>
 @empty
 <div class="text-center py-5 bg-white rounded-4 border shadow-sm">
-    <div class="mb-3">
-        <i class="bi bi-clipboard2-x text-muted opacity-25" style="font-size: 4rem;"></i>
+    <div class="mb-4">
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:90px;height:90px;background:rgba(59,130,246,0.08);">
+            <i class="bi bi-clipboard2-data text-primary" style="font-size:2.75rem;"></i>
+        </div>
     </div>
-    <h5 class="text-dark fw-800">Belum Ada Metrik KPI</h5>
-    <p class="text-muted">Tidak ada KPI yang terdaftar untuk periode ini.</p>
+    <h4 class="fw-800 text-dark mb-2">Belum Ada Metrik KPI</h4>
+    <p class="text-muted mb-4" style="max-width:380px;margin:0 auto;">Tidak ada KPI terdaftar untuk periode <strong>{{ \Carbon\Carbon::createFromFormat('Y-m',$period)->format('F Y') }}</strong>. Tambahkan metrik untuk mulai tracking performa Anda.</p>
+    @if(\App\Constants\Roles::isAdmin(session('role')) || ($user->employee?->role?->title ?? '') === \App\Constants\Roles::MANAGER_UNIT_HEAD)
+    <button class="btn-kpi btn-kpi-primary" data-bs-toggle="modal" data-bs-target="#addKPIModal">
+        <i class="bi bi-plus-circle-fill"></i> Tambah KPI Pertama
+    </button>
+    @endif
 </div>
 @endforelse
 
@@ -695,6 +845,10 @@ body {
     </div>
 </div>
 @endif
+
+</section>
+</div>
+{{-- ═══ END MAZER WRAPPER ═══ --}}
 
 <!-- Edit KPI Modal -->
 <div class="modal fade" id="editKPIModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
@@ -854,6 +1008,12 @@ body {
 @push('scripts')
 <script>
 $(function() {
+    // ═══════════════════════════════════════════════════════
+    // FIX: Move Modals to Body to prevent Mazer sidebar overlay
+    // ═══════════════════════════════════════════════════════
+    $('#editKPIModal').appendTo('body');
+    $('#addKPIModal').appendTo('body');
+
     // Edit KPI Modal logic
     $('.edit-kpi').on('click', function() {
         const id = $(this).data('id');

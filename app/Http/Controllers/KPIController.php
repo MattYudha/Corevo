@@ -22,7 +22,7 @@ class KPIController extends Controller
     /**
      * Show KPI dashboard for current user
      */
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         $user = Auth::user();
         $employee = $user->employee;
@@ -31,7 +31,14 @@ class KPIController extends Controller
             abort(403, 'User not linked to employee record.');
         }
 
-        $period = now()->format('Y-m');
+        // Support period navigation via ?period=YYYY-MM
+        $period = $request->input('period', now()->format('Y-m'));
+
+        // Validate period format, fallback to current month if invalid
+        if (!preg_match('/^\d{4}-\d{2}$/', $period)) {
+            $period = now()->format('Y-m');
+        }
+
         try {
             // Use Eloquent with eager loading
             $records = EmployeeKPIRecord::with('kpi')
@@ -64,8 +71,19 @@ class KPIController extends Controller
 
         $allKpis = \App\Models\KPI::where('status', 'active')->get();
 
-        return view('kpi.dashboard', compact('employee', 'period', 'kpiRecords', 'compositeScore', 'performanceLevel', 'kpisByCategory', 'incidents', 'allKpis'));
+        // Period navigation helpers
+        $periodCarbon   = \Carbon\Carbon::createFromFormat('Y-m', $period)->startOfMonth();
+        $prevPeriod     = $periodCarbon->copy()->subMonth()->format('Y-m');
+        $nextPeriod     = $periodCarbon->copy()->addMonth()->format('Y-m');
+        $isCurrentMonth = $period === now()->format('Y-m');
+
+        return view('kpi.dashboard', compact(
+            'employee', 'period', 'kpiRecords', 'compositeScore', 'performanceLevel',
+            'kpisByCategory', 'incidents', 'allKpis',
+            'prevPeriod', 'nextPeriod', 'isCurrentMonth', 'periodCarbon'
+        ));
     }
+
 
     /**
      * Show employee KPI report
