@@ -20,6 +20,9 @@ jobs:
             cd ~/htdocs/corevo-dev.aratechnology.id
 
             echo "-- Pulling the new code"
+            git reset --hard HEAD
+
+            echo "-- Pulling the new code"
             git pull origin billdev
 
             echo "-- Update PHP Vendor"
