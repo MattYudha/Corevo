@@ -71,18 +71,8 @@
                             <label class="form-label">Radius WFO (meter)</label>
                             <input type="number" name="radius" class="form-control" value="{{ old('radius', 1000) }}" min="10" required>
                         </div>
-                        {{-- <div class="col-12">
-                            <label class="form-label">Daftar WiFi SSID</label>
-                            <textarea name="allowed_ssids_text" rows="5" class="form-control" placeholder="Satu SSID per baris">{{ old('allowed_ssids_text') }}</textarea>
-                            <small class="text-muted">SSID ini dipakai untuk validasi WFO pada lokasi kantor terkait.</small>
-                        </div> --}}
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">SSID WiFi yang Diizinkan</label>
-                            <textarea name="allowed_ssids_text" class="form-control" rows="3" placeholder="Contoh:&#10;WIFI KANTOR 1&#10;WIFI KANTOR 2">{{ old('allowed_ssids_text') }}</textarea>
-                            <small class="text-muted">Masukkan satu SSID per baris.</small>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">Alamat IP yang Diizinkan (Opsional)</label>
+                        <div class="col-12">
+                            <label class="form-label">Alamat IP yang Diizinkan (Opsional)</label>
                             <textarea name="allowed_ips_text" class="form-control" rows="3" placeholder="Contoh:&#10;192.168.1.1&#10;103.144.12.x">{{ old('allowed_ips_text') }}</textarea>
                             <small class="text-muted">Masukkan satu Alamat IP per baris untuk membatasi akses.</small>
                         </div>

@@ -303,7 +303,7 @@
                                     <img id="preview-img-wfh" class="rounded-3 shadow-sm border border-3 border-success mb-3" style="width: 100%; max-width: 400px; max-height: 300px; object-fit: cover;">
                                     
                                     <div>
-                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfo')">
+                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfh')">
                                             <i class="bi bi-arrow-counterclockwise"></i> Retake Photo
                                         </button>
                                     </div>
@@ -383,7 +383,7 @@
                                     <img id="preview-img-wfa" class="rounded-3 shadow-sm border border-3 border-success mb-3" style="width: 100%; max-width: 400px; max-height: 300px; object-fit: cover;">
                                     
                                     <div>
-                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfo')">
+                                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-4 shadow-sm" onclick="retakePhoto('wfa')">
                                             <i class="bi bi-arrow-counterclockwise"></i> Retake Photo
                                         </button>
                                     </div>
@@ -752,23 +752,32 @@
         startGPSFree(mode);
     }
 
-    // ============ FACE DETECTION (All Modes) ============
     async function initFaceDetectionForMode(mode) {
         const statusEl = document.getElementById('face-status-' + mode);
         const videoContainer = document.getElementById('video-container-' + mode);
         const previewContainer = document.getElementById('preview-container-' + mode);
         const previewImg = document.getElementById('preview-img-' + mode);
 
-        statusEl.innerHTML = '<span class="badge bg-warning">Loading AI Model...</span>';
+        statusEl.innerHTML = '<span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Requesting camera access...</span>';
 
         try {
-            const MODEL_URL = '{{ asset("vendor/face-api/weights") }}';
-            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-            
-            // Check if the camera is already on to avoid double requesting camera access
+            // Critical check: does the browser support camera access at all?
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error("BrowserNotSupported");
+            }
+
             let stream = mode === 'wfo' ? videoStream : videoStreams[mode];
+            
             if (!stream) {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                try {
+                    // Attempt 1: force front camera (selfie mode)
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                } catch (err1) {
+                    console.warn("Failed to access front camera (facingMode), trying default camera...", err1);
+                    // Attempt 2 (fallback): request any available camera
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
+                
                 if (mode === 'wfo') videoStream = stream;
                 else videoStreams[mode] = stream;
             }
@@ -776,13 +785,39 @@
             const videoEl = document.getElementById('video-' + mode);
             videoEl.srcObject = stream;
 
-            statusEl.innerHTML = '<span class="badge bg-info">Waiting for face movement...</span>';
+            statusEl.innerHTML = '<span class="badge bg-primary"><i class="bi bi-cpu"></i> Camera is active. Loading AI...</span>';
+            const MODEL_URL = '{{ asset("vendor/face-api/weights") }}';
+            await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
 
-            // Call the detection loop function
+            statusEl.innerHTML = '<span class="badge bg-info"><i class="bi bi-person-bounding-box"></i> Waiting for face movement...</span>';
             startFaceDetectionLoop(mode, videoEl, statusEl, videoContainer, previewContainer, previewImg);
 
         } catch (err) {
-            statusEl.innerHTML = '<span class="badge bg-danger">Camera failed: ' + err.message + '</span>';
+            console.error("Camera Error Details:", err); // For debugging in DevTools
+            
+            let errorMsg = err.message;
+            let rawError = err.name || "UnknownError";
+
+            if (rawError === 'NotAllowedError' || errorMsg.includes('not allowed')) {
+                errorMsg = 'Camera access was denied. Click the 🔒 lock icon in your browser, open Permissions, and allow camera access.';
+            } else if (rawError === 'NotFoundError' || rawError === 'DevicesNotFoundError') {
+                errorMsg = 'No camera was found on this device.';
+            } else if (rawError === 'NotReadableError' || rawError === 'TrackStartError') {
+                errorMsg = 'The camera is currently being used by another application (e.g., WhatsApp or Zoom).';
+            } else if (errorMsg === 'BrowserNotSupported') {
+                errorMsg = 'Your browser is outdated or not running over HTTPS (secure connection required).';
+            }
+
+            // Show error + debug code for easier troubleshooting
+            statusEl.innerHTML = `
+                <div class="alert alert-danger text-wrap text-start lh-base p-2 mt-2 mb-0 shadow-sm" style="font-size: 0.85rem;">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Error:</strong> ${errorMsg}
+                    <br><small class="text-muted" style="font-size: 0.7rem;">(Code: ${rawError})</small>
+                    <hr class="my-2 border-danger" style="opacity: 0.3;">
+                    <button type="button" class="btn btn-sm btn-danger w-100" onclick="initFaceDetectionForMode('${mode}')">
+                        <i class="bi bi-camera-video"></i> Restart Camera
+                    </button>
+                </div>`;
         }
     }
 
@@ -839,7 +874,7 @@
         // Reset state & clear old photo data
         modeState[mode].face = false;
         document.getElementById('photo_data-' + mode).value = '';
-        checkReady(mode); // <--- THIS IS THE FIX BRO
+        checkReady(mode); 
 
         // Revert UI from Preview mode to Video (Camera) mode
         document.getElementById('preview-container-' + mode).style.display = 'none';

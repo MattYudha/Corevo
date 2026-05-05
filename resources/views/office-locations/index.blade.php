@@ -54,13 +54,13 @@
                                 <th>Tipe</th>
                                 <th>Alamat</th>
                                 <th>Koordinat</th>
-                                <th>WiFi SSID</th>
+                                {{-- <th>WiFi SSID</th> --}}
                                 <th>Karyawan</th>
                                 <th>Status</th>
                                 <th class="text-center">Action</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody> 
                             @forelse($officeLocations as $officeLocation)
                                 <tr>
                                     <td>
@@ -81,13 +81,13 @@
                                             <span class="text-muted">-</span>
                                         @endif
                                     </td>
-                                    <td style="min-width: 220px;">
+                                    {{-- <td style="min-width: 220px;">
                                         @forelse($officeLocation->allowed_ssids ?? [] as $ssid)
                                             <span class="badge bg-light text-dark border mb-1">{{ $ssid }}</span>
                                         @empty
                                             <span class="text-muted">Mengikuti konfigurasi default</span>
                                         @endforelse
-                                    </td>
+                                    </td> --}}
                                     <td>{{ number_format($officeLocation->employees_count) }}</td>
                                     <td>
                                         @if($officeLocation->status === 'active')
