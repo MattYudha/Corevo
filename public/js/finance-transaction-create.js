@@ -341,6 +341,7 @@ function initQuickEntityForm() {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': window.FINANCE_TRX_CONFIG.csrf
             },
             body: JSON.stringify({
@@ -349,20 +350,45 @@ function initQuickEntityForm() {
                 contact_info: document.getElementById('entity_contact').value
             })
         })
-        .then(r => r.json())
+        .then(async r => { const j = await r.json(); if (!r.ok) throw j; return j; })
         .then(result => {
             if (result.success) {
-                const opt = new Option(`${result.data.name} (${result.data.type})`, result.data.id);
-                document.getElementById('sender_entity_id')?.add(opt.cloneNode(true));
-                document.getElementById('receiver_entity_id')?.add(opt.cloneNode(true));
-                document.getElementById(`${target}_entity_id`).value = result.data.id;
+                // Capitalize type for label
+                const typeLabel = result.data.type.charAt(0).toUpperCase() + result.data.type.slice(1);
+                const optText = `${result.data.name} (${typeLabel})`;
+                const optId = result.data.id;
+
+                // Add to both Tom Select instances
+                [window._tsSender, window._tsReceiver].forEach(ts => {
+                    if (ts) {
+                        ts.addOption({ value: optId, text: optText });
+                    }
+                });
+
+                // Set value for the target dropdown
+                if (target === 'sender' && window._tsSender) window._tsSender.setValue(optId);
+                if (target === 'receiver' && window._tsReceiver) window._tsReceiver.setValue(optId);
+
                 quickEntityModal?.hide();
                 showToast('success', 'Entitas Ditambahkan', `"${result.data.name}" berhasil disimpan.`);
-            } else {
-                showToast('error', 'Gagal Menyimpan', result.message || 'Terjadi kesalahan.');
             }
         })
-        .catch(() => showToast('error', 'Koneksi Gagal', 'Tidak dapat terhubung ke server.'))
+        .catch(err => {
+            let msg = 'Tidak dapat terhubung ke server.';
+            if (err.message) msg = err.message;
+            
+            if (msg.includes('sudah ada')) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Entitas Sudah Ada',
+                    text: msg,
+                    confirmButtonColor: '#1e3a5f',
+                    confirmButtonText: 'Tutup'
+                });
+            } else {
+                showToast('error', 'Gagal Menyimpan', msg);
+            }
+        })
         .finally(() => { btn.disabled = false; btn.innerHTML = origHTML; });
     });
 }
@@ -421,19 +447,203 @@ function initQuickAccountForm() {
    ══════════════════════════════════════════════════════ */
 
 function initTomSelect() {
-    const el = document.getElementById('account_id');
-    if (!el || typeof TomSelect === 'undefined') return;
-    window._tomSelectAccount = new TomSelect(el, {
-        searchField: ['text'],
-        placeholder: 'Cari kode atau nama akun...',
-        create: false,
-        maxOptions: 100,
-        render: {
-            no_results: () => `
-                <div class="ts-no-results">
-                    Akun tidak ditemukan
-                    <button type="button" class="ts-add-btn" onclick="openAccountModal()">+ Tambah Akun Baru</button>
-                </div>`
+    if (typeof TomSelect === 'undefined') {
+        console.error('TomSelect is not loaded!');
+        return;
+    }
+
+    // 1. Account / CoA
+    try {
+        const accEl = document.getElementById('account_id');
+        if (accEl) {
+            if (accEl.tomselect) accEl.tomselect.destroy();
+            window._tomSelectAccount = new TomSelect(accEl, {
+                searchField: ['text'],
+                placeholder: 'Cari kode atau nama akun...',
+                create: false,
+                maxOptions: 100,
+                render: {
+                    no_results: () => `
+                        <div class="ts-no-results">
+                            Akun tidak ditemukan
+                            <button type="button" class="ts-add-btn" onclick="openAccountModal()">+ Tambah Akun Baru</button>
+                        </div>`
+                }
+            });
+
+            // Show/Hide Account Delete Button
+            const updateAccDeleteBtn = (val) => {
+                const btn = document.getElementById('btn_delete_account');
+                if (btn) btn.style.display = (val && val !== '') ? 'flex' : 'none';
+            };
+            window._tomSelectAccount.on('change', (val) => updateAccDeleteBtn(val));
+            updateAccDeleteBtn(window._tomSelectAccount.getValue());
+        }
+    } catch (e) { console.error('Error init Account TomSelect:', e); }
+
+    // 2. Entities (Sender & Receiver)
+    const entityEls = ['sender_entity_id', 'receiver_entity_id'];
+    entityEls.forEach(id => {
+        try {
+            const el = document.getElementById(id);
+            if (!el) return;
+            
+            if (el.tomselect) el.tomselect.destroy();
+
+            const ts = new TomSelect(el, {
+                searchField: ['text'],
+                placeholder: 'Cari atau pilih entitas...',
+                maxOptions: 100
+            });
+
+            // Show/Hide External Delete Button
+            const updateDeleteBtn = (val) => {
+                const type = id.split('_')[0]; // 'sender' or 'receiver'
+                const btn = document.getElementById(`btn_delete_${type}`);
+                if (btn) {
+                    btn.style.display = (val && val !== '') ? 'flex' : 'none';
+                }
+            };
+
+            ts.on('change', (val) => updateDeleteBtn(val));
+            updateDeleteBtn(ts.getValue()); // Initial state
+
+            if (id === 'sender_entity_id') window._tsSender = ts;
+            else window._tsReceiver = ts;
+        } catch (e) { console.error(`Error init Entity TomSelect (${id}):`, e); }
+    });
+}
+
+function handleExternalDelete(type) {
+    const ts = type === 'sender' ? window._tsSender : window._tsReceiver;
+    if (!ts) return;
+
+    const id = ts.getValue();
+    if (!id) return;
+
+    const data = ts.options[id];
+    const name = data ? data.text : 'Entitas';
+
+    deleteEntity(id, name);
+}
+
+function handleAccountDelete() {
+    const ts = window._tomSelectAccount;
+    if (!ts) return;
+
+    const id = ts.getValue();
+    if (!id) return;
+
+    const data = ts.options[id];
+    const name = data ? data.text : 'Akun/CoA';
+
+    Swal.fire({
+        title: 'Hapus Akun/CoA?',
+        html: `Anda akan menghapus <b>"${name}"</b>.<br><small class="text-muted">Pastikan akun ini belum digunakan dalam transaksi apapun.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            performAccountDelete(id, name);
+        }
+    });
+}
+
+function performAccountDelete(id, name) {
+    fetch(`${window.FINANCE_TRX_CONFIG.accountDeleteUrl}/${id}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': window.FINANCE_TRX_CONFIG.csrf
+        },
+        body: JSON.stringify({ _method: 'DELETE' })
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            const ts = window._tomSelectAccount;
+            if (ts) {
+                ts.removeOption(id);
+                ts.setValue('');
+                ts.refreshOptions(false);
+            }
+            showToast('success', 'Akun Dihapus', `"${name}" telah dihapus.`);
+        } else {
+            showToast('error', 'Gagal Menghapus', res.message || 'Gagal menghapus akun.');
+        }
+    })
+    .catch(() => showToast('error', 'Koneksi Gagal', 'Gagal menghubungi server.'));
+}
+
+function deleteEntity(id, name) {
+    // Determine which TomSelect triggered this (optional, for re-opening)
+    const activeTS = (window._tsSender && window._tsSender.isOpen) ? window._tsSender : 
+                     (window._tsReceiver && window._tsReceiver.isOpen) ? window._tsReceiver : null;
+
+    Swal.fire({
+        title: 'Hapus Entitas?',
+        html: `Anda akan menghapus <b>"${name}"</b>.<br><small class="text-muted">Tindakan ini tidak dapat dibatalkan.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`${window.FINANCE_TRX_CONFIG.entityDeleteUrl}/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': window.FINANCE_TRX_CONFIG.csrf
+                },
+                body: JSON.stringify({ _method: 'DELETE' })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    // Remove from both TomSelect instances
+                    [window._tsSender, window._tsReceiver].forEach(ts => {
+                        if (ts) {
+                            // If the deleted item was selected, clear it
+                            if (ts.getValue() == id) ts.setValue('');
+                            ts.removeOption(id);
+                            ts.refreshOptions(false);
+                        }
+                    });
+
+                    showToast('success', 'Entitas Dihapus', `"${name}" telah dihapus.`);
+                    
+                    // Re-open the dropdown if it was open before the dialog
+                    if (activeTS) {
+                        setTimeout(() => {
+                            activeTS.focus();
+                            activeTS.open();
+                        }, 100);
+                    }
+                } else {
+                    showToast('error', 'Gagal Menghapus', res.message || 'Gagal menghapus entitas.');
+                }
+            })
+            .catch(() => showToast('error', 'Koneksi Gagal', 'Gagal menghubungi server.'));
+        } else {
+            // Re-open if cancelled
+            if (activeTS) {
+                setTimeout(() => {
+                    activeTS.focus();
+                    activeTS.open();
+                }, 50);
+            }
         }
     });
 }
@@ -509,4 +719,5 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('account_id')?.focus();
         }
     });
+
 });

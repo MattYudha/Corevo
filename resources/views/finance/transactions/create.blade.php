@@ -461,6 +461,36 @@
     .seg-wrap { grid-template-columns: 1fr; }
     .seg-card { padding: .75rem .9rem; }
 }
+
+/* ── External Entity Delete ── */
+.fc-label-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-entity-delete {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-entity-delete:hover {
+    background: #fca5a5;
+    color: #991b1b;
+}
+.btn-entity-delete i {
+    font-size: 0.95rem;
+}
+.ts-dropdown .entity-delete-btn:hover {
+    background: #fee2e2;
+}
 </style>
 @endpush
 
@@ -470,7 +500,13 @@
 window.FINANCE_TRX_CONFIG = {
     csrf:            '{{ csrf_token() }}',
     entityStoreUrl:  '{{ route("finance.entities.store") }}',
-    accountStoreUrl: '{{ route("finance.accounts.store") }}'
+    entityDeleteUrl: '{{ url("finance/entities") }}',
+    accountDeleteUrl: '{{ url("finance/accounts") }}',
+    accountStoreUrl: '{{ route("finance.accounts.store") }}',
+    canDeleteEntity: {{ (
+        in_array(strtolower(session('role')), ['master admin', 'super admin', 'finance']) || 
+        (Auth::check() && (Auth::user()->isMasterAdmin() || Auth::user()->isFinance()))
+    ) ? 'true' : 'false' }}
 };
 </script>
 
@@ -586,9 +622,16 @@ window.FINANCE_TRX_CONFIG = {
                 <div class="col-lg-8 col-md-7 fc-field">
                     <div class="fc-label-row">
                         <label class="fc-label" for="account_id">Akun / Kategori <span class="opt">(CoA)</span> <span class="req">*</span></label>
-                        <button type="button" class="btn-quick-add" onclick="openAccountModal()">
-                            <i class="bi bi-plus-circle-fill"></i> Tambah Baru
-                        </button>
+                        <div class="fc-label-actions">
+                            @if(in_array(strtolower(session('role')), ['master admin', 'super admin', 'finance']) || (Auth::check() && (Auth::user()->isMasterAdmin() || Auth::user()->isFinance())))
+                                <button type="button" class="btn-entity-delete" id="btn_delete_account" style="display:none" title="Hapus Akun terpilih" onclick="handleAccountDelete()">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            @endif
+                            <button type="button" class="btn-quick-add" onclick="openAccountModal()">
+                                <i class="bi bi-plus-circle-fill"></i> Tambah Baru
+                            </button>
+                        </div>
                     </div>
                     <select name="account_id" id="account_id"
                             class="fc-select {{ $errors->has('account_id') ? 'fc-error' : '' }}" required>
@@ -641,9 +684,16 @@ window.FINANCE_TRX_CONFIG = {
                 <div class="col-md-6 fc-field">
                     <div class="fc-label-row">
                         <label class="fc-label" for="sender_entity_id">Pengirim <span class="opt">(Dari)</span></label>
-                        <button type="button" class="btn-quick-add" onclick="openEntityModal('sender')">
-                            <i class="bi bi-plus-circle-fill"></i> Tambah Baru
-                        </button>
+                        <div class="fc-label-actions">
+                            @if(in_array(strtolower(session('role')), ['master admin', 'super admin', 'finance']) || (Auth::check() && (Auth::user()->isMasterAdmin() || Auth::user()->isFinance())))
+                                <button type="button" class="btn-entity-delete" id="btn_delete_sender" style="display:none" title="Hapus Entitas terpilih" onclick="handleExternalDelete('sender')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            @endif
+                            <button type="button" class="btn-quick-add" onclick="openEntityModal('sender')">
+                                <i class="bi bi-plus-circle-fill"></i> Tambah Baru
+                            </button>
+                        </div>
                     </div>
                     <select name="sender_entity_id" id="sender_entity_id"
                             class="fc-select {{ $errors->has('sender_entity_id') ? 'fc-error' : '' }}">
@@ -659,9 +709,16 @@ window.FINANCE_TRX_CONFIG = {
                 <div class="col-md-6 fc-field">
                     <div class="fc-label-row">
                         <label class="fc-label" for="receiver_entity_id">Penerima <span class="opt">(Ke)</span></label>
-                        <button type="button" class="btn-quick-add" onclick="openEntityModal('receiver')">
-                            <i class="bi bi-plus-circle-fill"></i> Tambah Baru
-                        </button>
+                        <div class="fc-label-actions">
+                            @if(in_array(strtolower(session('role')), ['master admin', 'super admin', 'finance']) || (Auth::check() && (Auth::user()->isMasterAdmin() || Auth::user()->isFinance())))
+                                <button type="button" class="btn-entity-delete" id="btn_delete_receiver" style="display:none" title="Hapus Entitas terpilih" onclick="handleExternalDelete('receiver')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            @endif
+                            <button type="button" class="btn-quick-add" onclick="openEntityModal('receiver')">
+                                <i class="bi bi-plus-circle-fill"></i> Tambah Baru
+                            </button>
+                        </div>
                     </div>
                     <select name="receiver_entity_id" id="receiver_entity_id"
                             class="fc-select {{ $errors->has('receiver_entity_id') ? 'fc-error' : '' }}">
@@ -851,5 +908,5 @@ window.FINANCE_TRX_CONFIG = {
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
-<script src="{{ asset('js/finance-transaction-create.js') }}"></script>
+<script src="{{ asset('js/finance-transaction-create.js') }}?v={{ time() }}"></script>
 @endpush

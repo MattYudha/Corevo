@@ -57,6 +57,23 @@ class FinancialEntityController extends Controller
             'description' => 'nullable|string',
         ]);
 
+        // Check for duplicate (case-insensitive & trimmed)
+        $name = trim($validated['name']);
+        $exists = FinancialEntity::whereRaw('LOWER(name) = ?', [strtolower($name)])
+            ->where('type', $validated['type'])
+            ->exists();
+
+        if ($exists) {
+            $msg = 'Entitas dengan nama dan tipe tersebut sudah ada.';
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $msg
+                ], 422);
+            }
+            return back()->withInput()->with('error', $msg);
+        }
+
         $entity = FinancialEntity::create($validated);
 
         if ($request->ajax()) {
@@ -100,12 +117,28 @@ class FinancialEntityController extends Controller
      */
     public function destroy(FinancialEntity $entity)
     {
+        $user = auth()->user();
+        $role = session('role');
+        $isMasterAdmin = ($user->isMasterAdmin() || $role === \App\Constants\Roles::MASTER_ADMIN);
+        $isFinance = ($user->isFinance() || $role === \App\Constants\Roles::FINANCE);
+
+        if (!$isMasterAdmin && !$isFinance) {
+            abort(403, 'Hanya Master Admin atau Finance yang dapat menghapus entitas.');
+        }
+
         // Add check if there are associated transactions, prevent deletion if any (optional, but good practice).
         if ($entity->sentTransactions()->exists() || $entity->receivedTransactions()->exists()) {
             return redirect()->route('finance.entities.index')->with('error', 'Entitas tidak dapat dihapus karena memiliki transaksi yang terkait.');
         }
 
         $entity->delete();
+
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Entitas berhasil dihapus.'
+            ]);
+        }
 
         return redirect()->route('finance.entities.index')->with('success', 'Entitas kas & keuangan berhasil dihapus.');
     }
