@@ -115,6 +115,13 @@
     </div>
 @endif
 
+@if(session('error'))
+    <div class="alert mb-3 text-white py-2" style="background:#f5365c;border-radius:10px;font-size:.84rem">
+        <i class="bi bi-exclamation-circle-fill me-1"></i>
+        <strong>Gagal Memperbarui:</strong> {{ session('error') }}
+    </div>
+@endif
+
 <div class="row g-3">
     {{-- ── FORM ──────── --}}
     <div class="col-lg-8">
