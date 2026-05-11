@@ -102,22 +102,27 @@ class FinancialTransactionController extends Controller
         unset($validated['document']);
         $hadPph = false;
 
-        DB::transaction(function () use ($validated, &$hadPph) {
-            // Lock account to prevent concurrent modifications
-            FinancialAccount::where('id', $validated['account_id'])->lockForUpdate()->first();
+        try {
+            DB::transaction(function () use ($validated, &$hadPph) {
+                // Lock account to prevent concurrent modifications
+                FinancialAccount::where('id', $validated['account_id'])->lockForUpdate()->first();
 
-            $transaction = FinancialTransaction::create($validated);
-            $this->recalculateRunningBalance($transaction->account_id, $transaction->transaction_date);
+                $transaction = FinancialTransaction::create($validated);
+                $this->recalculateRunningBalance($transaction->account_id, $transaction->transaction_date);
 
-            // ── Auto-create PPh transaction ─────────────────────────
-            if ($this->shouldCreatePph($validated)) {
-                $pphTrx = $this->createPphTransaction($transaction, $validated);
-                // Link kembali ke transaksi induk
-                $transaction->pph_transaction_id = $pphTrx->id;
-                $transaction->saveQuietly();
-                $hadPph = true;
-            }
-        });
+                // ── Auto-create PPh transaction ─────────────────────────
+                if ($this->shouldCreatePph($validated)) {
+                    $pphTrx = $this->createPphTransaction($transaction, $validated);
+                    // Link kembali ke transaksi induk
+                    $transaction->pph_transaction_id = $pphTrx->id;
+                    $transaction->saveQuietly();
+                    $hadPph = true;
+                }
+            });
+        } catch (\Exception $e) {
+            \Log::error('Finance Store Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan transaksi: ' . $e->getMessage());
+        }
 
         $msg = 'Transaksi berhasil disimpan.';
         if ($hadPph) {
@@ -187,65 +192,70 @@ class FinancialTransactionController extends Controller
         $newAccountId = $validated['account_id'];
         $newDate      = $validated['transaction_date'];
 
-        DB::transaction(function () use ($validated, $transaction, $oldAccountId, $oldDate, $newAccountId, $newDate) {
-            // Lock accounts menggunakan urutan ascending untuk cegah deadlock
-            $accountsToLock = array_unique([$oldAccountId, $newAccountId]);
-            sort($accountsToLock);
-            FinancialAccount::whereIn('id', $accountsToLock)->orderBy('id', 'asc')->lockForUpdate()->get();
+        try {
+            DB::transaction(function () use ($validated, $transaction, $oldAccountId, $oldDate, $newAccountId, $newDate) {
+                // Lock accounts menggunakan urutan ascending untuk cegah deadlock
+                $accountsToLock = array_unique([$oldAccountId, $newAccountId]);
+                sort($accountsToLock);
+                FinancialAccount::whereIn('id', $accountsToLock)->orderBy('id', 'asc')->lockForUpdate()->get();
 
-            $transaction->update($validated);
+                $transaction->update($validated);
 
-            // Recalculate balance transaksi utama
-            if ($oldAccountId != $newAccountId) {
-                $this->recalculateRunningBalance($oldAccountId, $oldDate);
-                $this->recalculateRunningBalance($newAccountId, $newDate);
-            } else {
-                $earliestDate = strtotime($oldDate) <= strtotime($newDate) ? $oldDate : $newDate;
-                $this->recalculateRunningBalance($newAccountId, $earliestDate);
-            }
-
-            // ── Sync transaksi PPh ───────────────────────────────────
-            $existingPphId = $transaction->pph_transaction_id;
-            $shouldHavePph = $this->shouldCreatePph($validated);
-
-            if ($existingPphId) {
-                $existingPph = FinancialTransaction::find($existingPphId);
-
-                if (!$shouldHavePph) {
-                    // PPh dihapus dari transaksi induk → hapus transaksi PPh
-                    if ($existingPph) {
-                        $pphAccountId = $existingPph->account_id;
-                        $pphDate      = $existingPph->transaction_date;
-                        $existingPph->delete();
-                        $this->recalculateRunningBalance($pphAccountId, $pphDate);
-                    }
-                    $transaction->pph_transaction_id = null;
-                    $transaction->saveQuietly();
+                // Recalculate balance transaksi utama
+                if ($oldAccountId != $newAccountId) {
+                    $this->recalculateRunningBalance($oldAccountId, $oldDate);
+                    $this->recalculateRunningBalance($newAccountId, $newDate);
                 } else {
-                    // Update nilai PPh yang sudah ada
-                    if ($existingPph) {
-                        $pphAccountId = $existingPph->account_id;
-                        $pphDate      = $existingPph->transaction_date;
-                        $pphLabel     = FinancialTransaction::PPH_LABELS[$validated['tax_type']] ?? 'PPh';
-
-                        $existingPph->update([
-                            'amount'           => $validated['tax_amount'],
-                            'transaction_date' => $validated['transaction_date'],
-                            'description'      => FinancialTransaction::AUTO_PPH_PREFIX . ' ' . $pphLabel . ' atas: ' . $validated['description'],
-                        ]);
-
-                        $earliestPphDate = strtotime($pphDate) <= strtotime($validated['transaction_date'])
-                            ? $pphDate : $validated['transaction_date'];
-                        $this->recalculateRunningBalance($pphAccountId, $earliestPphDate);
-                    }
+                    $earliestDate = strtotime($oldDate) <= strtotime($newDate) ? $oldDate : $newDate;
+                    $this->recalculateRunningBalance($newAccountId, $earliestDate);
                 }
-            } elseif ($shouldHavePph) {
-                // Belum ada transaksi PPh tapi sekarang ada → buat baru
-                $pphTrx = $this->createPphTransaction($transaction, $validated);
-                $transaction->pph_transaction_id = $pphTrx->id;
-                $transaction->saveQuietly();
-            }
-        });
+
+                // ── Sync transaksi PPh ───────────────────────────────────
+                $existingPphId = $transaction->pph_transaction_id;
+                $shouldHavePph = $this->shouldCreatePph($validated);
+
+                if ($existingPphId) {
+                    $existingPph = FinancialTransaction::find($existingPphId);
+
+                    if (!$shouldHavePph) {
+                        // PPh dihapus dari transaksi induk → hapus transaksi PPh
+                        if ($existingPph) {
+                            $pphAccountId = $existingPph->account_id;
+                            $pphDate      = $existingPph->transaction_date;
+                            $existingPph->delete();
+                            $this->recalculateRunningBalance($pphAccountId, $pphDate);
+                        }
+                        $transaction->pph_transaction_id = null;
+                        $transaction->saveQuietly();
+                    } else {
+                        // Update nilai PPh yang sudah ada
+                        if ($existingPph) {
+                            $pphAccountId = $existingPph->account_id;
+                            $pphDate      = $existingPph->transaction_date;
+                            $pphLabel     = FinancialTransaction::PPH_LABELS[$validated['tax_type']] ?? 'PPh';
+
+                            $existingPph->update([
+                                'amount'           => $validated['tax_amount'],
+                                'transaction_date' => $validated['transaction_date'],
+                                'description'      => FinancialTransaction::AUTO_PPH_PREFIX . ' ' . $pphLabel . ' atas: ' . $validated['description'],
+                            ]);
+
+                            $earliestPphDate = strtotime($pphDate) <= strtotime($validated['transaction_date'])
+                                ? $pphDate : $validated['transaction_date'];
+                            $this->recalculateRunningBalance($pphAccountId, $earliestPphDate);
+                        }
+                    }
+                } elseif ($shouldHavePph) {
+                    // Belum ada transaksi PPh tapi sekarang ada → buat baru
+                    $pphTrx = $this->createPphTransaction($transaction, $validated);
+                    $transaction->pph_transaction_id = $pphTrx->id;
+                    $transaction->saveQuietly();
+                }
+            });
+        } catch (\Exception $e) {
+            \Log::error('Finance Update Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return redirect()->back()->withInput()->with('error', 'Gagal memperbarui transaksi: ' . $e->getMessage());
+        }
 
         return redirect()->route('finance.transactions.index')
             ->with('success', 'Transaksi berhasil diperbarui.');
