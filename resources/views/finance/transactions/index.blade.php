@@ -547,7 +547,7 @@
                             <span class="pph-auto-tag">
                                 <i class="bi bi-arrow-right-circle-fill" style="font-size:.6rem"></i> PPh Auto → Utang PPh
                             </span>
-                        @elseif($trx->tax_type && $trx->tax_type !== 'none')
+                        @elseif($trx->tax_type && $trx->tax_type !== 'none' && ($trx->tax_amount ?? 0) > 0)
                             @php $taxLabels = ['ppn'=>'PPN','pph_21'=>'PPh 21','pph_23'=>'PPh 23','pph_4_ayat_2'=>'PPh 4(2)']; @endphp
                             <span class="tax-tag mt-1 d-inline-block">
                                 {{ $taxLabels[$trx->tax_type] ?? $trx->tax_type }}
