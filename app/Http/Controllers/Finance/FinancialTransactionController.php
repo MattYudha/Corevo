@@ -99,6 +99,7 @@ class FinancialTransactionController extends Controller
         }
 
         $validated['created_by'] = Auth::id();
+        unset($validated['document']);
         $hadPph = false;
 
         DB::transaction(function () use ($validated, &$hadPph) {
@@ -180,6 +181,7 @@ class FinancialTransactionController extends Controller
             $validated['document_path'] = null;
         }
 
+        unset($validated['document']);
         $oldAccountId = $transaction->account_id;
         $oldDate      = $transaction->transaction_date;
         $newAccountId = $validated['account_id'];
