@@ -162,7 +162,9 @@ const DEDUCTION_TYPES = ['pph_21', 'pph_23', 'pph_4_ayat_2'];
 const PPH_TYPES       = ['pph_21', 'pph_23', 'pph_4_ayat_2'];
 
 function recalcTax() {
-    const dpp    = parseFloat(document.getElementById('dpp_amount')?.value) || 0;
+    // Strip titik ribuan sebelum parse agar "10.000.000" → 10000000 (bukan 10)
+    const rawDpp = (document.getElementById('dpp_amount')?.value || '').replace(/\./g, '').replace(',', '.');
+    const dpp    = parseFloat(rawDpp) || 0;
     const type   = document.getElementById('tax_type')?.value;
     const taxEl  = document.getElementById('tax_amount');
     const hidden = document.getElementById('amount');

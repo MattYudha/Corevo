@@ -272,6 +272,26 @@
                         </div>
                     </div>
 
+                    {{-- ── PPh Auto-Transaction Notice ── --}}
+                    <div id="pphAutoNotice" style="display:{{ (in_array(old('tax_type', $transaction->tax_type), ['pph_21','pph_23','pph_4_ayat_2']) && old('tax_amount', $transaction->tax_amount) > 0) ? 'block' : 'none' }};margin-bottom:1.5rem;">
+                        <div style="
+                            display:flex;align-items:flex-start;gap:.65rem;
+                            background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid #3b82f6;
+                            border-radius:8px;padding:.75rem 1rem;font-size:.78rem;color:#1e40af;
+                        ">
+                            <i class="bi bi-info-circle-fill" style="font-size:.9rem;flex-shrink:0;margin-top:.05rem;"></i>
+                            <div>
+                                <div style="font-weight:700;margin-bottom:.2rem;">Transaksi PPh Otomatis</div>
+                                <div style="color:#3b82f6;">
+                                    Sistem akan otomatis menyinkronkan transaksi <strong>Kredit</strong> ke akun
+                                    <strong>Utang PPh (2100)</strong> senilai
+                                    <strong id="pphNoticeAmount">Rp {{ number_format(old('tax_amount', $transaction->tax_amount), 0, ',', '.') }}</strong> saat disimpan.
+                                    Nilai ini akan masuk ke <strong>Total Uang Keluar</strong> &amp; laporan keuangan.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {{-- ⑦ Lampiran Dokumen --}}
                     <p class="form-section-title">⑦ Lampiran Dokumen <small style="text-transform:none;font-weight:400;font-size:.7rem">(Bukti Transfer / Faktur)</small></p>
                     <div class="mb-4">
@@ -421,17 +441,42 @@ document.querySelectorAll('input[name="transaction_type"]').forEach(r => {
 
 const TAX_RATES = { ppn: 0.11, pph_21: 0.05, pph_23: 0.02, pph_4_ayat_2: 0.1 };
 const DEDUCTION_TYPES = ['pph_21', 'pph_23', 'pph_4_ayat_2'];
+const PPH_TYPES = ['pph_21', 'pph_23', 'pph_4_ayat_2'];
+
 function recalcTax() {
-    const dpp   = parseFloat(document.getElementById('dpp_amount').value) || 0;
+    // Strip titik ribuan sebelum parse agar "10.000.000" → 10000000 (bukan 10)
+    const rawDpp = (document.getElementById('dpp_amount').value || '').replace(/\./g, '').replace(',', '.');
+    const dpp   = parseFloat(rawDpp) || 0;
     const type  = document.getElementById('tax_type').value;
     const taxEl = document.getElementById('tax_amount');
     const amtEl = document.getElementById('amount');
-    if (type === 'none' || dpp === 0) return;
+    
+    if (type === 'none' || dpp === 0) {
+        updatePphNotice(0, false);
+        return;
+    }
+    
     const tax = Math.round(dpp * (TAX_RATES[type] || 0));
     taxEl.value = tax;
     const total = DEDUCTION_TYPES.includes(type) ? dpp - tax : dpp + tax;
     amtEl.value = total;
     updateAmountPreview(total);
+    
+    updatePphNotice(tax, PPH_TYPES.includes(type));
+}
+
+function updatePphNotice(taxAmount, show) {
+    const notice     = document.getElementById('pphAutoNotice');
+    const amountSpan = document.getElementById('pphNoticeAmount');
+    if (!notice) return;
+    if (show && taxAmount > 0) {
+        notice.style.display = 'block';
+        if (amountSpan) {
+            amountSpan.textContent = 'Rp ' + Number(taxAmount).toLocaleString('id-ID');
+        }
+    } else {
+        notice.style.display = 'none';
+    }
 }
 function showFileName(input) {
     const nameEl = document.getElementById('uploadName');
