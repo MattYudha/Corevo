@@ -91,12 +91,35 @@ class FinancialAccountController extends Controller
      */
     public function destroy(FinancialAccount $account)
     {
-        // Add check if there are associated transactions
+        // 1. Role Check (Master Admin / Finance)
+        $role = session('role');
+        $isAdmin = in_array(strtolower($role), ['master admin', 'super admin', 'finance']);
+        $isAuthAdmin = (auth()->check() && (auth()->user()->isMasterAdmin() || auth()->user()->isFinance()));
+
+        if (!$isAdmin && !$isAuthAdmin) {
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+            }
+            abort(403);
+        }
+
+        // 2. Data Integrity Check
         if ($account->transactions()->exists()) {
-            return redirect()->route('finance.accounts.index')->with('error', 'Akun tidak dapat dihapus karena sudah memiliki transaksi terkait.');
+            $msg = 'Akun tidak dapat dihapus karena sudah memiliki transaksi terkait.';
+            if (request()->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg]);
+            }
+            return redirect()->route('finance.accounts.index')->with('error', $msg);
         }
 
         $account->delete();
+
+        if (request()->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Akun/CoA berhasil dihapus.'
+            ]);
+        }
 
         return redirect()->route('finance.accounts.index')->with('success', 'Akun/CoA berhasil dihapus.');
     }

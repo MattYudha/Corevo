@@ -79,7 +79,8 @@ class User extends Authenticatable
      */
     public function isMasterAdmin(): bool
     {
-        return $this->employee?->role?->title === \App\Constants\Roles::MASTER_ADMIN;
+        $title = $this->employee?->role?->title;
+        return $title === \App\Constants\Roles::MASTER_ADMIN || $title === \App\Constants\Roles::SUPER_ADMIN;
     }
     
     /**
@@ -184,8 +185,9 @@ class User extends Authenticatable
      */
     public function hasAccess(string $module): bool
     {
-        // Only Master Admins have full access by default
-        if ($this->employee?->role?->title === \App\Constants\Roles::MASTER_ADMIN) {
+        // Only Master Admins/Super Admins have full access by default
+        $title = $this->employee?->role?->title;
+        if ($title === \App\Constants\Roles::MASTER_ADMIN || $title === \App\Constants\Roles::SUPER_ADMIN) {
             return true;
         }
 

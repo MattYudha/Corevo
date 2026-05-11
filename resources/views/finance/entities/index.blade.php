@@ -203,6 +203,13 @@
                             <a href="{{ route('finance.entities.edit', $entity->id) }}" class="act-btn act-edit" title="Edit">
                                 <i class="bi bi-pencil-fill"></i>
                             </a>
+                            @php
+                                $user = Auth::user();
+                                $sessionRole = session('role');
+                                $isMasterAdmin = ($user->isMasterAdmin() || $sessionRole === \App\Constants\Roles::MASTER_ADMIN);
+                                $isFinance = ($user->isFinance() || $sessionRole === \App\Constants\Roles::FINANCE);
+                            @endphp
+                            @if($isMasterAdmin || $isFinance)
                             <form action="{{ route('finance.entities.destroy', $entity->id) }}" method="POST"
                                   onsubmit="return confirm('Hapus entitas \'{{ addslashes($entity->name) }}\'?')">
                                 @csrf @method('DELETE')
@@ -210,6 +217,7 @@
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
                             </form>
+                            @endif
                         </div>
                     </td>
                 </tr>
