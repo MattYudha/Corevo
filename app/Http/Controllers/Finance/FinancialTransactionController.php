@@ -74,12 +74,29 @@ class FinancialTransactionController extends Controller
     }
 
     /**
+     * Pastikan kolom pph_transaction_id benar-benar ada di database.
+     * Workaround darurat jika proses migrate di production gagal atau ter-skip.
+     */
+    private function ensurePphColumnExists()
+    {
+        if (!\Illuminate\Support\Facades\Schema::hasColumn('financial_transactions', 'pph_transaction_id')) {
+            try {
+                \Illuminate\Support\Facades\DB::statement('ALTER TABLE financial_transactions ADD pph_transaction_id BIGINT UNSIGNED NULL AFTER tax_amount');
+                \Illuminate\Support\Facades\DB::statement('ALTER TABLE financial_transactions ADD CONSTRAINT ft_pph_fk FOREIGN KEY (pph_transaction_id) REFERENCES financial_transactions(id) ON DELETE SET NULL');
+            } catch (\Throwable $e) {
+                \Log::error('Gagal force add column: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /**
      * Store a newly created transaction and recalculate running balances.
      * Jika transaksi mengandung PPh (21/23/4 ayat 2), otomatis buat
      * transaksi kredit ke akun Utang PPh.
      */
     public function store(Request $request)
     {
+        $this->ensurePphColumnExists();
         $validated = $request->validate([
             'transaction_date'   => 'required|date',
             'description'        => 'required|string|max:500',
@@ -154,6 +171,8 @@ class FinancialTransactionController extends Controller
      */
     public function update(Request $request, FinancialTransaction $transaction)
     {
+        $this->ensurePphColumnExists();
+
         // Cegah update langsung transaksi PPh auto-generated
         if ($transaction->isAutoPph()) {
             return redirect()->route('finance.transactions.index')
