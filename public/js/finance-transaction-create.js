@@ -159,6 +159,7 @@ function updateTaxBadge() {
 
 const TAX_RATES       = { ppn: 0.11, pph_21: 0.05, pph_23: 0.02, pph_4_ayat_2: 0.10 };
 const DEDUCTION_TYPES = ['pph_21', 'pph_23', 'pph_4_ayat_2'];
+const PPH_TYPES       = ['pph_21', 'pph_23', 'pph_4_ayat_2'];
 
 function recalcTax() {
     const dpp    = parseFloat(document.getElementById('dpp_amount')?.value) || 0;
@@ -170,11 +171,13 @@ function recalcTax() {
     if (!type || type === 'none') {
         if (taxEl) { taxEl.value = ''; taxEl.placeholder = 'Tidak ada pajak'; }
         updateTaxBadge();
+        updatePphNotice(0, false);
         return;
     }
     if (dpp === 0) {
         if (taxEl) { taxEl.value = ''; taxEl.placeholder = 'Isi DPP terlebih dahulu'; }
         updateTaxBadge();
+        updatePphNotice(0, false);
         return;
     }
 
@@ -192,7 +195,28 @@ function recalcTax() {
     if (helper) helper.textContent = totalAmt > 0 ? 'Terbilang: ' + terbilang(totalAmt) + ' rupiah' : '';
 
     updateTaxBadge();
+
+    // Show PPh notice jika tipe adalah PPh (bukan PPN)
+    updatePphNotice(tax, PPH_TYPES.includes(type));
 }
+
+/**
+ * Show/hide PPh auto-transaction notice box.
+ */
+function updatePphNotice(taxAmount, show) {
+    const notice     = document.getElementById('pphAutoNotice');
+    const amountSpan = document.getElementById('pphNoticeAmount');
+    if (!notice) return;
+    if (show && taxAmount > 0) {
+        notice.style.display = 'block';
+        if (amountSpan) {
+            amountSpan.textContent = 'Rp ' + Number(taxAmount).toLocaleString('id-ID');
+        }
+    } else {
+        notice.style.display = 'none';
+    }
+}
+
 
 /* ══════════════════════════════════════════════════════
    5. LOADING + DOUBLE SUBMIT PREVENTION

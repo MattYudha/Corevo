@@ -56,7 +56,7 @@ class FinancialTransactionController extends Controller
         $totalDebit  = (clone $summaryQuery)->where('transaction_type', 'debit')->sum('amount');
         $totalKredit = (clone $summaryQuery)->where('transaction_type', 'kredit')->sum('amount');
 
-        $accounts  = FinancialAccount::orderBy('code')->get();
+        $accounts = FinancialAccount::orderBy('code')->get();
 
         return view('finance.transactions.index', compact(
             'transactions', 'totalDebit', 'totalKredit', 'accounts'
@@ -75,21 +75,23 @@ class FinancialTransactionController extends Controller
 
     /**
      * Store a newly created transaction and recalculate running balances.
+     * Jika transaksi mengandung PPh (21/23/4 ayat 2), otomatis buat
+     * transaksi kredit ke akun Utang PPh.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'transaction_date'  => 'required|date',
-            'description'       => 'required|string|max:500',
-            'sender_entity_id'  => 'nullable|exists:financial_entities,id',
-            'receiver_entity_id'=> 'nullable|exists:financial_entities,id',
-            'account_id'        => 'required|exists:financial_accounts,id',
-            'transaction_type'  => 'required|in:debit,kredit',
-            'amount'            => 'required|numeric|min:0',
-            'dpp_amount'        => 'nullable|numeric|min:0',
-            'tax_type'          => 'nullable|in:none,ppn,pph_21,pph_23,pph_4_ayat_2',
-            'tax_amount'        => 'nullable|numeric|min:0',
-            'document'          => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'transaction_date'   => 'required|date',
+            'description'        => 'required|string|max:500',
+            'sender_entity_id'   => 'nullable|exists:financial_entities,id',
+            'receiver_entity_id' => 'nullable|exists:financial_entities,id',
+            'account_id'         => 'required|exists:financial_accounts,id',
+            'transaction_type'   => 'required|in:debit,kredit',
+            'amount'             => 'required|numeric|min:0',
+            'dpp_amount'         => 'nullable|numeric|min:0',
+            'tax_type'           => 'nullable|in:none,ppn,pph_21,pph_23,pph_4_ayat_2',
+            'tax_amount'         => 'nullable|numeric|min:0',
+            'document'           => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
         if ($request->hasFile('document')) {
@@ -97,17 +99,31 @@ class FinancialTransactionController extends Controller
         }
 
         $validated['created_by'] = Auth::id();
+        $hadPph = false;
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, &$hadPph) {
             // Lock account to prevent concurrent modifications
             FinancialAccount::where('id', $validated['account_id'])->lockForUpdate()->first();
-            
+
             $transaction = FinancialTransaction::create($validated);
             $this->recalculateRunningBalance($transaction->account_id, $transaction->transaction_date);
+
+            // ── Auto-create PPh transaction ─────────────────────────
+            if ($this->shouldCreatePph($validated)) {
+                $pphTrx = $this->createPphTransaction($transaction, $validated);
+                // Link kembali ke transaksi induk
+                $transaction->pph_transaction_id = $pphTrx->id;
+                $transaction->saveQuietly();
+                $hadPph = true;
+            }
         });
 
-        return redirect()->route('finance.transactions.index')
-            ->with('success', 'Transaksi berhasil disimpan.');
+        $msg = 'Transaksi berhasil disimpan.';
+        if ($hadPph) {
+            $msg .= ' Transaksi PPh otomatis telah dibuat.';
+        }
+
+        return redirect()->route('finance.transactions.index')->with('success', $msg);
     }
 
     /**
@@ -115,6 +131,12 @@ class FinancialTransactionController extends Controller
      */
     public function edit(FinancialTransaction $transaction)
     {
+        // Cegah edit langsung transaksi PPh auto-generated
+        if ($transaction->isAutoPph()) {
+            return redirect()->route('finance.transactions.index')
+                ->with('error', 'Transaksi PPh otomatis tidak dapat diedit langsung. Edit transaksi induknya.');
+        }
+
         $entities = FinancialEntity::orderBy('name')->get();
         $accounts = FinancialAccount::orderBy('code')->get();
         return view('finance.transactions.edit', compact('transaction', 'entities', 'accounts'));
@@ -122,21 +144,28 @@ class FinancialTransactionController extends Controller
 
     /**
      * Update a transaction and recalculate running balances.
+     * Sync transaksi PPh terkait jika ada perubahan nilai pajak.
      */
     public function update(Request $request, FinancialTransaction $transaction)
     {
+        // Cegah update langsung transaksi PPh auto-generated
+        if ($transaction->isAutoPph()) {
+            return redirect()->route('finance.transactions.index')
+                ->with('error', 'Transaksi PPh otomatis tidak dapat diedit langsung. Edit transaksi induknya.');
+        }
+
         $validated = $request->validate([
-            'transaction_date'  => 'required|date',
-            'description'       => 'required|string|max:500',
-            'sender_entity_id'  => 'nullable|exists:financial_entities,id',
-            'receiver_entity_id'=> 'nullable|exists:financial_entities,id',
-            'account_id'        => 'required|exists:financial_accounts,id',
-            'transaction_type'  => 'required|in:debit,kredit',
-            'amount'            => 'required|numeric|min:0',
-            'dpp_amount'        => 'nullable|numeric|min:0',
-            'tax_type'          => 'nullable|in:none,ppn,pph_21,pph_23,pph_4_ayat_2',
-            'tax_amount'        => 'nullable|numeric|min:0',
-            'document'          => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'transaction_date'   => 'required|date',
+            'description'        => 'required|string|max:500',
+            'sender_entity_id'   => 'nullable|exists:financial_entities,id',
+            'receiver_entity_id' => 'nullable|exists:financial_entities,id',
+            'account_id'         => 'required|exists:financial_accounts,id',
+            'transaction_type'   => 'required|in:debit,kredit',
+            'amount'             => 'required|numeric|min:0',
+            'dpp_amount'         => 'nullable|numeric|min:0',
+            'tax_type'           => 'nullable|in:none,ppn,pph_21,pph_23,pph_4_ayat_2',
+            'tax_amount'         => 'nullable|numeric|min:0',
+            'document'           => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
         if ($request->hasFile('document')) {
@@ -152,27 +181,67 @@ class FinancialTransactionController extends Controller
         }
 
         $oldAccountId = $transaction->account_id;
-        $oldDate = $transaction->transaction_date;
+        $oldDate      = $transaction->transaction_date;
         $newAccountId = $validated['account_id'];
-        $newDate = $validated['transaction_date'];
+        $newDate      = $validated['transaction_date'];
 
         DB::transaction(function () use ($validated, $transaction, $oldAccountId, $oldDate, $newAccountId, $newDate) {
-            // Mitigate Deadlock: Lock account(s) using a consistent ascending order
+            // Lock accounts menggunakan urutan ascending untuk cegah deadlock
             $accountsToLock = array_unique([$oldAccountId, $newAccountId]);
             sort($accountsToLock);
             FinancialAccount::whereIn('id', $accountsToLock)->orderBy('id', 'asc')->lockForUpdate()->get();
 
             $transaction->update($validated);
 
-            // Proper cascade recalculation logic
+            // Recalculate balance transaksi utama
             if ($oldAccountId != $newAccountId) {
-                // If moved to new account, recalc BOTH old and new account histories safely
                 $this->recalculateRunningBalance($oldAccountId, $oldDate);
                 $this->recalculateRunningBalance($newAccountId, $newDate);
             } else {
-                // Same account, calc from the earliest altered date
                 $earliestDate = strtotime($oldDate) <= strtotime($newDate) ? $oldDate : $newDate;
                 $this->recalculateRunningBalance($newAccountId, $earliestDate);
+            }
+
+            // ── Sync transaksi PPh ───────────────────────────────────
+            $existingPphId = $transaction->pph_transaction_id;
+            $shouldHavePph = $this->shouldCreatePph($validated);
+
+            if ($existingPphId) {
+                $existingPph = FinancialTransaction::find($existingPphId);
+
+                if (!$shouldHavePph) {
+                    // PPh dihapus dari transaksi induk → hapus transaksi PPh
+                    if ($existingPph) {
+                        $pphAccountId = $existingPph->account_id;
+                        $pphDate      = $existingPph->transaction_date;
+                        $existingPph->delete();
+                        $this->recalculateRunningBalance($pphAccountId, $pphDate);
+                    }
+                    $transaction->pph_transaction_id = null;
+                    $transaction->saveQuietly();
+                } else {
+                    // Update nilai PPh yang sudah ada
+                    if ($existingPph) {
+                        $pphAccountId = $existingPph->account_id;
+                        $pphDate      = $existingPph->transaction_date;
+                        $pphLabel     = FinancialTransaction::PPH_LABELS[$validated['tax_type']] ?? 'PPh';
+
+                        $existingPph->update([
+                            'amount'           => $validated['tax_amount'],
+                            'transaction_date' => $validated['transaction_date'],
+                            'description'      => FinancialTransaction::AUTO_PPH_PREFIX . ' ' . $pphLabel . ' atas: ' . $validated['description'],
+                        ]);
+
+                        $earliestPphDate = strtotime($pphDate) <= strtotime($validated['transaction_date'])
+                            ? $pphDate : $validated['transaction_date'];
+                        $this->recalculateRunningBalance($pphAccountId, $earliestPphDate);
+                    }
+                }
+            } elseif ($shouldHavePph) {
+                // Belum ada transaksi PPh tapi sekarang ada → buat baru
+                $pphTrx = $this->createPphTransaction($transaction, $validated);
+                $transaction->pph_transaction_id = $pphTrx->id;
+                $transaction->saveQuietly();
             }
         });
 
@@ -182,16 +251,33 @@ class FinancialTransactionController extends Controller
 
     /**
      * Delete a transaction and recalculate running balances.
+     * Jika ada transaksi PPh terkait, hapus juga secara otomatis.
      */
     public function destroy(FinancialTransaction $transaction)
     {
+        // Cegah hapus langsung transaksi PPh auto-generated
+        if ($transaction->isAutoPph()) {
+            return redirect()->route('finance.transactions.index')
+                ->with('error', 'Transaksi PPh otomatis tidak dapat dihapus langsung. Hapus transaksi induknya.');
+        }
+
         $accountId = $transaction->account_id;
-        $trxDate = $transaction->transaction_date;
+        $trxDate   = $transaction->transaction_date;
 
         DB::transaction(function () use ($transaction, $accountId, $trxDate) {
-            // Lock account explicitly
             FinancialAccount::where('id', $accountId)->lockForUpdate()->first();
-            
+
+            // ── Hapus transaksi PPh terkait terlebih dahulu ──────────
+            if ($transaction->pph_transaction_id) {
+                $pphTrx = FinancialTransaction::find($transaction->pph_transaction_id);
+                if ($pphTrx) {
+                    $pphAccountId = $pphTrx->account_id;
+                    $pphDate      = $pphTrx->transaction_date;
+                    $pphTrx->delete();
+                    $this->recalculateRunningBalance($pphAccountId, $pphDate);
+                }
+            }
+
             if ($transaction->document_path) {
                 Storage::disk('local')->delete($transaction->document_path);
             }
@@ -211,88 +297,131 @@ class FinancialTransactionController extends Controller
         if (!$transaction->document_path) {
             abort(404, 'Dokumen tidak ditemukan.');
         }
-
         if (!Storage::disk('local')->exists($transaction->document_path)) {
             abort(404, 'File fisik tidak ditemukan di server.');
         }
-
         return response()->file(Storage::disk('local')->path($transaction->document_path));
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // Private Helpers — PPh Auto-Transaction
+    // ══════════════════════════════════════════════════════════════
+
     /**
-     * Recalculate running balance incrementally per account and safely handle concurrency.
+     * Cek apakah perlu membuat transaksi PPh otomatis.
+     * Hanya untuk PPh (bukan PPN), dan tax_amount harus > 0.
+     */
+    private function shouldCreatePph(array $data): bool
+    {
+        return in_array($data['tax_type'] ?? '', FinancialTransaction::PPH_TYPES)
+            && ($data['tax_amount'] ?? 0) > 0;
+    }
+
+    /**
+     * Dapatkan atau buat akun Utang PPh (kode 2100, kategori liability).
+     */
+    private function getPphAccountId(): int
+    {
+        $account = FinancialAccount::where('code', '2100')->first();
+
+        if (!$account) {
+            $account = FinancialAccount::create([
+                'code'        => '2100',
+                'name'        => 'Utang PPh',
+                'category'    => 'liability',
+                'description' => 'Kewajiban PPh yang dipotong dan belum disetor ke negara.',
+            ]);
+        }
+
+        return $account->id;
+    }
+
+    /**
+     * Buat transaksi kredit PPh otomatis dari transaksi induk.
+     */
+    private function createPphTransaction(FinancialTransaction $parent, array $data): FinancialTransaction
+    {
+        $pphAccountId = $this->getPphAccountId();
+        $pphLabel     = FinancialTransaction::PPH_LABELS[$data['tax_type']] ?? 'PPh';
+
+        FinancialAccount::where('id', $pphAccountId)->lockForUpdate()->first();
+
+        $pphTrx = FinancialTransaction::create([
+            'transaction_date' => $data['transaction_date'],
+            'description'      => FinancialTransaction::AUTO_PPH_PREFIX . ' ' . $pphLabel . ' atas: ' . $data['description'],
+            'account_id'       => $pphAccountId,
+            'transaction_type' => 'kredit',
+            'amount'           => $data['tax_amount'],
+            'created_by'       => $data['created_by'] ?? Auth::id(),
+        ]);
+
+        $this->recalculateRunningBalance($pphAccountId, $pphTrx->transaction_date);
+
+        return $pphTrx;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // Running Balance Recalculation
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Recalculate running balance incrementally per account.
      */
     private function recalculateRunningBalance(int $accountId, $startDate = null): void
     {
-        // Lock already handled upstream in store/update/destroy methods to prevent cross-account deadlocks.
-
-        // 1. Fetch the baseline balance strictly preceding the modification date
         $initialBalance = '0.00';
-        
         $query = FinancialTransaction::where('account_id', $accountId);
-        
+
         if ($startDate) {
-            // Need to parse to standard format before passing logic
-            if (is_numeric($startDate)) {
-                $dateString = date('Y-m-d', $startDate);
-            } else {
-                $dateString = \Carbon\Carbon::parse($startDate)->toDateString();
-            }
-            
+            $dateString = is_numeric($startDate)
+                ? date('Y-m-d', $startDate)
+                : \Carbon\Carbon::parse($startDate)->toDateString();
+
             $lastBefore = FinancialTransaction::where('account_id', $accountId)
                 ->whereDate('transaction_date', '<', $dateString)
                 ->orderBy('transaction_date', 'desc')
                 ->orderBy('id', 'desc')
                 ->first();
-                
+
             if ($lastBefore) {
                 $initialBalance = (string) $lastBefore->running_balance;
             }
-            
+
             $query->whereDate('transaction_date', '>=', $dateString);
         }
 
-        // 2. Process only the affected subset incrementally
-        $transactions = $query->orderBy('transaction_date', 'asc')
-            ->orderBy('id', 'asc')
-            ->get();
+        $transactions = $query->orderBy('transaction_date', 'asc')->orderBy('id', 'asc')->get();
 
-        $balance = $initialBalance;
+        $balance     = $initialBalance;
         $dirtyMonths = [];
 
         foreach ($transactions as $trx) {
-            if ($trx->transaction_type === 'debit') {
-                $balance = bcadd($balance, (string)$trx->amount, 2);
-            } else {
-                $balance = bcsub($balance, (string)$trx->amount, 2);
-            }
+            $balance = $trx->transaction_type === 'debit'
+                ? bcadd($balance, (string) $trx->amount, 2)
+                : bcsub($balance, (string) $trx->amount, 2);
 
-            // Flag modified months
-            $date = \Carbon\Carbon::parse($trx->transaction_date);
-            $monthKey = $date->format('Y-m');
-            $dirtyMonths[$monthKey] = true;
-            
-            $trx->running_balance  = $balance;
-            $trx->is_end_of_month  = false; // Clear flag, we'll re-mark it cleanly below
-            $trx->is_end_of_year   = false;
+            $dirtyMonths[\Carbon\Carbon::parse($trx->transaction_date)->format('Y-m')] = true;
+
+            $trx->running_balance = $balance;
+            $trx->is_end_of_month = false;
+            $trx->is_end_of_year  = false;
             $trx->saveQuietly();
         }
 
-        // 4. Intelligently Repair EOM / EOY flags for affected months only
         foreach (array_keys($dirtyMonths) as $monthKey) {
-            $year = substr($monthKey, 0, 4);
+            $year  = substr($monthKey, 0, 4);
             $month = substr($monthKey, 5, 2);
-            
+
             $endOfMonthTrx = FinancialTransaction::where('account_id', $accountId)
                 ->whereYear('transaction_date', $year)
                 ->whereMonth('transaction_date', $month)
                 ->orderBy('transaction_date', 'desc')
                 ->orderBy('id', 'desc')
                 ->first();
-                
+
             if ($endOfMonthTrx) {
                 $endOfMonthTrx->is_end_of_month = true;
-                $endOfMonthTrx->is_end_of_year = ($month == '12');
+                $endOfMonthTrx->is_end_of_year  = ($month == '12');
                 $endOfMonthTrx->saveQuietly();
             }
         }

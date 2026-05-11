@@ -803,6 +803,26 @@ window.FINANCE_TRX_CONFIG = {
                         @error('tax_amount')<p class="fc-field-error"><i class="bi bi-exclamation-circle"></i> {{ $message }}</p>@enderror
                     </div>
                 </div>
+
+                {{-- ── PPh Auto-Transaction Notice ── --}}
+                <div id="pphAutoNotice" style="display:none;margin-top:.85rem;">
+                    <div style="
+                        display:flex;align-items:flex-start;gap:.65rem;
+                        background:#eff6ff;border:1px solid #bfdbfe;border-left:3px solid #3b82f6;
+                        border-radius:8px;padding:.75rem 1rem;font-size:.78rem;color:#1e40af;
+                    ">
+                        <i class="bi bi-info-circle-fill" style="font-size:.9rem;flex-shrink:0;margin-top:.05rem;"></i>
+                        <div>
+                            <div style="font-weight:700;margin-bottom:.2rem;">Transaksi PPh Otomatis</div>
+                            <div style="color:#3b82f6;">
+                                Sistem akan otomatis membuat transaksi <strong>Kredit</strong> ke akun
+                                <strong>Utang PPh (2100)</strong> senilai
+                                <strong id="pphNoticeAmount">—</strong> saat disimpan.
+                                Nilai ini akan masuk ke <strong>Total Uang Keluar</strong> &amp; laporan keuangan.
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

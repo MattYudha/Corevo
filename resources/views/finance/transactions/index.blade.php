@@ -290,6 +290,31 @@
     letter-spacing: .04em;
 }
 
+/* PPh auto-generated tag */
+.pph-auto-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 4px;
+    padding: .1rem .45rem;
+    font-size: .58rem;
+    font-weight: 700;
+    color: #1d4ed8;
+    letter-spacing: .03em;
+    margin-top: .2rem;
+}
+
+/* Auto-PPh row styling */
+.row-auto-pph td {
+    background: #f8faff !important;
+    opacity: .92;
+}
+.row-auto-pph td:first-child {
+    border-left: 2px solid #93c5fd;
+}
+
 /* Entity text */
 .entity-from { font-size: .75rem; color: var(--t-muted); }
 .entity-from strong { color: var(--t-slate); font-weight: 600; }
@@ -486,7 +511,8 @@
             </thead>
             <tbody>
                 @forelse($transactions as $trx)
-                <tr class="{{ $trx->is_end_of_year ? 'row-eoy' : ($trx->is_end_of_month ? 'row-eom' : '') }}">
+                @php $isAutoPph = $trx->isAutoPph(); @endphp
+                <tr class="{{ $isAutoPph ? 'row-auto-pph' : ($trx->is_end_of_year ? 'row-eoy' : ($trx->is_end_of_month ? 'row-eom' : '')) }}">
 
                     {{-- Tanggal --}}
                     <td>
@@ -509,17 +535,29 @@
                     {{-- Keterangan --}}
                     <td>
                         <div class="fw-semibold" style="color:var(--t-navy);font-size:.84rem">
-                            {{ $trx->description }}
+                            @if($isAutoPph)
+                                <i class="bi bi-shield-lock-fill" style="color:#3b82f6;font-size:.75rem"></i>
+                            @endif
+                            {{ $isAutoPph ? str_replace('[AUTO PPh] ', '', $trx->description) : $trx->description }}
                         </div>
                         <div style="font-size:.73rem;color:var(--t-muted);margin-top:.15rem">
-                            oleh {{ $trx->creator->name ?? 'System' }}
+                            {{ $isAutoPph ? 'Dibuat otomatis oleh sistem' : 'oleh ' . ($trx->creator->name ?? 'System') }}
                         </div>
-                        @if($trx->tax_type && $trx->tax_type !== 'none')
+                        @if($isAutoPph)
+                            <span class="pph-auto-tag">
+                                <i class="bi bi-arrow-right-circle-fill" style="font-size:.6rem"></i> PPh Auto → Utang PPh
+                            </span>
+                        @elseif($trx->tax_type && $trx->tax_type !== 'none')
                             @php $taxLabels = ['ppn'=>'PPN','pph_21'=>'PPh 21','pph_23'=>'PPh 23','pph_4_ayat_2'=>'PPh 4(2)']; @endphp
                             <span class="tax-tag mt-1 d-inline-block">
                                 {{ $taxLabels[$trx->tax_type] ?? $trx->tax_type }}
                                 · Rp {{ number_format($trx->tax_amount, 0, ',', '.') }}
                             </span>
+                            @if($trx->pph_transaction_id)
+                                <span class="pph-auto-tag">
+                                    <i class="bi bi-check-circle-fill" style="font-size:.6rem"></i> PPh kredit otomatis ✓
+                                </span>
+                            @endif
                         @endif
                     </td>
 
@@ -572,24 +610,32 @@
                     {{-- Actions --}}
                     <td>
                         <div class="d-flex gap-1 justify-content-end">
-                            @if($trx->document_path)
-                            <a href="{{ route('finance.transactions.document', $trx->id) }}"
-                               target="_blank" class="act-btn" title="Lampiran">
-                                <i class="bi bi-paperclip"></i>
-                            </a>
+                            @if($isAutoPph)
+                                {{-- Transaksi PPh otomatis: hanya tampilkan icon lock, tidak bisa edit/hapus --}}
+                                <span class="act-btn" title="Dibuat otomatis — edit transaksi induknya"
+                                      style="cursor:default;opacity:.45;">
+                                    <i class="bi bi-lock-fill"></i>
+                                </span>
+                            @else
+                                @if($trx->document_path)
+                                <a href="{{ route('finance.transactions.document', $trx->id) }}"
+                                   target="_blank" class="act-btn" title="Lampiran">
+                                    <i class="bi bi-paperclip"></i>
+                                </a>
+                                @endif
+                                <a href="{{ route('finance.transactions.edit', $trx->id) }}"
+                                   class="act-btn act-edit" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ route('finance.transactions.destroy', $trx->id) }}"
+                                      method="POST"
+                                      onsubmit="return confirm('Hapus transaksi ini? Saldo akan dihitung ulang.')">
+                                    @csrf @method('DELETE')
+                                    <button type="submit" class="act-btn act-delete" title="Hapus">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                             @endif
-                            <a href="{{ route('finance.transactions.edit', $trx->id) }}"
-                               class="act-btn act-edit" title="Edit">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <form action="{{ route('finance.transactions.destroy', $trx->id) }}"
-                                  method="POST"
-                                  onsubmit="return confirm('Hapus transaksi ini? Saldo akan dihitung ulang.')">
-                                @csrf @method('DELETE')
-                                <button type="submit" class="act-btn act-delete" title="Hapus">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </form>
                         </div>
                     </td>
                 </tr>
