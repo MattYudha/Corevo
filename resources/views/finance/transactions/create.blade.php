@@ -544,6 +544,13 @@ window.FINANCE_TRX_CONFIG = {
     </div>
     @endif
 
+    @if(session('error'))
+    <div class="fc-error-banner">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Gagal Menyimpan:</strong> {{ session('error') }}
+    </div>
+    @endif
+
     <form action="{{ route('finance.transactions.store') }}" method="POST" id="trxForm" enctype="multipart/form-data">
     @csrf
 

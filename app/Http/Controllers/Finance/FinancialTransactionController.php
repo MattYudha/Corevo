@@ -119,9 +119,9 @@ class FinancialTransactionController extends Controller
                     $hadPph = true;
                 }
             });
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('Finance Store Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return redirect()->back()->withInput()->with('error', 'Gagal menyimpan transaksi: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
 
         $msg = 'Transaksi berhasil disimpan.';
@@ -252,9 +252,9 @@ class FinancialTransactionController extends Controller
                     $transaction->saveQuietly();
                 }
             });
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             \Log::error('Finance Update Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return redirect()->back()->withInput()->with('error', 'Gagal memperbarui transaksi: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
 
         return redirect()->route('finance.transactions.index')
