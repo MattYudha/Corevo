@@ -43,8 +43,16 @@ use App\Http\Controllers\SystemRecoveryController;
 
 Route::get('/system/sync-master', [SystemRecoveryController::class, 'sync']);
 
-Route::get('/', [AuthenticatedSessionController::class, 'create']);
+Route::get('/', function () {
 
+    // redirect logged in user to dashboard
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+
+    // redirect guest user to login page
+    return redirect()->route('login');
+});
 
 Route::middleware(['auth'])->group(function () {
     
@@ -99,34 +107,34 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('tasks/comments/{comment}', [TaskCommentController::class, 'destroy'])->name('tasks.comments.destroy');
 
     // Resource routes for payroll
-    // PENTING: Route statis harus didefinisikan SEBELUM route wildcard {payroll}
-    // agar Laravel tidak salah menangkap 'create', 'attendance-data', dll sebagai parameter ID
-
-    // Routes index dan store (collection)
     Route::get('payrolls', [PayrollsController::class, 'index'])->name('payrolls.index')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE]);
     Route::post('payrolls', [PayrollsController::class, 'store'])->name('payrolls.store')
-        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE, 'throttle:300,1']);
 
-    // Static sub-routes (HARUS sebelum /{payroll})
     Route::get('payrolls/create', [PayrollsController::class, 'create'])->name('payrolls.create')
-        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE, 'throttle:300,1']);
     Route::get("payrolls/attendance-data", [PayrollsController::class, "getAttendanceData"])->name("payrolls.attendance-data")
-        ->middleware(["role:" . Roles::HR_ADMINISTRATOR . "," . Roles::MASTER_ADMIN]);
+        ->middleware(["role:" . Roles::HR_ADMINISTRATOR . "," . Roles::MASTER_ADMIN . ',' . Roles::FINANCE]);
     Route::get("payrolls/employee-data", [PayrollsController::class, "getEmployeeData"])->name("payrolls.employee-data")
-        ->middleware(["role:" . Roles::HR_ADMINISTRATOR . "," . Roles::MASTER_ADMIN]);
+        ->middleware(["role:" . Roles::HR_ADMINISTRATOR . "," . Roles::MASTER_ADMIN . ',' . Roles::FINANCE]);
 
-    // Wildcard routes (/{payroll}) - harus SETELAH static routes
     Route::get('payrolls/{payroll}', [PayrollsController::class, 'show'])->name('payrolls.show')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE]);
     Route::get('payrolls/{payroll}/edit', [PayrollsController::class, 'edit'])->name('payrolls.edit')
-        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE, 'throttle:300,1']);
     Route::put('payrolls/{payroll}', [PayrollsController::class, 'update'])->name('payrolls.update')
-        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE, 'throttle:300,1']);
     Route::patch('payrolls/{payroll}', [PayrollsController::class, 'update'])
-        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE, 'throttle:300,1']);
     Route::delete('payrolls/{payroll}', [PayrollsController::class, 'destroy'])->name('payrolls.destroy')
-        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN, 'throttle:300,1']);
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN . ',' . Roles::FINANCE, 'throttle:300,1']);
+
+    Route::get('/payrolls/{id}/print', [PayrollsController::class, 'print'])->name('payrolls.print');
+    Route::post('payrolls/{id}/update-status', [PayrollsController::class, 'updateStatus'])->name('payrolls.update-status');
+    Route::get('payrolls/{id}/slip', [PayrollsController::class, 'showSlip'])->name('payrolls.slip');
+    Route::post('payrolls/update-setting', [PayrollsController::class, 'updateSetting'])->name('payrolls.update-setting');
+    Route::post('payrolls/export-csv', [\App\Http\Controllers\PayrollsController::class, 'exportCsv'])->name('payrolls.export-csv');
 
     // Additional presence routes (must be defined before resource route to avoid conflicts)
     Route::get('presences/checkout', [PresencesController::class, 'checkout'])->name('presences.checkout');
