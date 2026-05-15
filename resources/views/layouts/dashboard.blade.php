@@ -1283,6 +1283,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// auto session check
+document.addEventListener('visibilitychange', function() {
+    // check when user returns to this tab
+    if (document.visibilityState === 'visible') {
+
+        // silently check session status using ajax
+        fetch(window.location.href, { 
+            method: 'GET', 
+            credentials: 'same-origin',
+            headers: { 
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            } 
+        })
+        .then(response => {
+
+            // 401 = unauthenticated / 419 = token expired
+            if (response.status === 401 || response.status === 419) {
+                console.log("Session expired. Kicking user to login...");
+                window.location.href = '/login'; 
+            }
+        })
+        .catch(error => console.log('Session check ignored.'));
+    }
+});
 </script>
 
 @stack('scripts')

@@ -10,6 +10,12 @@ use App\Models\OvertimeSubmission;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 use Carbon\Carbon;
+use App\Constants\Roles;
+use App\Models\FinancialAccount;
+use App\Models\FinancialTransaction;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Finance\FinancialTransactionController;
+use Illuminate\Validation\ValidationException;
 
 class PayrollsController extends Controller
 {
@@ -18,11 +24,11 @@ class PayrollsController extends Controller
         if ($request->ajax()) {
             $query = Payroll::with('employee');
 
-            if (!auth()->user()->isAdmin()) {
+            if (!Roles::hasFullFinanceAccess(session('role'))) {
                 $query->where('employee_id', auth()->user()->employee_id);
             }
 
-            // Period filter
+            // period filter
             if ($request->filled('filter_month')) {
                 $query->where('period_month', $request->filter_month);
             }
@@ -42,8 +48,10 @@ class PayrollsController extends Controller
                     $name = $row->employee?->fullname ?? '<em>Unknown</em>';
                     $nik = $row->employee?->nik ?? '-';
                     $npwp = $row->employee?->npwp ?? '-';
-                    return '<div class="fw-bold">' . $name . '</div>' .
-                           '<div class="text-muted small">NIK: ' . $nik . ' | NPWP: ' . $npwp . '</div>';
+                    
+                    return '<div class="fw-bold text-nowrap">' . $name . '</div>' .
+                        //  '<div class="text-muted small text-nowrap">NIK: ' . $nik . ' | NPWP: ' . $npwp . '</div>';
+                           '<div class="text-muted small text-nowrap">NPWP: ' . $npwp . '</div>';
                 })
                 ->editColumn('net_salary', function ($row) {
                     return 'Rp ' . number_format($row->net_salary, 0, ',', '.');
@@ -59,30 +67,54 @@ class PayrollsController extends Controller
                 })
                 ->addColumn('action', function ($row) {
                     $btns = '<div class="btn-group btn-group-sm" role="group">';
-                    $btns .= '<a href="' . route('payrolls.show', $row->id) . '" class="btn btn-outline-info" title="Lihat Slip"><i class="bi bi-eye"></i></a>';
+                    $btns .= '<a href="' . route('payrolls.show', $row->id) . '" class="btn btn-outline-info"><i class="bi bi-eye"></i></a>';
 
-                    if (in_array(session('role'), [\App\Constants\Roles::MASTER_ADMIN, 'HR Administrator'])) {
-                        $btns .= '<a href="' . route('payrolls.edit', $row->id) . '" class="btn btn-outline-warning" title="Edit"><i class="bi bi-pencil"></i></a>';
-                        $csrf = csrf_token();
+                    if (Roles::hasFullFinanceAccess(session('role'))) {
+                        $btns .= '<a href="' . route('payrolls.edit', $row->id) . '" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>';
+                        
+                        // add data-status attribute and btn-delete-payroll class
                         $btns .= '
-                            <form action="' . route('payrolls.destroy', $row->id) . '" method="POST" class="d-inline">
-                                <input type="hidden" name="_token" value="' . $csrf . '">
-                                <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit" class="btn btn-outline-danger" title="Hapus" onclick="return confirm(\'Yakin hapus data payroll ini?\')">
-                                    <i class="bi bi-trash"></i>
-                                </button>
+                            <button type="button" class="btn btn-outline-danger btn-delete-payroll" 
+                                data-id="'.$row->id.'" 
+                                data-status="'.$row->status.'"
+                                title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <form id="form-delete-'.$row->id.'" action="' . route('payrolls.destroy', $row->id) . '" method="POST" style="display:none;">
+                                '.csrf_field().'
+                                '.method_field('DELETE').'
                             </form>
                         ';
                     }
-
                     $btns .= '</div>';
                     return $btns;
                 })
-                ->rawColumns(['action', 'status_badge', 'employee_name'])
+                ->addColumn('status_actions', function ($row) {
+                    if (!Roles::hasFullFinanceAccess(session('role'))) return '-';
+                    
+                    if ($row->status === 'draft') {
+                        return '<button class="btn btn-sm btn-primary btn-update-status" data-id="'.$row->id.'" data-status="approved">
+                                    <i class="bi bi-check-circle"></i> Approve
+                                </button>';
+                    }
+                    
+                    if ($row->status === 'approved') {
+                        return '<button class="btn btn-sm btn-success btn-update-status" data-id="'.$row->id.'" data-status="paid">
+                                    <i class="bi bi-cash"></i> Mark as Paid
+                                </button>';
+                    }
+                    
+                    return '<span class="text-muted small"><i class="bi bi-check-all"></i> Completed</span>';
+                })
+                ->rawColumns(['action', 'status_badge', 'employee_name', 'status_actions'])
                 ->make(true);
         }
 
-        return view('payrolls.index');
+        $assetAccounts = \App\Models\FinancialAccount::where('category', 'asset')->get();
+        
+        $defaultAccountId = \App\Models\Setting::getValue('default_payroll_account');
+
+        return view('payrolls.index', compact('assetAccounts', 'defaultAccountId'));
     }
 
     public function create()
@@ -94,8 +126,8 @@ class PayrollsController extends Controller
 
     public function store(Request $request)
     {
-        // Only Admin roles can create payroll
-        if (!auth()->user()->isAdmin()) {
+        // only admin roles can create payroll
+        if (!Roles::hasFullFinanceAccess(session('role'))) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -126,12 +158,9 @@ class PayrollsController extends Controller
             'pph21' => 'nullable|numeric|min:0',
             'other_deduction' => 'nullable|numeric|min:0',
             'deduction_notes' => 'nullable|string',
-            'status' => 'required|in:draft,approved,paid',
-            'pay_date' => 'required|date',
-            'notes' => 'nullable|string',
         ]);
 
-        // Zero out nulls
+        // zero out nulls
         $numericFields = [
             'transport_allowance', 'meal_allowance', 'position_allowance',
             'overtime_hours', 'overtime_amount',
@@ -148,18 +177,23 @@ class PayrollsController extends Controller
         $validated['absent_count'] = $validated['absent_count'] ?? 0;
 
         $payroll = new Payroll($validated);
+
+        $payroll->status = 'draft';
+        $payroll->pay_date = null;
+        $payroll->notes = null;
+
         $payroll->calculateNetSalary();
         $payroll->save();
 
-        return redirect()->route('payrolls.index')->with('success', 'Data payroll berhasil dibuat.');
+        return redirect()->route('payrolls.index')->with('success', 'Payroll record successfully created.');
     }
 
     public function show($id)
     {
         $payroll = Payroll::with('employee.department', 'employee.employeePositions.position')->findOrFail($id);
 
-        // Access control: non-admin can only see own payroll
-        if (!auth()->user()->isAdmin()) {
+        // access control: non-admin can only see own payroll
+        if (!Roles::hasFullFinanceAccess(session('role'))) {
             if ($payroll->employee_id != auth()->user()->employee_id) {
                 abort(403);
             }
@@ -170,8 +204,8 @@ class PayrollsController extends Controller
 
     public function edit($id)
     {
-        // Only Admin roles can edit payroll
-        if (!auth()->user()->isAdmin()) {
+        // only admin roles can edit payroll
+        if (!Roles::hasFullFinanceAccess(session('role'))) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -183,8 +217,8 @@ class PayrollsController extends Controller
 
     public function update(Request $request, $id)
     {
-        // Only Admin roles can update payroll
-        if (!auth()->user()->isAdmin()) {
+        // only admin roles can update payroll
+        if (!Roles::hasFullFinanceAccess(session('role'))) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -215,9 +249,6 @@ class PayrollsController extends Controller
             'pph21' => 'nullable|numeric|min:0',
             'other_deduction' => 'nullable|numeric|min:0',
             'deduction_notes' => 'nullable|string',
-            'status' => 'required|in:draft,approved,paid',
-            'pay_date' => 'required|date',
-            'notes' => 'nullable|string',
         ]);
 
         $numericFields = [
@@ -237,26 +268,72 @@ class PayrollsController extends Controller
 
         $payroll = Payroll::findOrFail($id);
         $payroll->fill($validated);
+
+        $payroll->status = 'draft';
+
         $payroll->calculateNetSalary();
         $payroll->save();
 
-        return redirect()->route('payrolls.index')->with('success', 'Data payroll berhasil diperbarui.');
+        return redirect()->route('payrolls.index')->with('success', 'Payroll record successfully updated.');
     }
 
     public function destroy($id)
     {
-        // Only Admin roles can delete payroll
-        if (!auth()->user()->isAdmin()) {
+        if (!Roles::hasFullFinanceAccess(session('role'))) {
             abort(403, 'Unauthorized action.');
         }
 
-        $payroll = Payroll::findOrFail($id);
-        $payroll->delete();
-        return redirect()->route('payrolls.index')->with('success', 'Data payroll berhasil dihapus.');
+        $payroll = Payroll::with('employee')->findOrFail($id);
+
+        DB::transaction(function () use ($payroll) {
+
+            // delete related financial transaction if available
+            if ($payroll->financial_transaction_id) {
+
+                $transaction = FinancialTransaction::find($payroll->financial_transaction_id);
+
+                if ($transaction) {
+                    $accountId = $transaction->account_id;
+                    $trxDate = $transaction->transaction_date;
+
+                    // delete financial transaction
+                    $transaction->delete();
+
+                    // recalculate cash book balance
+                    $financeController = new FinancialTransactionController();
+
+                    try {
+                        $reflection = new \ReflectionClass($financeController);
+
+                        $method = $reflection->getMethod('recalculateRunningBalance');
+
+                        $method->setAccessible(true);
+
+                        $method->invoke($financeController, $accountId, $trxDate);
+
+                    } catch (\Throwable $th) {
+
+                        \Log::error(
+                            'Failed to recalculate balance from Payroll: ' . $th->getMessage()
+                        );
+                    }
+                }
+            }
+
+            // delete payroll data
+            $payroll->delete();
+        });
+
+        return redirect()
+            ->route('payrolls.index')
+            ->with(
+                'success',
+                'Payroll data was deleted successfully.'
+            );
     }
 
     /**
-     * AJAX: Get attendance data for an employee in a given period.
+     * ajax: get attendance data for an employee in a given period.
      */
     public function getAttendanceData(Request $request)
     {
@@ -272,13 +349,13 @@ class PayrollsController extends Controller
 
         $employee = Employee::findOrFail($employeeId);
 
-        // Get presences for the period
+        // get presences for the period
         $presences = Presence::where('employee_id', $employeeId)
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
             ->get();
 
-        // Count working days (weekdays in the month)
+        // count working days (weekdays in the month)
         $startDate = Carbon::create($year, $month, 1);
         $endDate = $startDate->copy()->endOfMonth();
         $workingDays = 0;
@@ -290,10 +367,10 @@ class PayrollsController extends Controller
             $current->addDay();
         }
 
-        // Count days present (unique dates with check_in)
+        // count days present (unique dates with check_in)
         $daysPresent = $presences->whereNotNull('check_in')->pluck('date')->unique()->count();
 
-        // Count late arrivals
+        // count late arrivals
         $workStart = config('presence.work_start_time', '08:00');
         $lateThreshold = config('presence.late_threshold_minutes', 15);
         $lateLimit = Carbon::createFromFormat('H:i', $workStart)->addMinutes($lateThreshold);
@@ -310,7 +387,7 @@ class PayrollsController extends Controller
 
         $lateCount = $presences->where('is_late', true)->count();
 
-        // Absent days = working days that have passed - days present - approved leaves
+        // absent days = working days that have passed - days present - approved leaves
         $today = Carbon::today();
         $effectiveEnd = $endDate->greaterThan($today) ? $today : $endDate;
         $passedWorkingDays = 0;
@@ -322,7 +399,7 @@ class PayrollsController extends Controller
             $current->addDay();
         }
 
-        // Count approved leave days in the period
+        // count approved leave days in the period
         $leaveCount = \App\Models\LeaveRequest::where('employee_id', $employeeId)
             ->where('status', 'approved')
             ->where(function ($q) use ($startDate, $endDate) {
@@ -348,7 +425,7 @@ class PayrollsController extends Controller
 
         $absentCount = max(0, $passedWorkingDays - $daysPresent - $leaveCount);
 
-        // Calculate deductions
+        // calculate deductions
         $baseSalary = (float) $employee->salary;
         // $dailySalary = $workingDays > 0 ? $baseSalary / $workingDays : 0;
 
@@ -358,9 +435,9 @@ class PayrollsController extends Controller
         $lateDeduction = round($lateCount * ($baseSalary * 0.01));
         $absentDeduction = round($absentCount * ($baseSalary * 0.01));
 
-        // BPJS calculations
-        // BPJS Kes rules: 1% covers Employee + 1 Spouse + 3 Children (Total 5).
-        // Each additional head adds 1%.
+        // bpjs calculations
+        // bpjs kes rules: 1% covers employee + 1 spouse + 3 children (total 5).
+        // each additional head adds 1%.
         $families = $employee->families;
         $spouseCount = $families->filter(fn($f) => in_array(strtolower($f->relation), ['pasangan', 'istri', 'suami', 'spouse']))->count();
         $childCount = $families->filter(fn($f) => in_array(strtolower($f->relation), ['anak', 'child']))->count();
@@ -371,7 +448,7 @@ class PayrollsController extends Controller
         $bpjsKes = round($baseSalary * $bpjsKesRate);
         $bpjsTk = round($baseSalary * config('payroll.bpjs_tk_employee_rate', 0.02));
 
-        // Overtime 
+        // overtime
         $overtimeRate = (int) Setting::getValue('overtime_rate_per_hour', 0);
         
         $totalApprovedOvertimeMinutes = OvertimeSubmission::where('employee_id', $employeeId)
@@ -404,7 +481,7 @@ class PayrollsController extends Controller
     }
 
     /**
-     * AJAX: Get employee salary data.
+     * ajax: get employee salary data.
      */
     public function getEmployeeData(Request $request)
     {
@@ -419,5 +496,182 @@ class PayrollsController extends Controller
                 'emp_code' => $employee->emp_code,
             ],
         ]);
+    }
+
+    public function print($id)
+    {
+        $payroll = Payroll::with('employee')->findOrFail($id);
+
+        // check finance access
+        if (!Roles::hasFullFinanceAccess(session('role'))) {
+            abort(403, 'Access denied!');
+        }
+
+        // only paid payroll can be printed
+        if ($payroll->status !== 'paid') {
+            return redirect()->back()->with('error', 'Payroll slip has not been paid yet and cannot be printed.');
+        }
+
+        return view('payrolls.print', compact('payroll'));
+    }
+
+    public function showSlip($id)
+    {
+        $payroll = Payroll::with('employee.department')->findOrFail($id);
+        return view('payrolls.slip', compact('payroll'));
+    }
+
+    public function updateStatus(Request $request, $id)
+    {
+        $payroll = Payroll::with('employee')->findOrFail($id);
+        $newStatus = $request->status;
+
+        DB::transaction(function () use ($payroll, $newStatus) {
+            $payroll->status = $newStatus;
+
+            // if status becomes 'paid', record to finance cash book
+            if ($newStatus === 'paid') {
+                
+                // 1. backend fetches directly from database (ignoring javascript payload)
+                $accountId = Setting::getValue('default_payroll_account');
+
+                // 2. if not set in database (empty), throw validation error
+                if (!$accountId) {
+                    throw ValidationException::withMessages([
+                        'account_id' => 'Fund source account has not been set by Admin. Please set the account first on the main page.'
+                    ]);
+                }
+
+                $payroll->pay_date = now();
+
+                $monthName = \Carbon\Carbon::create()->month($payroll->period_month)->translatedFormat('F');
+                $description = "Employee Salary " . ($payroll->employee->fullname ?? 'Unknown') . " for " . $monthName . " " . $payroll->period_year;
+
+                // 3. record to cash book using $accountid from central database
+                $transaction = FinancialTransaction::create([
+                    'account_id'       => $accountId,
+                    'amount'           => $payroll->net_salary,
+                    'transaction_date' => now(),
+                    'transaction_type' => 'debit', // cash out
+                    'description'      => $description,
+                    'created_by'       => auth()->id(), 
+                ]);
+
+                // save relation id
+                $payroll->financial_transaction_id = $transaction->id;
+            }
+
+            $payroll->save();
+        });
+
+        return response()->json([
+            'success' => true, 
+            'message' => $newStatus === 'paid' 
+                ? 'Payroll has been paid and the transaction is automatically recorded in the Cash Book.' 
+                : 'Payroll status successfully updated.'
+        ]);
+    }
+
+    public function updateSetting(Request $request)
+    {
+        $request->validate([
+            'account_id' => 'required|exists:financial_accounts,id'
+        ]);
+
+        // save or update setting to database
+        Setting::updateOrCreate(
+            ['key' => 'default_payroll_account'],
+            ['value' => $request->account_id]
+        );
+
+        $account = FinancialAccount::find($request->account_id);
+
+        return response()->json([
+            'success' => true,
+            'account_name' => $account->code . ' - ' . $account->name
+        ]);
+    }
+
+    public function exportCsv(\Illuminate\Http\Request $request)
+    {
+        // validate, ensure ids are sent
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:payroll,id'
+        ]);
+
+        // get payroll data with employee relations
+        $payrolls = \App\Models\Payroll::with(['employee.department'])->whereIn('id', $request->ids)->get();
+
+        $fileName = 'Payrolls_Export_' . date('Y_m_d_His') . '.csv';
+
+        $headers = array(
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        );
+
+        // csv header / column titles (as requested: include all)
+        $columns = [
+            'Payroll ID', 'Employee Name', 'NIK', 'Department', 'Month', 'Year', 'Status', 
+            'Basic Salary', 'Transport Allowance', 'Meal Allowance', 'Position Allowance', 
+            'Overtime Hours', 'Overtime Pay', 'Performance Bonus', 'Attendance Bonus', 'Other Bonus', 'Bonus Notes',
+            'Working Days', 'Attendance', 'Late (x)', 'Late Deduction', 'Absent (Days)', 'Absent Deduction',
+            'Penalty', 'Penalty Notes', 'Health BPJS', 'Employment BPJS', 'Income Tax (PPh 21)', 
+            'Other Deductions', 'Deduction Notes', 
+            'TOTAL EARNINGS', 'TOTAL DEDUCTIONS', 'NET SALARY (TAKE HOME PAY)', 'Payment Date'
+        ];
+
+        $callback = function() use($payrolls, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+
+            foreach ($payrolls as $p) {
+                $row = [
+                    $p->id,
+                    $p->employee->fullname ?? 'Unknown',
+                    $p->employee->nik ?? '-',
+                    $p->employee->department->name ?? '-',
+                    $p->period_month,
+                    $p->period_year,
+                    strtoupper($p->status),
+                    $p->salary,
+                    $p->transport_allowance,
+                    $p->meal_allowance,
+                    $p->position_allowance,
+                    $p->overtime_hours,
+                    $p->overtime_amount,
+                    $p->performance_bonus,
+                    $p->attendance_bonus,
+                    $p->other_bonus,
+                    $p->bonus_notes,
+                    $p->working_days,
+                    $p->days_present,
+                    $p->late_count,
+                    $p->late_deduction,
+                    $p->absent_count,
+                    $p->absent_deduction,
+                    $p->penalty_amount,
+                    $p->penalty_notes,
+                    $p->bpjs_kes,
+                    $p->bpjs_tk,
+                    $p->pph21,
+                    $p->other_deduction,
+                    $p->deduction_notes,
+                    $p->total_earnings,
+                    $p->total_deductions,
+                    $p->net_salary,
+                    $p->pay_date ? \Carbon\Carbon::parse($p->pay_date)->format('Y-m-d H:i') : '-'
+                ];
+
+                fputcsv($file, $row);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
