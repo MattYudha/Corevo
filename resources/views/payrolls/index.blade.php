@@ -88,7 +88,7 @@
                         @endphp
 
                         <label class="form-label fw-bold mb-1 d-block">
-                            <i class="bi bi-wallet2"></i> Fund Source
+                            <i class="bi bi-wallet2"></i> Account Source
                         </label>
 
                         <button 
@@ -213,13 +213,13 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-primary">
-                    <h5 class="modal-title text-white" id="modalSettingAkunLabel">Set Fund Source</h5>
+                    <h5 class="modal-title text-white" id="modalSettingAkunLabel">Set Account Source</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <p class="small text-muted mb-3">The cash/bank account selected here will be used automatically to disburse payroll funds.</p>
                     <div class="mb-3">
-                        <label for="master_account_id" class="form-label fw-bold">Select Cash/Bank Account (Asset) <span class="text-danger">*</span></label>
+                        <label for="master_account_id" class="form-label fw-bold">Select Account (Expense) <span class="text-danger">*</span></label>
                         <select class="form-select" id="master_account_id" name="master_account_id">
                             <option value="" disabled {{ !$defaultAccountId ? 'selected' : '' }}>-- Select Cash/Bank Account --</option>
                             @foreach($assetAccounts as $akun)
@@ -433,7 +433,7 @@ $(function() {
             let currentName = $('#labelAkunTerpilih').text();
 
             if (!currentId) {
-                Swal.fire('Stop!', 'Central fund source not set. Please click the "Fund Source" button above the table first.', 'error');
+                Swal.fire('Stop!', 'Central fund source not set. Please click the "Account Source" button above the table first.', 'error');
                 return;
             }
 
