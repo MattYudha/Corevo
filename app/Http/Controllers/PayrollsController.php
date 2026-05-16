@@ -110,7 +110,7 @@ class PayrollsController extends Controller
                 ->make(true);
         }
 
-        $assetAccounts = \App\Models\FinancialAccount::where('category', 'asset')->get();
+        $assetAccounts = \App\Models\FinancialAccount::where('category', 'expense')->get();
         
         $defaultAccountId = \App\Models\Setting::getValue('default_payroll_account');
 
@@ -552,7 +552,7 @@ class PayrollsController extends Controller
                     'account_id'       => $accountId,
                     'amount'           => $payroll->net_salary,
                     'transaction_date' => now(),
-                    'transaction_type' => 'debit', // cash out
+                    'transaction_type' => 'kredit', // cash out
                     'description'      => $description,
                     'created_by'       => auth()->id(), 
                 ]);
