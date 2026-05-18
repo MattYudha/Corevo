@@ -307,9 +307,76 @@
                                                 </select>
                                             </div>
                                             @if($isAdmin)
-                                            <div class="mb-3">
+                                            {{-- <div class="mb-3">
                                                 <label class="form-label">Salary</label>
                                                 <input type="number" name="salary" id="salary" class="form-control @error('salary') is-invalid @enderror" value="{{ old('salary', $employee->salary) }}" step="0.01">
+                                            </div> --}}
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Salary <span class="text-danger">*</span></label>
+                                                <div class="input-group">
+                                                    <span class="input-group-text">Rp</span>
+                                                    <input type="text" id="display_salary" class="form-control" value="{{ old('salary', $employee->salary ?? 0) }}" readonly placeholder="Total Salary">
+                                                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#salaryModal">
+                                                        <i class="bi bi-calculator"></i> Set Salary
+                                                    </button>
+                                                </div>
+                                                
+                                                <input type="hidden" name="salary" id="salary" value="{{ (int) old('salary', $employee->salary ?? 0) }}">
+                                                <input type="hidden" name="basic_salary" id="basic_salary" value="{{ (int) old('basic_salary', $employee->basic_salary ?? 0) }}">
+                                                <input type="hidden" name="meal_allowance" id="meal_allowance" value="{{ (int) old('meal_allowance', $employee->meal_allowance ?? 0) }}">
+                                                <input type="hidden" name="transport_allowance" id="transport_allowance" value="{{ (int) old('transport_allowance', $employee->transport_allowance ?? 0) }}">
+                                                <input type="hidden" name="position_allowance" id="position_allowance" value="{{ (int) old('position_allowance', $employee->position_allowance ?? 0) }}">
+                                            </div>
+
+                                            <div class="modal fade" id="salaryModal" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog modal-dialog-centered">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header bg-primary">
+                                                            <h5 class="modal-title text-white">Salary Details</h5>
+                                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="mb-3">
+                                                                <label class="form-label text-dark fw-bold">Basic Salary</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text">Rp</span>
+                                                                    <input type="text" id="modal_basic" class="form-control calc-modal" value="{{ (int) old('basic_salary', $employee->basic_salary ?? 0) }}">
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label text-dark fw-bold">Meal Allowance</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text">Rp</span>
+                                                                    <input type="text" id="modal_meal" class="form-control calc-modal" value="{{ (int) old('meal_allowance', $employee->meal_allowance ?? 0) }}">
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label text-dark fw-bold">Transport Allowance</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text">Rp</span>
+                                                                    <input type="text" id="modal_transport" class="form-control calc-modal" value="{{ (int) old('transport_allowance', $employee->transport_allowance ?? 0) }}">
+                                                                </div>
+                                                            </div>
+                                                            <div class="mb-3">
+                                                                <label class="form-label text-dark fw-bold">Position Allowance</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text">Rp</span>
+                                                                    <input type="text" id="modal_position" class="form-control calc-modal" value="{{ (int) old('position_allowance', $employee->position_allowance ?? 0) }}">
+                                                                </div>
+                                                            </div>
+                                                            <hr>
+                                                            <div class="d-flex justify-content-between align-items-center">
+                                                                <h6 class="mb-0 fw-bold">Total Salary:</h6>
+                                                                <h5 class="mb-0 fw-bold text-success" id="modal_total_text">Rp 0</h5>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                            <button type="button" class="btn btn-primary" id="btnSaveSalaryModal">Apply Salary</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                             @endif
                                         </div>
@@ -765,6 +832,115 @@
         }
         row.remove();
     }
+
+    const formatRp = (n) => Number(n).toLocaleString('id-ID');
+
+    // convert formatted string like "1.000.000" into raw number
+    const parseNumber = (str) => {
+
+        if (!str) {
+            return 0;
+        }
+
+        // remove all non numeric characters
+        let numStr = str.toString().replace(/\D/g, '');
+
+        return numStr === '' ? 0 : parseFloat(numStr);
+    };
+
+    // format input value in real time
+    const formatInputRupiah = (input) => {
+
+        // store current cursor position and text length
+        let cursorPosition = input.selectionStart;
+        let originalLength = input.value.length;
+
+        let val = parseNumber(input.value);
+
+        if (val === 0 && input.value === '') {
+            input.value = '';
+        } else {
+            input.value = formatRp(val);
+        }
+
+        // adjust cursor position after formatting
+        let newLength = input.value.length;
+
+        cursorPosition = cursorPosition + (newLength - originalLength);
+
+        // restore cursor position
+        input.setSelectionRange(cursorPosition, cursorPosition);
+    };
+
+    // initialize formatted salary on page load
+    document.getElementById('display_salary').value =
+        formatRp(document.getElementById('salary').value);
+
+    // format modal inputs on page load
+    document.querySelectorAll('.calc-modal').forEach(el => {
+
+        if (el.value !== '' && el.value !== '0') {
+            formatInputRupiah(el);
+        }
+    });
+
+    const calcModal = () => {
+
+        let b = parseNumber(document.getElementById('modal_basic').value);
+        let m = parseNumber(document.getElementById('modal_meal').value);
+        let t = parseNumber(document.getElementById('modal_transport').value);
+        let p = parseNumber(document.getElementById('modal_position').value);
+
+        let total = b + m + t + p;
+
+        document.getElementById('modal_total_text').innerText =
+            'Rp ' + formatRp(total);
+
+        return total;
+    };
+
+    // listen for modal input changes
+    document.querySelectorAll('.calc-modal').forEach(el => {
+
+        el.addEventListener('input', function() {
+
+            // format input value
+            formatInputRupiah(this);
+
+            // recalculate total
+            calcModal();
+        });
+    });
+
+    document.getElementById('salaryModal')
+        .addEventListener('show.bs.modal', calcModal);
+
+    document.getElementById('btnSaveSalaryModal')
+        .addEventListener('click', function() {
+
+            let b = parseNumber(document.getElementById('modal_basic').value);
+            let m = parseNumber(document.getElementById('modal_meal').value);
+            let t = parseNumber(document.getElementById('modal_transport').value);
+            let p = parseNumber(document.getElementById('modal_position').value);
+
+            let total = calcModal();
+
+            // save raw numeric values to hidden inputs
+            document.getElementById('basic_salary').value = b;
+            document.getElementById('meal_allowance').value = m;
+            document.getElementById('transport_allowance').value = t;
+            document.getElementById('position_allowance').value = p;
+            document.getElementById('salary').value = total;
+
+            // update formatted salary display
+            document.getElementById('display_salary').value = formatRp(total);
+
+            var modal = bootstrap.Modal.getInstance(
+                document.getElementById('salaryModal')
+            );
+
+            modal.hide();
+        });
 </script>
 @endpush
 @endif

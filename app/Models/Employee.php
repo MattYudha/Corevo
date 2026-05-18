@@ -39,6 +39,12 @@ class Employee extends Model
         'resign_date',
         'permanent_date',
         'contract_expiry',
+        'salary',
+        'basic_salary',       
+        'meal_allowance',     
+        'transport_allowance',
+        'position_allowance', 
+        'foundation_id',
     ];
 
     /**

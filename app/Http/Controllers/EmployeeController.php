@@ -143,8 +143,12 @@ class EmployeeController extends Controller
             'supervisor_id' => 'nullable|exists:employees,id',
             'status' => 'required|string|in:active,inactive',
             'employee_status' => 'required|string|in:permanent,contract,probation,internship',
-            'salary' => 'required|numeric',
             'password' => 'required|string|min:8',
+            'salary' => 'required|numeric',
+            'basic_salary' => 'nullable|numeric',
+            'meal_allowance' => 'nullable|numeric',
+            'transport_allowance' => 'nullable|numeric',
+            'position_allowance' => 'nullable|numeric',
         ]);
 
         $employee = Employee::create([
@@ -169,7 +173,11 @@ class EmployeeController extends Controller
             'supervisor_id' => $request->supervisor_id,
             'status' => $request->status,
             'employee_status' => $request->employee_status,
-            'salary' => $request->salary
+            'salary' => $request->salary,
+            'basic_salary' => $request->basic_salary ?: 0,
+            'meal_allowance' => $request->meal_allowance ?: 0,
+            'transport_allowance' => $request->transport_allowance ?: 0,
+            'position_allowance' => $request->position_allowance ?: 0,
         ]);
 
         // Auto-create a User account for this employee if not exists
@@ -243,6 +251,10 @@ class EmployeeController extends Controller
         if (!$isAdmin) {
             $request->merge([
                 'salary' => $employee->salary,
+                'basic_salary' => $employee->basic_salary,
+                'meal_allowance' => $employee->meal_allowance,
+                'transport_allowance' => $employee->transport_allowance,
+                'position_allowance' => $employee->position_allowance,
                 'department_id' => $employee->department_id,
                 'office_location_id' => $employee->office_location_id,
                 'role_id' => $employee->role_id,
@@ -269,7 +281,6 @@ class EmployeeController extends Controller
             'supervisor_id' => 'nullable|exists:employees,id',
             'status' => 'required|string|max:50',
             'employee_status' => 'required|string|in:permanent,contract,probation,internship',
-            'salary' => 'required|numeric',
             'education_level_id' => 'nullable|exists:education_levels,education_level_id',
             'gender' => 'nullable|string|max:50',
             'religion' => 'nullable|string|max:100',
@@ -299,6 +310,11 @@ class EmployeeController extends Controller
             'documents.*.identity_number' => 'nullable|string|max:255',
             'documents.*.description' => 'nullable|string|max:500',
             'password' => 'nullable|string|min:8|confirmed',
+            'salary' => 'required|numeric',
+            'basic_salary' => 'nullable|numeric',
+            'meal_allowance' => 'nullable|numeric',
+            'transport_allowance' => 'nullable|numeric',
+            'position_allowance' => 'nullable|numeric',
         ]);
 
         $oldEmail = $employee->email;

@@ -506,6 +506,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     document.getElementById('salary').value = formatRibuan(Math.round(d.base_salary));
 
+                    document.getElementById('transport_allowance').value = formatRibuan(Math.round(d.transport_allowance || 0));
+                    document.getElementById('meal_allowance').value = formatRibuan(Math.round(d.meal_allowance || 0));
+                    document.getElementById('position_allowance').value = formatRibuan(Math.round(d.position_allowance || 0));
+
                     document.getElementById('working_days').value = d.working_days;
                     document.getElementById('days_present').value = d.days_present;
                     document.getElementById('late_count').value = d.late_count;
