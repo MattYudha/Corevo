@@ -462,7 +462,7 @@ class PayrollsController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'base_salary' => $baseSalary,
+                'base_salary' => (float) ($employee->basic_salary > 0 ? $employee->basic_salary : $employee->salary),
                 'working_days' => $workingDays,
                 'days_present' => $daysPresent,
                 'late_count' => $lateCount,
@@ -472,8 +472,9 @@ class PayrollsController extends Controller
                 'absent_deduction' => round($absentDeduction),
                 'bpjs_kes' => $bpjsKes,
                 'bpjs_tk' => $bpjsTk,
-                'transport_allowance' => config('payroll.default_transport_allowance', 500000),
-                'meal_allowance' => config('payroll.default_meal_allowance', 500000),
+                'transport_allowance' => (float) $employee->transport_allowance,
+                'meal_allowance' => (float) $employee->meal_allowance,
+                'position_allowance' => (float) $employee->position_allowance,
                 'overtime_hours' => round($totalOvertimeHours, 2),
                 'overtime_amount' => $overtimePay,
             ],
