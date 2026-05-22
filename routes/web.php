@@ -262,12 +262,20 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('work-logs', WorkLogController::class);
 
-    Route::get('/master-presences/settings', [MasterPresenceController::class, 'index'])
-        ->name('master-presences.settings')
+    Route::get('/master-presences', [MasterPresenceController::class, 'index'])
+        ->name('master-presences.index')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
         
-    Route::post('/master-presences/settings', [MasterPresenceController::class, 'update'])
-        ->name('master-presences.settings.update')
+    Route::post('/master-presences', [MasterPresenceController::class, 'update'])
+        ->name('master-presences.index.update')
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+    
+    Route::get('/master-presences/create', [MasterPresenceController::class, 'createPresence'])
+        ->name('master-presences.create-presence')
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+
+    Route::post('/master-presences/store', [MasterPresenceController::class, 'storePresence'])
+        ->name('master-presences.store-presence')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
 
     // Overtimes Management
