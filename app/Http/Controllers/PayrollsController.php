@@ -348,50 +348,110 @@ class PayrollsController extends Controller
         $month = (int) $request->month;
         $year = (int) $request->year;
 
+        // $employee = Employee::findOrFail($employeeId);
+
+        // // get presences for the period
+        // $presences = Presence::where('employee_id', $employeeId)
+        //     ->whereMonth('date', $month)
+        //     ->whereYear('date', $year)
+        //     ->get();
+
+        // $holidayDates = HolidayService::getHolidayDates($year, $month);
+
+        // // count working days (weekdays in the month)
+        // $startDate = Carbon::create($year, $month, 1);
+        // $endDate = $startDate->copy()->endOfMonth();
+        // $workingDays = 0;
+        // $current = $startDate->copy();
+        // while ($current <= $endDate) {
+        //     // skip weekends and dates included in the holiday list
+        //     if (!$current->isWeekend() && !in_array($current->format('Y-m-d'), $holidayDates)) {
+        //         $workingDays++;
+        //     }
+        //     $current->addDay();
+        // }
+
+        // // count days present (unique dates with check_in)
+        // $daysPresent = $presences->whereNotNull('check_in')->pluck('date')->unique()->count();
+
+        // // count late arrivals
+        // $workStart = config('presence.work_start_time', '08:00');
+        // $lateThreshold = config('presence.late_threshold_minutes', 15);
+        // $lateLimit = Carbon::createFromFormat('H:i', $workStart)->addMinutes($lateThreshold);
+
+        // // $lateCount = 0;
+        // // foreach ($presences as $p) {
+        // //     if ($p->check_in) {
+        // //         $checkInTime = Carbon::parse($p->check_in);
+        // //         if ($checkInTime->format('H:i:s') > $lateLimit->format('H:i:s')) {
+        // //             $lateCount++;
+        // //         }
+        // //     }
+        // // }
+
+        // $lateCount = $presences->where('is_late', true)->count();
+
+        
+
+
+    
+
+
+
+
         $employee = Employee::findOrFail($employeeId);
 
-        // get presences for the period
-        $presences = Presence::where('employee_id', $employeeId)
+        // 1. Ambil data absen mentah dari DB
+        $rawPresences = Presence::where('employee_id', $employeeId)
             ->whereMonth('date', $month)
             ->whereYear('date', $year)
             ->get();
 
-        $holidayDates = HolidayService::getHolidayDates($year, $month);
+        // 2. Ambil daftar tanggal libur dari service yang udah kita bikin
+        $holidayDates = \App\Services\HolidayService::getHolidayDates($year, $month);
 
-        // count working days (weekdays in the month)
+        // 3. CLEANING DATA: Buang hari libur, weekend, dan duplicate absen
+        $presences = $rawPresences->filter(function($p) use ($holidayDates) {
+            $dateString = Carbon::parse($p->date)->format('Y-m-d');
+            $isWeekend = Carbon::parse($p->date)->isWeekend();
+            
+            // Hanya lolos kalau BUKAN weekend, BUKAN libur, dan BUKAN bolos murni
+            return !$isWeekend && !in_array($dateString, $holidayDates) && !is_null($p->check_in);
+        })->unique(function ($item) {
+            // Pastikan 1 hari cuma dihitung 1 absen (cegah karyawan tap 2x)
+            return Carbon::parse($item->date)->format('Y-m-d'); 
+        });
+
+        // 4. Hitung working days (Sama kayak yang kita bahas sebelumnya)
         $startDate = Carbon::create($year, $month, 1);
         $endDate = $startDate->copy()->endOfMonth();
         $workingDays = 0;
         $current = $startDate->copy();
         while ($current <= $endDate) {
-            // skip weekends and dates included in the holiday list
             if (!$current->isWeekend() && !in_array($current->format('Y-m-d'), $holidayDates)) {
                 $workingDays++;
             }
             $current->addDay();
         }
 
-        // count days present (unique dates with check_in)
-        $daysPresent = $presences->whereNotNull('check_in')->pluck('date')->unique()->count();
+        // 5. Karena $presences udah disaring super bersih, hitungnya gampang!
+        $daysPresent = $presences->count();
 
-        // count late arrivals
-        $workStart = config('presence.work_start_time', '08:00');
-        $lateThreshold = config('presence.late_threshold_minutes', 15);
-        $lateLimit = Carbon::createFromFormat('H:i', $workStart)->addMinutes($lateThreshold);
+        // 6. Hitung rincian tipe kerja (Sekarang PASTI SINKRON sama total daysPresent)
+        $wfoCount = $presences->filter(fn($p) => strtolower($p->work_type) === 'wfo')->count();
+        $wfhCount = $presences->filter(fn($p) => strtolower($p->work_type) === 'wfh')->count();
+        $wfaCount = $presences->filter(fn($p) => strtolower($p->work_type) === 'wfa')->count();
 
-        // $lateCount = 0;
-        // foreach ($presences as $p) {
-        //     if ($p->check_in) {
-        //         $checkInTime = Carbon::parse($p->check_in);
-        //         if ($checkInTime->format('H:i:s') > $lateLimit->format('H:i:s')) {
-        //             $lateCount++;
-        //         }
-        //     }
-        // }
-
+        // Hitung keterlambatan dari data absen yang valid aja
         $lateCount = $presences->where('is_late', true)->count();
 
-        
+
+
+
+
+
+
+
 
         // absent days = working days that have passed - days present - approved leaves
         $today = Carbon::today();
@@ -506,6 +566,9 @@ class PayrollsController extends Controller
         $totalOvertimeHours = $totalApprovedOvertimeMinutes / 60;
         $overtimePay = round($totalOvertimeHours * $overtimeRate);
 
+        $calculatedBase = $employee->salary;
+        $pph21Amount = round($calculatedBase * (($employee->pph21_rate ?? 0) / 100));
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -518,15 +581,17 @@ class PayrollsController extends Controller
                 'absent_wfo_deficit' => $penalizedWfoDeficit,
                 'employee_working_type' => $employee->working_type,
                 'leave_count' => $leaveCount,
-
-                'wfo_count'        => $presences->filter(fn($p) => strtolower($p->work_type) === 'wfo')->count(),
-                'wfh_count'        => $presences->filter(fn($p) => strtolower($p->work_type) === 'wfh')->count(),
-                'wfa_count'        => $presences->filter(fn($p) => strtolower($p->work_type) === 'wfa')->count(),
+                
+                'wfo_count'        => $wfoCount,
+                'wfh_count'        => $wfhCount,
+                'wfa_count'        => $wfaCount,
                 
                 'late_deduction' => $lateDeduction,
                 'absent_deduction' => round($absentDeduction),
                 'bpjs_kes' => $bpjsKes,
                 'bpjs_tk' => $bpjsTk,
+
+                'pph21' => $pph21Amount,
                 'transport_allowance' => (float) $employee->transport_allowance,
                 'meal_allowance' => (float) $employee->meal_allowance,
                 'position_allowance' => (float) $employee->position_allowance,

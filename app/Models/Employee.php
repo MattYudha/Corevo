@@ -34,6 +34,7 @@ class Employee extends Model
         'status',
         'employee_status',
         'working_type',
+        'pph21_rate',
         'salary',
         'foundation_id',
         'education_level_id',

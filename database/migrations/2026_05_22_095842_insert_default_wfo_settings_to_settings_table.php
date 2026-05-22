@@ -19,7 +19,7 @@ return new class extends Migration
         DB::table('settings')->updateOrInsert(
             ['key' => 'min_wfo_part_time'],
             [
-                'value' => '6',
+                'value' => '4',
                 'created_at' => now(),
                 'updated_at' => now()
             ]

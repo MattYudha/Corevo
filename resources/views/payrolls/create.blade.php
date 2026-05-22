@@ -100,7 +100,7 @@
 
         <div id="payroll-details" style="display: none;">
             {{-- section 2: earnings --}}
-            <div class="card shadow-sm border-0 border-start border-success border-4 rounded-4 mb-4">
+            <div class="card shadow-sm border-start border-success border-4 rounded-4 mb-4">
                 <div class="card-header bg-success-subtle border-bottom-0 py-3 rounded-top-4">
                     <h5 class="mb-0 text-success fw-bold"><i class="bi bi-wallet2 me-2"></i> Earnings</h5>
                 </div>
@@ -214,7 +214,7 @@
             </div>
 
             {{-- section 3: deductions --}}
-            <div class="card shadow-sm border-0 border-start border-danger border-4 rounded-4 mb-4">
+            <div class="card shadow-sm border-start border-danger border-4 rounded-4 mb-4">
                 <div class="card-header bg-danger-subtle border-bottom-0 py-3 rounded-top-4">
                     <h5 class="mb-0 text-danger fw-bold"><i class="bi bi-scissors me-2"></i> Deductions</h5>
                 </div>
@@ -902,6 +902,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('breakdown_absent_murni').innerText = (d.absent_murni || 0) + ' Days';
                     document.getElementById('breakdown_absent_wfo').innerText = (d.absent_wfo_deficit || 0) + ' Days';
                     document.getElementById('breakdown_absent_total').innerText = (d.absent_count || 0) + ' Days';
+
+                    document.getElementById('pph21').value = formatRibuan(Math.round(d.pph21 || 0));
                     
                     document.getElementById('late_count').value = d.late_count;
                     document.getElementById('late_deduction').value = formatRibuan(d.late_deduction);

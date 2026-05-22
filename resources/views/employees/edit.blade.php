@@ -323,6 +323,18 @@
                                             </div> --}}
 
                                             <div class="mb-3">
+                                                <label class="form-label">PPh 21 Rate (%)</label>
+                                                <div class="input-group">
+                                                    <input type="number" name="pph21_rate" class="form-control" step="0.01" min="0" max="100" 
+                                                        value="{{ old('pph21_rate', $employee->pph21_rate ?? 0) }}" placeholder="Contoh: 0.50 atau 5.00">
+                                                    <span class="input-group-text">%</span>
+                                                </div>
+                                                <small class="text-muted">
+                                                    Enter the monthly PPh21 tax deduction percentage specifically for this employee.
+                                                </small>
+                                            </div>
+
+                                            <div class="mb-3">
                                                 <label class="form-label">Salary <span class="text-danger">*</span></label>
                                                 <div class="input-group">
                                                     <span class="input-group-text">Rp</span>
