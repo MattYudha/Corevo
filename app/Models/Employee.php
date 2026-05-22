@@ -33,6 +33,7 @@ class Employee extends Model
         'supervisor_id',
         'status',
         'employee_status',
+        'working_type',
         'salary',
         'foundation_id',
         'education_level_id',

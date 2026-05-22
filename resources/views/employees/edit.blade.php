@@ -157,14 +157,6 @@
                                                 <input type="text" name="fullname" class="form-control" value="{{ old('fullname', $employee->fullname) }}" required>
                                             </div>
                                             <div class="mb-3">
-                                                <label class="form-label">Status Karyawan</label>
-                                                <select name="employee_status" class="form-select" required>
-                                                    @foreach(\App\Models\Employee::getAvailableStatuses() as $key => $label)
-                                                        <option value="{{ $key }}" {{ old('employee_status', $employee->employee_status) == $key ? 'selected' : '' }}>{{ $label }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
-                                            <div class="mb-3">
                                                 <label class="form-label">Email</label>
                                                 <input type="email" name="email" class="form-control" value="{{ old('email', $employee->email) }}" required>
                                             </div>
@@ -273,6 +265,17 @@
                                                 </select>
                                             </div>
                                             <div class="mb-3">
+                                                <label class="form-label">Employee Status</label>
+                                                <select name="employee_status" class="form-select" required>
+                                                    @foreach(\App\Models\Employee::getAvailableStatuses() as $key => $label)
+                                                        <option value="{{ $key }}"
+                                                            {{ old('employee_status', $employee->employee_status) == $key ? 'selected' : '' }}>
+                                                            {{ $label }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
                                                 <label class="form-label">Resign Date</label>
                                                 <input type="date" name="resign_date" class="form-control" value="{{ old('resign_date', $employee->resign_date ? $employee->resign_date->format('Y-m-d') : '') }}" {{ $isAdmin ? '' : 'readonly' }}>
                                             </div>
@@ -304,6 +307,13 @@
                                                 <select name="status" class="form-select" required>
                                                     <option value="active" {{ old('status', $employee->status) == 'active' ? 'selected' : '' }}>Active</option>
                                                     <option value="inactive" {{ old('status', $employee->status) == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Working Type</label>
+                                                <select name="working_type" class="form-select" required>
+                                                    <option value="full_time" {{ old('working_type', $employee->working_type) == 'full_time' ? 'selected' : '' }}>Full Time</option>
+                                                    <option value="part_time" {{ old('working_type', $employee->working_type) == 'part_time' ? 'selected' : '' }}>Part Time</option>
                                                 </select>
                                             </div>
                                             @if($isAdmin)

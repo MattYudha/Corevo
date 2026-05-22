@@ -53,10 +53,13 @@
                         <a href="{{ route('presences.export') }}" class="btn btn-success"><i class="bi bi-download"></i> Export CSV</a>
                     @endif
                     @if(in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]))
-                        <a href="{{ route('master-presences.settings') }}" class="btn btn-warning d-flex align-items-center">
+                        <a href="{{ route('master-presences.index') }}" class="btn btn-warning d-flex align-items-center">
                             <i class="bi bi-gear-fill me-2 mb-2"></i> Master Presence
                         </a>
                     @endif
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#holidayModal">
+                        <i class="bi bi-calendar-event"></i> Holidays List
+                    </button>
                 </div>
 
                 @if(session('success'))
@@ -114,6 +117,57 @@
     </section>
 </div>
 
+<div class="modal fade" id="holidayModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title text-white"><i class="bi bi-calendar-heart"></i> Hari Libur Nasional & Cuti Bersama</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <select id="holiday-month" class="form-select">
+                            @foreach(range(1, 12) as $m)
+                                <option value="{{ $m }}" {{ date('n') == $m ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $m, 10)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <select id="holiday-year" class="form-select">
+                            @foreach(range(date('Y') - 1, date('Y') + 2) as $y)
+                                <option value="{{ $y }}" {{ date('Y') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="holiday-loader" class="text-center d-none my-3">
+                    <div class="spinner-border text-danger" role="status"></div>
+                    <p class="mt-2 text-muted">Mengambil data libur...</p>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm" id="holiday-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Keterangan</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holiday-tbody">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
     $(function() {
@@ -138,6 +192,62 @@
         $(document).on('submit', '.delete-form', function (e) {
             e.preventDefault();
             window.confirmDelete(this, 'Delete this presence record?');
+        });
+
+        function loadHolidays() {
+            let year = $('#holiday-year').val();
+            let month = $('#holiday-month').val();
+            let tbody = $('#holiday-tbody');
+            let loader = $('#holiday-loader');
+            let table = $('#holiday-table');
+
+            tbody.empty();
+            table.hide();
+            loader.removeClass('d-none');
+
+            fetch(`https://libur.deno.dev/api?year=${year}&month=${month}`)
+                .then(response => response.json())
+                .then(data => {
+                    loader.addClass('d-none');
+                    table.show();
+
+                    if (data.length === 0) {
+                        tbody.append('<tr><td colspan="3" class="text-center text-muted">Tidak ada hari libur di bulan ini.</td></tr>');
+                        return;
+                    }
+
+                    data.forEach(item => {
+                        // Format tanggal jadi lebih cantik (misal: 01 May 2026)
+                        let dateObj = new Date(item.date);
+                        let formattedDate = dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                        
+                        let badge = item.is_national_holiday 
+                            ? '<span class="badge bg-danger">Libur Nasional</span>' 
+                            : '<span class="badge bg-warning text-dark">Cuti Bersama</span>';
+
+                        tbody.append(`
+                            <tr>
+                                <td class="text-nowrap fw-bold">${formattedDate}</td>
+                                <td>${item.name}</td>
+                                <td>${badge}</td>
+                            </tr>
+                        `);
+                    });
+                })
+                .catch(error => {
+                    loader.addClass('d-none');
+                    tbody.append('<tr><td colspan="3" class="text-center text-danger">Gagal memuat data. Silakan coba lagi.</td></tr>');
+                });
+        }
+
+        // Load pertama kali pas modal dibuka
+        $('#holidayModal').on('show.bs.modal', function () {
+            loadHolidays();
+        });
+
+        // Reload otomatis kalau bulan atau tahun diubah
+        $('#holiday-month, #holiday-year').on('change', function() {
+            loadHolidays();
         });
     });
 </script>

@@ -16,6 +16,7 @@ use App\Models\FinancialTransaction;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Finance\FinancialTransactionController;
 use Illuminate\Validation\ValidationException;
+use App\Services\HolidayService;
 
 class PayrollsController extends Controller
 {
@@ -355,13 +356,16 @@ class PayrollsController extends Controller
             ->whereYear('date', $year)
             ->get();
 
+        $holidayDates = HolidayService::getHolidayDates($year, $month);
+
         // count working days (weekdays in the month)
         $startDate = Carbon::create($year, $month, 1);
         $endDate = $startDate->copy()->endOfMonth();
         $workingDays = 0;
         $current = $startDate->copy();
         while ($current <= $endDate) {
-            if (!$current->isWeekend()) {
+            // skip weekends and dates included in the holiday list
+            if (!$current->isWeekend() && !in_array($current->format('Y-m-d'), $holidayDates)) {
                 $workingDays++;
             }
             $current->addDay();
@@ -387,13 +391,16 @@ class PayrollsController extends Controller
 
         $lateCount = $presences->where('is_late', true)->count();
 
+        
+
         // absent days = working days that have passed - days present - approved leaves
         $today = Carbon::today();
         $effectiveEnd = $endDate->greaterThan($today) ? $today : $endDate;
         $passedWorkingDays = 0;
         $current = $startDate->copy();
         while ($current <= $effectiveEnd) {
-            if (!$current->isWeekend()) {
+            // skip national holidays and collective leave dates
+            if (!$current->isWeekend() && !in_array($current->format('Y-m-d'), $holidayDates)) {
                 $passedWorkingDays++;
             }
             $current->addDay();
@@ -432,8 +439,48 @@ class PayrollsController extends Controller
         // $latePenalty = config('payroll.late_penalty_per_incident', 50000);
         // $absentMultiplier = config('payroll.absent_penalty_multiplier', 1.0);
 
+        // get minimum wfo settings from database
+        // use default values if settings are empty
+        $minWfoFullTime = (int) (Setting::where('key', 'min_wfo_full_time')->value('value') ?? 12);
+
+        $minWfoPartTime = (int) (Setting::where('key', 'min_wfo_part_time')->value('value') ?? 6);
+
+        // determine required wfo target based on employee working type
+        $requiredWfo = strtolower($employee->working_type) === 'part_time'
+            ? $minWfoPartTime
+            : $minWfoFullTime;
+
+        // count actual wfo attendance in the selected month
+        $realWfoCount = $presences
+            ->filter(
+                fn($p) =>
+                    strtolower($p->work_type) === 'wfo' &&
+                    $p->status === 'present'
+            )
+            ->count();
+
+        // count attendance outside office (wfh / wfa)
+        $wfhWfaCount = $daysPresent - $realWfoCount;
+
+        // calculate missing wfo days
+        $wfoDeficit = 0;
+
+        if ($realWfoCount < $requiredWfo) {
+            $wfoDeficit = $requiredWfo - $realWfoCount;
+        }
+
+        // prevent double penalty
+        // wfo deficit penalty cannot exceed total wfh/wfa days
+        $penalizedWfoDeficit = min($wfoDeficit, $wfhWfaCount);
+
+        // pure absence without attendance check-in
+        $absentMurni = $absentCount;
+
+        // final absence = pure absence + valid wfo deficit penalty
+        $finalAbsentCount = $absentMurni + $penalizedWfoDeficit;
+
         $lateDeduction = round($lateCount * ($baseSalary * 0.01));
-        $absentDeduction = round($absentCount * ($baseSalary * 0.01));
+        $absentDeduction = round($finalAbsentCount * ($baseSalary * 0.01));
 
         // bpjs calculations
         // bpjs kes rules: 1% covers employee + 1 spouse + 3 children (total 5).
@@ -466,8 +513,16 @@ class PayrollsController extends Controller
                 'working_days' => $workingDays,
                 'days_present' => $daysPresent,
                 'late_count' => $lateCount,
-                'absent_count' => $absentCount,
+                'absent_count'       => $finalAbsentCount, 
+                'absent_murni'        => $absentMurni,
+                'absent_wfo_deficit' => $penalizedWfoDeficit,
+                'employee_working_type' => $employee->working_type,
                 'leave_count' => $leaveCount,
+
+                'wfo_count'        => $presences->filter(fn($p) => strtolower($p->work_type) === 'wfo')->count(),
+                'wfh_count'        => $presences->filter(fn($p) => strtolower($p->work_type) === 'wfh')->count(),
+                'wfa_count'        => $presences->filter(fn($p) => strtolower($p->work_type) === 'wfa')->count(),
+                
                 'late_deduction' => $lateDeduction,
                 'absent_deduction' => round($absentDeduction),
                 'bpjs_kes' => $bpjsKes,

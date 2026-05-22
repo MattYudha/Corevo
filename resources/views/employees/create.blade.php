@@ -86,6 +86,14 @@
                                     </div>
 
                                     <div class="mb-3">
+                                        <label class="form-label">Waktu Kerja (Working Type)</label>
+                                        <select name="working_type" class="form-select" required>
+                                            <option value="full_time" {{ old('working_type') == 'full_time' ? 'selected' : '' }}>Full Time</option>
+                                            <option value="part_time" {{ old('working_type') == 'part_time' ? 'selected' : '' }}>Part Time</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
                                         <label class="form-label">Email</label>
                                         <input type="email" name="email"
                                             class="form-control"
