@@ -860,7 +860,7 @@
 
                     // Pass Face Validation
                     modeState[mode].face = true;
-                    checkReady(mode); // <--- THIS IS THE FIX BRO
+                    checkReady(mode);
                 }
             }
         }, 500);
@@ -892,126 +892,73 @@
         startFaceDetectionLoop(mode, videoEl, statusEl, videoContainer, previewContainer, previewImg);
     }
 
-    // ============ FINGERPRINT (All Modes) ============
-    async function initFingerprintForMode(mode) {
-    try {
-        const statusEl = document.getElementById('fingerprint-status-' + mode);
-        if (statusEl) {
-            statusEl.innerHTML = '<span class="badge bg-warning">⏳ Checking Device...</span>';
-        }
+    // // ============ FINGERPRINT (All Modes) ============
+    function getDeviceMeta() {
+        const ua = navigator.userAgent;
+        let browser = "Unknown";
+        let os = "Unknown";
 
-        // get or create token in localstorage
-        function getDeviceToken() {
-            let token = localStorage.getItem('corevo_device_token');
-            if (!token) {
-                token = 'crv_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
-                localStorage.setItem('corevo_device_token', token);
-            }
-            return token;
-        }
+        if (ua.match(/Edg/i)) browser = "Edge";
+        else if (ua.match(/OPR/i)) browser = "Opera";
+        else if (ua.match(/Chrome/i)) browser = "Chrome";
+        else if (ua.match(/Safari/i)) browser = "Safari";
+        else if (ua.match(/Firefox/i)) browser = "Firefox";
 
-        // detect os and browser
-        function getDeviceMeta() {
-            const ua = navigator.userAgent;
-            let browser = "Unknown";
-            let os = "Unknown";
+        if (ua.match(/Win/i)) os = "Windows";
+        else if (ua.match(/iPhone|iPad|iPod/i)) os = "iOS";
+        else if (ua.match(/Mac/i)) os = "MacOS";
+        else if (ua.match(/Android/i)) os = "Android";
+        else if (ua.match(/Linux/i)) os = "Linux";
 
-            if (ua.match(/Edg/i)) browser = "Edge";
-            else if (ua.match(/OPR/i)) browser = "Opera";
-            else if (ua.match(/Chrome/i)) browser = "Chrome";
-            else if (ua.match(/Safari/i)) browser = "Safari";
-            else if (ua.match(/Firefox/i)) browser = "Firefox";
-
-            if (ua.match(/Win/i)) os = "Windows";
-            else if (ua.match(/Mac/i)) os = "MacOS";
-            else if (ua.match(/Android/i)) os = "Android";
-            else if (ua.match(/iPhone|iPad|iPod/i)) os = "iOS";
-            else if (ua.match(/Linux/i)) os = "Linux";
-
-            return { os, browser };
-        }
-
-        // build stable fingerprint and assign to input
-        const meta = getDeviceMeta();
-        const deviceToken = getDeviceToken();
-        const stableFingerprint = deviceToken + '|' + meta.os + '|' + meta.browser;
-        document.getElementById('fingerprint-' + mode).value = stableFingerprint;
-
-        // detect device type
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        document.getElementById('is_mobile-' + mode).value = isMobile ? '1' : '0';
-
-        // validate fingerprint with registered device
-        const registeredDesktop = @json(auth()->user()->browser_fingerprint_desktop);
-        const registeredMobile = @json(auth()->user()->browser_fingerprint_mobile);
-
-        let isVerified = false;
-
-        if (isMobile) {
-            // allow if mobile fingerprint is empty or matched
-            if (!registeredMobile || registeredMobile === stableFingerprint) {
-                isVerified = true;
-            }
-        } else {
-            // allow if desktop fingerprint is empty or matched
-            if (!registeredDesktop || registeredDesktop === stableFingerprint) {
-                isVerified = true;
-            }
-        }
-
-        // update ui based on validation result
-        if (isVerified) {
-            if (statusEl) {
-                statusEl.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Device Verified</span>';
-            }
-            modeState[mode].fingerprint = true;
-        } else {
-            if (statusEl) {
-                statusEl.innerHTML = '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Unregistered Device / Browser</span>';
-            }
-            modeState[mode].fingerprint = false;
-        }
-
-        checkReady(mode);
-    } catch (err) {
-        console.error('Device Verify error:', err);
-        const statusEl = document.getElementById('fingerprint-status-' + mode);
-        if (statusEl) {
-            statusEl.innerHTML = '<span class="badge bg-danger">❌ Error: ' + err.message + '</span>';
-        }
+        return { os, browser };
     }
-}
-    // async function initFingerprintForMode(mode) {
-    //     try {
-    //         const statusEl = document.getElementById('fingerprint-status-' + mode);
-    //         if (statusEl) {
-    //             statusEl.innerHTML = '<span class="badge bg-warning">⏳ Loading Fingerprint...</span>';
-    //         }
 
-    //         const fp = await FingerprintJS.load();
-    //         const result = await fp.get();
+    async function initFingerprintForMode(mode) {
+        try {
+            const statusEl = document.getElementById('fingerprint-status-' + mode);
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="badge bg-warning">⏳ Loading Fingerprint...</span>';
+            }
 
-    //         document.getElementById('fingerprint-' + mode).value = result.visitorId;
+            const fp = await FingerprintJS.load();
+            const result = await fp.get();
+            
+            const meta = getDeviceMeta();
 
-    //         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    //         document.getElementById('is_mobile-' + mode).value = isMobile ? '1' : '0';
+            const stableFingerprint = result.visitorId + '|' + meta.os + '|' + meta.browser;
+            
+            document.getElementById('fingerprint-' + mode).value = stableFingerprint;
 
-    //         if (statusEl) {
-    //             statusEl.innerHTML = '<span class="badge bg-success">✅ Fingerprint Ready</span>';
-    //         }
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            document.getElementById('is_mobile-' + mode).value = isMobile ? '1' : '0';
 
-    //         console.log('Fingerprint ready for ' + mode + ':', result.visitorId);
+            const registeredDesktop = @json(auth()->user()->browser_fingerprint_desktop);
+            const registeredMobile = @json(auth()->user()->browser_fingerprint_mobile);
 
-    //         modeState[mode].fingerprint = true;
-    //         checkReady(mode);
-    //     } catch (err) {
-    //         console.error('Fingerprint error:', err);
-    //         const statusEl = document.getElementById('fingerprint-status-' + mode);
-    //         if (statusEl) {
-    //             statusEl.innerHTML = '<span class="badge bg-danger">❌ Error: ' + err.message + '</span>';
-    //         }
-    //     }
-    // }
+            let isVerified = false;
+            if (isMobile) {
+                if (!registeredMobile || registeredMobile === stableFingerprint) isVerified = true;
+            } else {
+                if (!registeredDesktop || registeredDesktop === stableFingerprint) isVerified = true;
+            }
+
+            if (isVerified) {
+                if (statusEl) statusEl.innerHTML = '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Device Verified</span>';
+                modeState[mode].fingerprint = true;
+            } else {
+                if (statusEl) statusEl.innerHTML = '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> Unregistered Device</span>';
+                modeState[mode].fingerprint = false;
+            }
+            checkReady(mode);
+        } catch (err) {
+            console.error('Device Verify error:', err);
+            const statusEl = document.getElementById('fingerprint-status-' + mode);
+            if (statusEl) {
+                statusEl.innerHTML = '<span class="badge bg-danger">❌ Error: ' + err.message + '</span>';
+            }
+        }
+    
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         const officeSelect = document.getElementById('office-location-wfo');
