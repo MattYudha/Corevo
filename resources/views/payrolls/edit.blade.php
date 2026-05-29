@@ -97,7 +97,7 @@
             </div>
             <div class="card-body p-4">
                 <div class="row row-gap-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group mb-0">
                             <label for="salary" class="form-label fw-semibold text-secondary">Basic Salary <span class="text-danger">*</span></label>
                             <div class="input-group">
@@ -106,7 +106,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group mb-0">
                             <label for="transport_allowance" class="form-label fw-semibold text-secondary">Transport Allowance</label>
                             <div class="input-group">
@@ -115,12 +115,21 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group mb-0">
                             <label for="meal_allowance" class="form-label fw-semibold text-secondary">Meal Allowance</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light border-end-0 text-muted">Rp</span>
                                 <input type="text" inputmode="numeric" name="meal_allowance" id="meal_allowance" class="form-control border-start-0 calc-earning format-rupiah" value="{{ old('meal_allowance', (int)$payroll->meal_allowance) }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group mb-0">
+                            <label for="total_salary" class="form-label fw-semibold text-secondary">Total Salary</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0 text-muted">Rp</span>
+                                <input type="text" inputmode="numeric" name="total_salary" id="total_salary" class="form-control border-start-0 calc-earning format-rupiah" value="{{ old('total_salary', 0) }}">
                             </div>
                         </div>
                     </div>
@@ -855,6 +864,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('transport_allowance').value = formatRibuan(Math.round(d.transport_allowance || 0));
                     document.getElementById('meal_allowance').value = formatRibuan(Math.round(d.meal_allowance || 0));
                     document.getElementById('position_allowance').value = formatRibuan(Math.round(d.position_allowance || 0));
+                    document.getElementById('total_salary').value = formatRibuan(Math.round(d.total_salary || 0));
 
                     document.getElementById('working_days').value = d.working_days;
 
@@ -910,28 +920,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // auto calculate late deduction
     document.getElementById('late_count').addEventListener('input', function() {
-        const salary = parseRupiah(document.getElementById('salary').value);
-        document.getElementById('late_deduction').value = formatRibuan(Math.round((parseFloat(this.value) || 0) * (salary * 0.01)));
-        recalculate(); 
+        const totalSalary = parseRupiah(document.getElementById('total_salary').value);
+        const count = parseFloat(this.value) || 0;
+        document.getElementById('late_deduction').value = formatRibuan(Math.round(count * (totalSalary * 0.01)));
+        recalculate();
     });
 
     // auto calculate absent deduction
     document.getElementById('absent_count').addEventListener('input', function() {
-        const salary = parseRupiah(document.getElementById('salary').value);
-        document.getElementById('absent_deduction').value = formatRibuan(Math.round((parseFloat(this.value) || 0) * (salary * 0.01)));
-        recalculate(); 
+        const totalSalary = parseRupiah(document.getElementById('total_salary').value);
+        const count = parseFloat(this.value) || 0;
+        document.getElementById('absent_deduction').value = formatRibuan(Math.round(count * (totalSalary * 0.01)));
+        recalculate();
     });
 
     // auto calculate overtime amount
     overtimeHoursEl.addEventListener('input', function() {
         const salary = parseRupiah(document.getElementById('salary').value);
-        const workingDays = {{ $config['default_working_days'] ?? 22 }};
-        const hoursPerDay = {{ $config['working_hours_per_day'] ?? 8 }};
-        const multiplier = {{ $config['overtime_rate_multiplier'] ?? 1.5 }};
-        const hourlyRate = salary / (workingDays * hoursPerDay);
-        const hours = parseFloat(this.value) || 0;
+        const multiplier = {{ $config['overtime_rate_per_hour']}};
+        const totalHours = document.getElementById('overtime_hours').value
 
-        document.getElementById('overtime_amount').value = formatRibuan(Math.round(hourlyRate * multiplier * hours));
+        document.getElementById('overtime_amount').value = formatRibuan(Math.round(totalHours * multiplier));
         recalculate();
     });
 

@@ -79,26 +79,32 @@ class MasterPresenceController extends Controller
         $office = OfficeLocation::find($request->office_location_id);
 
         // create manual attendance record without photo or fingerprint validation
-        Presence::create([
-            'employee_id'       => $request->employee_id,
-            'date'              => $request->date,
-            'time_in'           => $request->status === 'absent'
-                ? null
-                : '08:00:00',
+        Presence::updateOrCreate(
+            [
+                // search parameter - employee & date
+                'employee_id' => $request->employee_id,
+                'date'        => $request->date,
+            ],
+            [
+                'check_in'              => $request->status === 'absent' 
+                                            ? null 
+                                            : $request->date . ' 09:00:00',
 
-            'time_out'          => $request->status === 'absent'
-                ? null
-                : '17:00:00',
-            'latitude'          => $office->latitude ?? '0.000000',
-            'longitude'         => $office->longitude ?? '0.000000',
-            'office_location_id'=> $request->office_location_id,
-            'work_type'         => $request->work_type,
-            'status'            => $request->status,
-
-            // use default system image
-            'photo_path'        => 'assets/images/default/admin-manual-presence.png',
-            'notes'             => 'Manually created by admin (missed attendance / external assignment)',
-        ]);
+                'check_out'             => $request->status === 'absent' 
+                                            ? null 
+                                            : $request->date . ' 17:00:00',
+                'latitude'              => $office->latitude ?? '0.000000',
+                'longitude'             => $office->longitude ?? '0.000000',
+                'check_out_latitude'    => $office->latitude ?? '0.000000',
+                'check_out_longitude'   => $office->longitude ?? '0.000000',
+                'office_location_id'    => $request->office_location_id,
+                'work_type'             => $request->work_type,
+                'status'                => $request->status,
+                // use default system image
+                'photo_path'            => 'assets/images/default/admin-manual-presence.png',
+                'notes'                 => 'Manually created/updated by admin (Correction/Override)',
+            ]
+        );
 
         return redirect()->route('master-presences.index')->with('success', 'Manual attendance record created successfully.');
     }
