@@ -595,6 +595,7 @@ class PayrollsController extends Controller
                 'transport_allowance' => (float) $employee->transport_allowance,
                 'meal_allowance' => (float) $employee->meal_allowance,
                 'position_allowance' => (float) $employee->position_allowance,
+                'total_salary' => (float) $employee->salary,
                 'overtime_hours' => round($totalOvertimeHours, 2),
                 'overtime_amount' => $overtimePay,
             ],

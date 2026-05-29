@@ -53,8 +53,8 @@
                         <a href="{{ route('presences.export') }}" class="btn btn-success"><i class="bi bi-download"></i> Export CSV</a>
                     @endif
                     @if(in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]))
-                        <a href="{{ route('master-presences.index') }}" class="btn btn-warning d-flex align-items-center">
-                            <i class="bi bi-gear-fill me-2 mb-2"></i> Master Presence
+                        <a href="{{ route('master-presences.index') }}" class="btn btn-warning">
+                            <i class="bi bi-gear-fill"></i> Master Presence
                         </a>
                     @endif
                     <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#holidayModal">
