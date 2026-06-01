@@ -16,10 +16,10 @@ class MasterPresenceController extends Controller
             'work_start_time' => Setting::getValue('work_start_time', '08:00'),
             'enable_late_wfo' => Setting::getValue('enable_late_wfo', '1'),
             'late_threshold_wfo' => Setting::getValue('late_threshold_wfo', '15'),
-            
+
             'enable_late_wfh' => Setting::getValue('enable_late_wfh', '0'),
             'late_threshold_wfh' => Setting::getValue('late_threshold_wfh', '15'),
-            
+
             'enable_late_wfa' => Setting::getValue('enable_late_wfa', '0'),
             'late_threshold_wfa' => Setting::getValue('late_threshold_wfa', '15'),
 
@@ -56,23 +56,21 @@ class MasterPresenceController extends Controller
 
     public function createPresence()
     {
-        $employees = Employee::where('status', 'active')
-            ->orderBy('fullname')
-            ->get();
+        $employees = Employee::where('status', 'active')->orderBy('fullname')->get();
 
         $offices = OfficeLocation::orderBy('name')->get();
 
-        return view('master-presences.create_presence',compact('employees', 'offices'));
+        return view('master-presences.create_presence', compact('employees', 'offices'));
     }
 
     public function storePresence(Request $request)
     {
         $request->validate([
-            'employee_id'       => 'required|exists:employees,id',
-            'date'              => 'required|date',
-            'office_location_id'=> 'required|exists:office_locations,id',
-            'work_type'         => 'required|string|in:WFO,WFH,WFA',
-            'status'            => 'required|string|in:present,late,absent,leave',
+            'employee_id' => 'required|exists:employees,id',
+            'date' => 'required|date',
+            'office_location_id' => 'required|exists:office_locations,id',
+            'work_type' => 'required|string|in:WFO,WFH,WFA',
+            'status' => 'required|string|in:present,late,absent,leave',
         ]);
 
         // get default coordinates from selected office
@@ -83,29 +81,28 @@ class MasterPresenceController extends Controller
             [
                 // search parameter - employee & date
                 'employee_id' => $request->employee_id,
-                'date'        => $request->date,
+                'date' => $request->date,
             ],
             [
-                'check_in'              => $request->status === 'absent' 
-                                            ? null 
-                                            : $request->date . ' 09:00:00',
+                'check_in' => $request->status === 'absent' ? null : $request->date . ' 09:00:00',
 
-                'check_out'             => $request->status === 'absent' 
-                                            ? null 
-                                            : $request->date . ' 17:00:00',
-                'latitude'              => $office->latitude ?? '0.000000',
-                'longitude'             => $office->longitude ?? '0.000000',
-                'check_out_latitude'    => $office->latitude ?? '0.000000',
-                'check_out_longitude'   => $office->longitude ?? '0.000000',
-                'office_location_id'    => $request->office_location_id,
-                'work_type'             => $request->work_type,
-                'status'                => $request->status,
+                'check_out' => $request->status === 'absent' ? null : $request->date . ' 17:00:00',
+                'latitude' => $office->latitude ?? '0.000000',
+                'longitude' => $office->longitude ?? '0.000000',
+                'check_out_latitude' => $office->latitude ?? '0.000000',
+                'check_out_longitude' => $office->longitude ?? '0.000000',
+                'office_location_id' => $request->office_location_id,
+                'work_type' => $request->work_type,
+                'status' => $request->status,
+                'is_late' => 0,
                 // use default system image
-                'photo_path'            => 'assets/images/default/admin-manual-presence.png',
-                'notes'                 => 'Manually created/updated by admin (Correction/Override)',
-            ]
+                'photo_path' => 'assets/images/default/admin-manual-presence.png',
+                'notes' => 'Manually created/updated by admin (Correction/Override)',
+            ],
         );
 
-        return redirect()->route('master-presences.index')->with('success', 'Manual attendance record created successfully.');
+        return redirect()
+            ->route('master-presences.index')
+            ->with('success', 'Manual attendance record created successfully.');
     }
 }
