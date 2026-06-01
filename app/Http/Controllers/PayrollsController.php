@@ -49,10 +49,14 @@ class PayrollsController extends Controller
                     $name = $row->employee?->fullname ?? '<em>Unknown</em>';
                     $nik = $row->employee?->nik ?? '-';
                     $npwp = $row->employee?->npwp ?? '-';
-                    
-                    return '<div class="fw-bold text-nowrap">' . $name . '</div>' .
+
+                    return '<div class="fw-bold text-nowrap">' .
+                        $name .
+                        '</div>' .
                         //  '<div class="text-muted small text-nowrap">NIK: ' . $nik . ' | NPWP: ' . $npwp . '</div>';
-                           '<div class="text-muted small text-nowrap">NPWP: ' . $npwp . '</div>';
+                        '<div class="text-muted small text-nowrap">NPWP: ' .
+                        $npwp .
+                        '</div>';
                 })
                 ->editColumn('net_salary', function ($row) {
                     return 'Rp ' . number_format($row->net_salary, 0, ',', '.');
@@ -68,22 +72,41 @@ class PayrollsController extends Controller
                 })
                 ->addColumn('action', function ($row) {
                     $btns = '<div class="btn-group btn-group-sm" role="group">';
-                    $btns .= '<a href="' . route('payrolls.show', $row->id) . '" class="btn btn-outline-info"><i class="bi bi-eye"></i></a>';
+                    $btns .=
+                        '<a href="' .
+                        route('payrolls.show', $row->id) .
+                        '" class="btn btn-outline-info"><i class="bi bi-eye"></i></a>';
 
                     if (Roles::hasFullFinanceAccess(session('role'))) {
-                        $btns .= '<a href="' . route('payrolls.edit', $row->id) . '" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>';
-                        
+                        $btns .=
+                            '<a href="' .
+                            route('payrolls.edit', $row->id) .
+                            '" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>';
+
                         // add data-status attribute and btn-delete-payroll class
-                        $btns .= '
+                        $btns .=
+                            '
                             <button type="button" class="btn btn-outline-danger btn-delete-payroll" 
-                                data-id="'.$row->id.'" 
-                                data-status="'.$row->status.'"
+                                data-id="' .
+                            $row->id .
+                            '" 
+                                data-status="' .
+                            $row->status .
+                            '"
                                 title="Delete">
                                 <i class="bi bi-trash"></i>
                             </button>
-                            <form id="form-delete-'.$row->id.'" action="' . route('payrolls.destroy', $row->id) . '" method="POST" style="display:none;">
-                                '.csrf_field().'
-                                '.method_field('DELETE').'
+                            <form id="form-delete-' .
+                            $row->id .
+                            '" action="' .
+                            route('payrolls.destroy', $row->id) .
+                            '" method="POST" style="display:none;">
+                                ' .
+                            csrf_field() .
+                            '
+                                ' .
+                            method_field('DELETE') .
+                            '
                             </form>
                         ';
                     }
@@ -91,20 +114,26 @@ class PayrollsController extends Controller
                     return $btns;
                 })
                 ->addColumn('status_actions', function ($row) {
-                    if (!Roles::hasFullFinanceAccess(session('role'))) return '-';
-                    
+                    if (!Roles::hasFullFinanceAccess(session('role'))) {
+                        return '-';
+                    }
+
                     if ($row->status === 'draft') {
-                        return '<button class="btn btn-sm btn-primary btn-update-status" data-id="'.$row->id.'" data-status="approved">
+                        return '<button class="btn btn-sm btn-primary btn-update-status" data-id="' .
+                            $row->id .
+                            '" data-status="approved">
                                     <i class="bi bi-check-circle"></i> Approve
                                 </button>';
                     }
-                    
+
                     if ($row->status === 'approved') {
-                        return '<button class="btn btn-sm btn-success btn-update-status" data-id="'.$row->id.'" data-status="paid">
+                        return '<button class="btn btn-sm btn-success btn-update-status" data-id="' .
+                            $row->id .
+                            '" data-status="paid">
                                     <i class="bi bi-cash"></i> Mark as Paid
                                 </button>';
                     }
-                    
+
                     return '<span class="text-muted small"><i class="bi bi-check-all"></i> Completed</span>';
                 })
                 ->rawColumns(['action', 'status_badge', 'employee_name', 'status_actions'])
@@ -112,7 +141,7 @@ class PayrollsController extends Controller
         }
 
         $assetAccounts = \App\Models\FinancialAccount::where('category', 'expense')->get();
-        
+
         $defaultAccountId = \App\Models\Setting::getValue('default_payroll_account');
 
         return view('payrolls.index', compact('assetAccounts', 'defaultAccountId'));
@@ -163,11 +192,21 @@ class PayrollsController extends Controller
 
         // zero out nulls
         $numericFields = [
-            'transport_allowance', 'meal_allowance', 'position_allowance',
-            'overtime_hours', 'overtime_amount',
-            'performance_bonus', 'attendance_bonus', 'other_bonus',
-            'late_deduction', 'absent_deduction', 'penalty_amount',
-            'bpjs_kes', 'bpjs_tk', 'pph21', 'other_deduction',
+            'transport_allowance',
+            'meal_allowance',
+            'position_allowance',
+            'overtime_hours',
+            'overtime_amount',
+            'performance_bonus',
+            'attendance_bonus',
+            'other_bonus',
+            'late_deduction',
+            'absent_deduction',
+            'penalty_amount',
+            'bpjs_kes',
+            'bpjs_tk',
+            'pph21',
+            'other_deduction',
         ];
         foreach ($numericFields as $field) {
             $validated[$field] = $validated[$field] ?? 0;
@@ -253,11 +292,21 @@ class PayrollsController extends Controller
         ]);
 
         $numericFields = [
-            'transport_allowance', 'meal_allowance', 'position_allowance',
-            'overtime_hours', 'overtime_amount',
-            'performance_bonus', 'attendance_bonus', 'other_bonus',
-            'late_deduction', 'absent_deduction', 'penalty_amount',
-            'bpjs_kes', 'bpjs_tk', 'pph21', 'other_deduction',
+            'transport_allowance',
+            'meal_allowance',
+            'position_allowance',
+            'overtime_hours',
+            'overtime_amount',
+            'performance_bonus',
+            'attendance_bonus',
+            'other_bonus',
+            'late_deduction',
+            'absent_deduction',
+            'penalty_amount',
+            'bpjs_kes',
+            'bpjs_tk',
+            'pph21',
+            'other_deduction',
         ];
         foreach ($numericFields as $field) {
             $validated[$field] = $validated[$field] ?? 0;
@@ -287,10 +336,8 @@ class PayrollsController extends Controller
         $payroll = Payroll::with('employee')->findOrFail($id);
 
         DB::transaction(function () use ($payroll) {
-
             // delete related financial transaction if available
             if ($payroll->financial_transaction_id) {
-
                 $transaction = FinancialTransaction::find($payroll->financial_transaction_id);
 
                 if ($transaction) {
@@ -311,12 +358,8 @@ class PayrollsController extends Controller
                         $method->setAccessible(true);
 
                         $method->invoke($financeController, $accountId, $trxDate);
-
                     } catch (\Throwable $th) {
-
-                        \Log::error(
-                            'Failed to recalculate balance from Payroll: ' . $th->getMessage()
-                        );
+                        \Log::error('Failed to recalculate balance from Payroll: ' . $th->getMessage());
                     }
                 }
             }
@@ -325,12 +368,7 @@ class PayrollsController extends Controller
             $payroll->delete();
         });
 
-        return redirect()
-            ->route('payrolls.index')
-            ->with(
-                'success',
-                'Payroll data was deleted successfully.'
-            );
+        return redirect()->route('payrolls.index')->with('success', 'Payroll data was deleted successfully.');
     }
 
     /**
@@ -391,14 +429,6 @@ class PayrollsController extends Controller
 
         // $lateCount = $presences->where('is_late', true)->count();
 
-        
-
-
-    
-
-
-
-
         $employee = Employee::findOrFail($employeeId);
 
         // 1. Ambil data absen mentah dari DB
@@ -411,16 +441,18 @@ class PayrollsController extends Controller
         $holidayDates = \App\Services\HolidayService::getHolidayDates($year, $month);
 
         // 3. CLEANING DATA: Buang hari libur, weekend, dan duplicate absen
-        $presences = $rawPresences->filter(function($p) use ($holidayDates) {
-            $dateString = Carbon::parse($p->date)->format('Y-m-d');
-            $isWeekend = Carbon::parse($p->date)->isWeekend();
-            
-            // Hanya lolos kalau BUKAN weekend, BUKAN libur, dan BUKAN bolos murni
-            return !$isWeekend && !in_array($dateString, $holidayDates) && !is_null($p->check_in);
-        })->unique(function ($item) {
-            // Pastikan 1 hari cuma dihitung 1 absen (cegah karyawan tap 2x)
-            return Carbon::parse($item->date)->format('Y-m-d'); 
-        });
+        $presences = $rawPresences
+            ->filter(function ($p) use ($holidayDates) {
+                $dateString = Carbon::parse($p->date)->format('Y-m-d');
+                $isWeekend = Carbon::parse($p->date)->isWeekend();
+
+                // Hanya lolos kalau BUKAN weekend, BUKAN libur, dan BUKAN bolos murni
+                return !$isWeekend && !in_array($dateString, $holidayDates) && !is_null($p->check_in);
+            })
+            ->unique(function ($item) {
+                // Pastikan 1 hari cuma dihitung 1 absen (cegah karyawan tap 2x)
+                return Carbon::parse($item->date)->format('Y-m-d');
+            });
 
         // 4. Hitung working days (Sama kayak yang kita bahas sebelumnya)
         $startDate = Carbon::create($year, $month, 1);
@@ -445,14 +477,6 @@ class PayrollsController extends Controller
         // Hitung keterlambatan dari data absen yang valid aja
         $lateCount = $presences->where('is_late', true)->count();
 
-
-
-
-
-
-
-
-
         // absent days = working days that have passed - days present - approved leaves
         $today = Carbon::today();
         $effectiveEnd = $endDate->greaterThan($today) ? $today : $endDate;
@@ -471,20 +495,23 @@ class PayrollsController extends Controller
             ->where('status', 'approved')
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->whereBetween('start_date', [$startDate, $endDate])
-                  ->orWhereBetween('end_date', [$startDate, $endDate])
-                  ->orWhere(function ($q2) use ($startDate, $endDate) {
-                      $q2->where('start_date', '<=', $startDate)
-                         ->where('end_date', '>=', $endDate);
-                  });
+                    ->orWhereBetween('end_date', [$startDate, $endDate])
+                    ->orWhere(function ($q2) use ($startDate, $endDate) {
+                        $q2->where('start_date', '<=', $startDate)->where('end_date', '>=', $endDate);
+                    });
             })
             ->get()
             ->sum(function ($leave) use ($startDate, $endDate) {
-                $start = Carbon::parse($leave->start_date)->greaterThan($startDate) ? Carbon::parse($leave->start_date) : $startDate;
+                $start = Carbon::parse($leave->start_date)->greaterThan($startDate)
+                    ? Carbon::parse($leave->start_date)
+                    : $startDate;
                 $end = Carbon::parse($leave->end_date)->lessThan($endDate) ? Carbon::parse($leave->end_date) : $endDate;
                 $days = 0;
                 $c = $start->copy();
                 while ($c <= $end) {
-                    if (!$c->isWeekend()) $days++;
+                    if (!$c->isWeekend()) {
+                        $days++;
+                    }
                     $c->addDay();
                 }
                 return $days;
@@ -506,17 +533,11 @@ class PayrollsController extends Controller
         $minWfoPartTime = (int) (Setting::where('key', 'min_wfo_part_time')->value('value') ?? 6);
 
         // determine required wfo target based on employee working type
-        $requiredWfo = strtolower($employee->working_type) === 'part_time'
-            ? $minWfoPartTime
-            : $minWfoFullTime;
+        $requiredWfo = strtolower($employee->working_type) === 'part_time' ? $minWfoPartTime : $minWfoFullTime;
 
         // count actual wfo attendance in the selected month
         $realWfoCount = $presences
-            ->filter(
-                fn($p) =>
-                    strtolower($p->work_type) === 'wfo' &&
-                    $p->status === 'present'
-            )
+            ->filter(fn($p) => strtolower($p->work_type) === 'wfo' && $p->status === 'present')
             ->count();
 
         // count attendance outside office (wfh / wfa)
@@ -546,18 +567,20 @@ class PayrollsController extends Controller
         // bpjs kes rules: 1% covers employee + 1 spouse + 3 children (total 5).
         // each additional head adds 1%.
         $families = $employee->families;
-        $spouseCount = $families->filter(fn($f) => in_array(strtolower($f->relation), ['pasangan', 'istri', 'suami', 'spouse']))->count();
+        $spouseCount = $families
+            ->filter(fn($f) => in_array(strtolower($f->relation), ['pasangan', 'istri', 'suami', 'spouse']))
+            ->count();
         $childCount = $families->filter(fn($f) => in_array(strtolower($f->relation), ['anak', 'child']))->count();
-        
+
         $extraHeads = max(0, $spouseCount - 1) + max(0, $childCount - 3);
-        $bpjsKesRate = config('payroll.bpjs_kes_employee_rate', 0.01) + ($extraHeads * 0.01);
+        $bpjsKesRate = config('payroll.bpjs_kes_employee_rate', 0.01) + $extraHeads * 0.01;
 
         $bpjsKes = round($baseSalary * $bpjsKesRate);
         $bpjsTk = round($baseSalary * config('payroll.bpjs_tk_employee_rate', 0.02));
 
         // overtime
         $overtimeRate = (int) Setting::getValue('overtime_rate_per_hour', 0);
-        
+
         $totalApprovedOvertimeMinutes = OvertimeSubmission::where('employee_id', $employeeId)
             ->where('status', 'approved')
             ->whereBetween('date', [$startDate->toDateString(), $endDate->toDateString()])
@@ -576,16 +599,16 @@ class PayrollsController extends Controller
                 'working_days' => $workingDays,
                 'days_present' => $daysPresent,
                 'late_count' => $lateCount,
-                'absent_count'       => $finalAbsentCount, 
-                'absent_murni'        => $absentMurni,
+                'absent_count' => $finalAbsentCount,
+                'absent_murni' => $absentMurni,
                 'absent_wfo_deficit' => $penalizedWfoDeficit,
                 'employee_working_type' => $employee->working_type,
                 'leave_count' => $leaveCount,
-                
-                'wfo_count'        => $wfoCount,
-                'wfh_count'        => $wfhCount,
-                'wfa_count'        => $wfaCount,
-                
+
+                'wfo_count' => $wfoCount,
+                'wfh_count' => $wfhCount,
+                'wfa_count' => $wfaCount,
+
                 'late_deduction' => $lateDeduction,
                 'absent_deduction' => round($absentDeduction),
                 'bpjs_kes' => $bpjsKes,
@@ -653,30 +676,36 @@ class PayrollsController extends Controller
 
             // if status becomes 'paid', record to finance cash book
             if ($newStatus === 'paid') {
-                
                 // 1. backend fetches directly from database (ignoring javascript payload)
                 $accountId = Setting::getValue('default_payroll_account');
 
                 // 2. if not set in database (empty), throw validation error
                 if (!$accountId) {
                     throw ValidationException::withMessages([
-                        'account_id' => 'Fund source account has not been set by Admin. Please set the account first on the main page.'
+                        'account_id' =>
+                            'Fund source account has not been set by Admin. Please set the account first on the main page.',
                     ]);
                 }
 
                 $payroll->pay_date = now();
 
                 $monthName = \Carbon\Carbon::create()->month($payroll->period_month)->translatedFormat('F');
-                $description = "Employee Salary " . ($payroll->employee->fullname ?? 'Unknown') . " for " . $monthName . " " . $payroll->period_year;
+                $description =
+                    'Employee Salary ' .
+                    ($payroll->employee->fullname ?? 'Unknown') .
+                    ' for ' .
+                    $monthName .
+                    ' ' .
+                    $payroll->period_year;
 
                 // 3. record to cash book using $accountid from central database
                 $transaction = FinancialTransaction::create([
-                    'account_id'       => $accountId,
-                    'amount'           => $payroll->net_salary,
+                    'account_id' => $accountId,
+                    'amount' => $payroll->net_salary,
                     'transaction_date' => now(),
                     'transaction_type' => 'kredit', // cash out
-                    'description'      => $description,
-                    'created_by'       => auth()->id(), 
+                    'description' => $description,
+                    'created_by' => auth()->id(),
                 ]);
 
                 // save relation id
@@ -687,30 +716,28 @@ class PayrollsController extends Controller
         });
 
         return response()->json([
-            'success' => true, 
-            'message' => $newStatus === 'paid' 
-                ? 'Payroll has been paid and the transaction is automatically recorded in the Cash Book.' 
-                : 'Payroll status successfully updated.'
+            'success' => true,
+            'message' =>
+                $newStatus === 'paid'
+                    ? 'Payroll has been paid and the transaction is automatically recorded in the Cash Book.'
+                    : 'Payroll status successfully updated.',
         ]);
     }
 
     public function updateSetting(Request $request)
     {
         $request->validate([
-            'account_id' => 'required|exists:financial_accounts,id'
+            'account_id' => 'required|exists:financial_accounts,id',
         ]);
 
         // save or update setting to database
-        Setting::updateOrCreate(
-            ['key' => 'default_payroll_account'],
-            ['value' => $request->account_id]
-        );
+        Setting::updateOrCreate(['key' => 'default_payroll_account'], ['value' => $request->account_id]);
 
         $account = FinancialAccount::find($request->account_id);
 
         return response()->json([
             'success' => true,
-            'account_name' => $account->code . ' - ' . $account->name
+            'account_name' => $account->code . ' - ' . $account->name,
         ]);
     }
 
@@ -719,34 +746,63 @@ class PayrollsController extends Controller
         // validate, ensure ids are sent
         $request->validate([
             'ids' => 'required|array',
-            'ids.*' => 'exists:payroll,id'
+            'ids.*' => 'exists:payroll,id',
         ]);
 
         // get payroll data with employee relations
-        $payrolls = \App\Models\Payroll::with(['employee.department'])->whereIn('id', $request->ids)->get();
+        $payrolls = Payroll::with(['employee.department'])
+            ->whereIn('id', $request->ids)
+            ->get();
 
         $fileName = 'Payrolls_Export_' . date('Y_m_d_His') . '.csv';
 
-        $headers = array(
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        );
+        $headers = [
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
 
         // csv header / column titles (as requested: include all)
         $columns = [
-            'Payroll ID', 'Employee Name', 'NIK', 'Department', 'Month', 'Year', 'Status', 
-            'Basic Salary', 'Transport Allowance', 'Meal Allowance', 'Position Allowance', 
-            'Overtime Hours', 'Overtime Pay', 'Performance Bonus', 'Attendance Bonus', 'Other Bonus', 'Bonus Notes',
-            'Working Days', 'Attendance', 'Late (x)', 'Late Deduction', 'Absent (Days)', 'Absent Deduction',
-            'Penalty', 'Penalty Notes', 'Health BPJS', 'Employment BPJS', 'Income Tax (PPh 21)', 
-            'Other Deductions', 'Deduction Notes', 
-            'TOTAL EARNINGS', 'TOTAL DEDUCTIONS', 'NET SALARY (TAKE HOME PAY)', 'Payment Date'
+            'Payroll ID',
+            'Employee Name',
+            'NIK',
+            'Department',
+            'Month',
+            'Year',
+            'Status',
+            'Basic Salary',
+            'Transport Allowance',
+            'Meal Allowance',
+            'Position Allowance',
+            'Overtime Hours',
+            'Overtime Pay',
+            'Performance Bonus',
+            'Attendance Bonus',
+            'Other Bonus',
+            'Bonus Notes',
+            'Working Days',
+            'Attendance',
+            'Late (x)',
+            'Late Deduction',
+            'Absent (Days)',
+            'Absent Deduction',
+            'Penalty',
+            'Penalty Notes',
+            'Health BPJS',
+            'Employment BPJS',
+            'Income Tax (PPh 21)',
+            'Other Deductions',
+            'Deduction Notes',
+            'TOTAL EARNINGS',
+            'TOTAL DEDUCTIONS',
+            'NET SALARY (TAKE HOME PAY)',
+            'Payment Date',
         ];
 
-        $callback = function() use($payrolls, $columns) {
+        $callback = function () use ($payrolls, $columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
 
@@ -785,7 +841,7 @@ class PayrollsController extends Controller
                     $p->total_earnings,
                     $p->total_deductions,
                     $p->net_salary,
-                    $p->pay_date ? \Carbon\Carbon::parse($p->pay_date)->format('Y-m-d H:i') : '-'
+                    $p->pay_date ? \Carbon\Carbon::parse($p->pay_date)->format('Y-m-d H:i') : '-',
                 ];
 
                 fputcsv($file, $row);
