@@ -413,15 +413,6 @@ class LetterController extends Controller
 
     public function export(Letter $letter)
     {
-        $user = Auth::user();
-        if (
-            !$user->employee ||
-            ($user->employee->role->title !== 'HR Administrator' &&
-                $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)
-        ) {
-            abort(403, 'Unauthorized action.');
-        }
-
         if (!in_array($letter->status, ['approved', 'printed'])) {
             return redirect()
                 ->route('letters.show', $letter)

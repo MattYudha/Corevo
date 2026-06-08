@@ -359,9 +359,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('letters/{letter}/print', [LetterController::class, 'print'])
         ->name('letters.print')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
-    Route::get('letters/{letter}/export', [LetterController::class, 'export'])
-        ->name('letters.export')
-        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+    Route::get('letters/{letter}/export', [LetterController::class, 'export'])->name('letters.export');
 
     // Resource routes for letter templates
     Route::resource('letter-templates', LetterTemplateController::class)->middleware([
@@ -388,7 +386,9 @@ Route::middleware(['auth'])->group(function () {
         'signatures.store_internal',
     );
     Route::get('signatures/{signable}/{id}/list', [SignatureController::class, 'list'])->name('signatures.list');
-    Route::get('signature-logs', [SignatureController::class, 'logs'])->name('signatures.logs');
+    Route::get('signature-logs', [SignatureController::class, 'logs'])
+        ->name('signatures.logs')
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
     Route::post('signatures/{signature}/verify', [SignatureController::class, 'verify'])
         ->name('signatures.verify')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
