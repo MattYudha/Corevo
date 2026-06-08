@@ -61,7 +61,6 @@
 
                             <div class="toggler d-xl-none ms-2">
                                 <a
-                                    href="#"
                                     class="mb-3 sidebar-hide d-flex align-items-center justify-content-center text-secondary text-decoration-none"
                                     style="width: 32px; height: 32px"
                                 >
@@ -559,7 +558,7 @@
                         />
                     </a>
                 </div>
-                <a href="#" class="burger-btn d-block fs-3 text-body">
+                <a class="burger-btn d-block fs-3 text-body">
                     <i class="bi bi-justify"></i>
                 </a>
             </header>
