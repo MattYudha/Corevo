@@ -134,7 +134,7 @@ class Signature extends Model
     }
     public function signWithOpenSSL($data)
     {
-        $privateKey = openssl_get_privatekey(file_get_contents(base_path('private.pem')));
+        $privateKey = openssl_get_privatekey(file_get_contents(storage_path('app/keys/private.pem')));
         openssl_sign($data, $binarySignature, $privateKey, 'sha256WithRSAEncryption');
 
         // Simpan hasil biner dalam format base64 agar aman di database
@@ -143,7 +143,7 @@ class Signature extends Model
     }
     public function verifyWithOpenSSL($data)
     {
-        $publicKey = openssl_get_publickey(file_get_contents(base_path('public.pem')));
+        $publicKey = openssl_get_publickey(file_get_contents(storage_path('app/keys/public.pem')));
         $binarySignature = base64_decode($this->signature_hash);
 
         return openssl_verify($data, $binarySignature, $publicKey, 'sha256WithRSAEncryption') === 1;

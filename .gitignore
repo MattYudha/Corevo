@@ -1,6 +1,7 @@
 *.log
 /scratch/
 
+/storage/app/keys/*.pem
 .DS_Store
 .env
 .env.backup
