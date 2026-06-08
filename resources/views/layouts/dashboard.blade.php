@@ -448,10 +448,10 @@
                                     <li class="submenu-item {{ $activeLetterArchives ? 'active' : '' }}">
                                         <a href="{{ url('/letter-archives') }}" class="submenu-link">Archives</a>
                                     </li>
+                                    <li class="submenu-item {{ $activeSignatureLogs ? 'active' : '' }}">
+                                        <a href="{{ url('/signature-logs') }}" class="submenu-link">Signature Logs</a>
+                                    </li>
                                 @endif
-                                <li class="submenu-item {{ $activeSignatureLogs ? 'active' : '' }}">
-                                    <a href="{{ url('/signature-logs') }}" class="submenu-link">Signature Logs</a>
-                                </li>
                             </ul>
                         </li>
 
