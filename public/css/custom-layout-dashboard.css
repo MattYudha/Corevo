@@ -315,6 +315,13 @@ html[data-bs-theme='dark'] .dataTables_wrapper .page-item.disabled .page-link {
     content: 'Light Mode';
 }
 
+@media (max-width: 1199.98px) {
+    .sidebar-wrapper {
+        height: 100dvh !important;
+        padding-bottom: 100px !important;
+    }
+}
+
 [data-bs-theme='dark'] .theme-label-text::after {
     content: 'Dark Mode';
 }

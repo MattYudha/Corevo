@@ -885,35 +885,26 @@ class PayrollsController extends Controller
             'Expires' => '0',
         ];
 
-        $columns = [
-            'Payroll ID',
-            'Employee ID',
-            'Employee Name',
-            'Period',
-            'Base Salary',
-            'Total Allowances',
-            'Total Deductions',
-            'Net Salary',
-            'Status',
-        ];
+        $columns = ['NIK', 'NPWP', 'Employee Name', 'Period', 'Salary', 'Nominal PPH-21', 'Net Salary'];
 
         $callback = function () use ($payrolls, $columns) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $columns);
 
             foreach ($payrolls as $payroll) {
-                // Carbon::setLocale('id'); //for indonesian format month name
+                // Carbon::setLocale('id');
+                $salary = ($payroll->net_salary ?? 0) + ($payroll->pph21 ?? 0);
+
                 $period = Carbon::create()->month($payroll->period_month)->translatedFormat('F');
+
                 fputcsv($file, [
-                    $payroll->id,
-                    $payroll->employee->nik ?? '-',
+                    $payroll->employee->nik ? $payroll->employee->nik : '-',
+                    $payroll->employee->npwp ? $payroll->employee->npwp : '-',
                     $payroll->employee->fullname ?? 'Unknown',
                     $period,
-                    $payroll->base_salary ?? 0,
-                    $payroll->total_allowances ?? 0,
-                    $payroll->total_deductions ?? 0,
-                    $payroll->net_salary ?? 0,
-                    strtoupper($payroll->status),
+                    (int) $salary,
+                    (int) ($payroll->pph21 ?? 0),
+                    (int) ($payroll->net_salary ?? 0),
                 ]);
             }
 
