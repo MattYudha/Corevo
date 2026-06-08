@@ -7,50 +7,87 @@ use App\Models\Letter;
 use App\Models\LetterTemplate;
 use App\Models\LetterConfiguration;
 use Carbon\Carbon;
+use App\Models\OfficeLocation;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
+use App\Models\Signature;
+use App\Models\Presence;
+use App\Models\LetterTag;
+use App\Constants\Roles;
 
 class LetterController extends Controller
 {
     public function index(Request $request)
     {
         if ($request->ajax()) {
+            // switch back to auth facade as per your habit bro
             $user = Auth::user();
             $query = Letter::with('user', 'approver', 'template');
-            
-            // Only show own letters to non-admin users
-            if ($user->employee && $user->employee->role->title !== 'HR Administrator' && $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN) {
+
+            // determine admin status using roles::isadmin helper
+            $isAdmin = false;
+            if ($user && $user->employee && $user->employee->role) {
+                $isAdmin = Roles::isAdmin($user->employee->role->title);
+            }
+
+            // non-admins can only see their own letters
+            if (!$isAdmin && $user) {
                 $query->where('user_id', $user->id);
             }
-            
-            return DataTables::of($query)
+
+            return \Yajra\DataTables\Facades\DataTables::of($query)
                 ->addIndexColumn()
-                ->addColumn('action', function($row) {
+                // pass $user and $isadmin into the datatables closure scope
+                ->addColumn('action', function ($row) use ($user, $isAdmin) {
                     $btns = '<div class="btn-group btn-group-sm" role="group">';
-                    $btns .= '<a href="'.route('letters.show', $row->id).'" class="btn btn-outline-info"><i class="bi bi-eye"></i></a>';
-                    
-                    if(in_array($row->status, ['draft', 'pending'])) {
-                        $btns .= '<a href="'.route('letters.edit', $row->id).'" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>';
+
+                    // view details button (always available)
+                    $btns .=
+                        '<a href="' .
+                        route('letters.show', $row->id) .
+                        '" class="btn btn-outline-info" title="View Letter"><i class="bi bi-eye"></i></a>';
+
+                    // edit button (only if draft and belongs to user)
+                    if ($row->status === 'draft' && $user && $row->user_id == $user->id) {
+                        $btns .=
+                            '<a href="' .
+                            route('letters.edit', $row->id) .
+                            '" class="btn btn-outline-warning" title="Edit Letter"><i class="bi bi-pencil"></i></a>';
                     }
-                    
+
+                    // delete button (admin free, user only when draft status)
+                    if ($isAdmin || ($user && $row->user_id == $user->id && $row->status === 'draft')) {
+                        $btns .=
+                            '<form action="' .
+                            route('letters.destroy', $row->id) .
+                            '" method="POST" class="d-inline delete-letter-form">
+                                    <input type="hidden" name="_token" value="' .
+                            csrf_token() .
+                            '">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete Letter"><i class="bi bi-trash"></i></button>
+                                  </form>';
+                    }
+
                     $btns .= '</div>';
                     return $btns;
                 })
-                ->addColumn('status_badge', function($row) {
-                    $class = match($row->status) {
+                ->addColumn('status_badge', function ($row) {
+                    $class = match ($row->status) {
                         'approved' => 'bg-success',
                         'pending' => 'bg-info',
                         'rejected' => 'bg-danger',
-                        default => 'bg-secondary'
+                        default => 'bg-secondary',
                     };
-                    return '<span class="badge '.$class.'">'.ucfirst($row->status).'</span>';
+                    return '<span class="badge ' . $class . '">' . ucfirst($row->status) . '</span>';
                 })
-                ->editColumn('created_date', function($row) {
-                    return $row->created_date ? $row->created_date->format('d M Y') : '-';
+                ->editColumn('created_date', function ($row) {
+                    return $row->created_date ? Carbon::parse($row->created_date)->format('d M Y') : '-';
                 })
                 ->rawColumns(['action', 'status_badge'])
                 ->make(true);
         }
+
         return view('letters.index');
     }
 
@@ -65,30 +102,50 @@ class LetterController extends Controller
         $request->validate([
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
-            'start_date' => 'nullable|string|max:255',
             'letter_type' => 'required|in:official,memo,notice',
             'letter_template_id' => 'nullable|exists:letter_templates,id',
-            'purpose' => 'nullable|string|max:255',
-            'end_date' => 'nullable|string|max:255',
-            'reason' => 'nullable|string',
-            'days' => 'nullable|string|max:255',
-            'period' => 'nullable|string|max:255',
-            'recommender_name' => 'nullable|string|max:255',
+            'dynamic_tags' => 'nullable|array', // dynamic input validation
         ]);
+
+        $content = $request->content;
+
+        // process replace dynamic tags if any
+        if ($request->has('dynamic_tags')) {
+            foreach ($request->dynamic_tags as $tagName => $value) {
+                $displayValue = $value; // default value to be replaced into text
+
+                // check this tag type from database
+                $tagData = LetterTag::where('tag_name', $tagName)->first();
+
+                if ($tagData) {
+                    // if the type is date, change to localized format
+                    if ($tagData->input_type === 'date' && !empty($value)) {
+                        $displayValue = \Carbon\Carbon::parse($value)->locale('id')->translatedFormat('d F Y');
+                    }
+
+                    // if the type is a dropdown from the database, get the original name so the number "3" doesn't appear in the letter
+                    if ($tagData->input_type === 'dropdown' && $tagData->dropdown_type === 'model') {
+                        if ($tagData->dropdown_model === 'OfficeLocation') {
+                            $displayValue = \App\Models\OfficeLocation::find($value)?->name ?? $value;
+                        } elseif ($tagData->dropdown_model === 'Employee') {
+                            // get user name based on employee id
+                            $displayValue = \App\Models\Employee::with('user')->find($value)?->user?->name ?? $value;
+                        }
+                    }
+                }
+
+                // replace text inside the letter content
+                $content = str_replace('[' . $tagName . ']', $displayValue, $content);
+            }
+        }
 
         Letter::create([
             'user_id' => Auth::id(),
             'subject' => $request->subject,
-            'content' => $request->content,
-            'start_date' => $request->start_date,
+            'content' => $content, // save the finalized content
+            'meta_data' => $request->has('dynamic_tags') ? json_encode($request->dynamic_tags) : null,
             'letter_type' => $request->letter_type,
             'letter_template_id' => $request->letter_template_id,
-            'purpose' => $request->purpose,
-            'end_date' => $request->end_date,
-            'reason' => $request->reason,
-            'days' => $request->days,
-            'period' => $request->period,
-            'recommender_name' => $request->recommender_name,
             'status' => 'draft',
             'created_date' => now(),
         ]);
@@ -99,8 +156,24 @@ class LetterController extends Controller
     public function show(Letter $letter)
     {
         $user = Auth::user();
-        if ($letter->user_id !== $user->id && (!$user->employee || !in_array($user->employee->role->title, ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]))) {
-            abort(403, 'Unauthorized access to letter.');
+
+        // check normal access rights (document creator or hr/admin)
+        $isOwner = $letter->user_id === $user->id;
+        $isAdmin = $user->employee && in_array($user->employee->role->title, ['HR Administrator', Roles::MASTER_ADMIN]);
+
+        // check vip pass: is this user on the list of people who must sign this document?
+        // we check in the signature model, is there a signature request for this user in this letter
+        $isSigner = Signature::where('signable_type', Letter::class)
+            ->where('signable_id', $letter->id)
+            ->where('user_id', $user->id)
+            ->exists();
+
+        // 3. execute block: kick out if not owner, not admin, and not a signer
+        if (!$isOwner && !$isAdmin && !$isSigner) {
+            abort(
+                403,
+                'Unauthorized access to letter. You do not have access rights or have not been assigned to sign this document.',
+            );
         }
 
         return view('letters.show', compact('letter'));
@@ -108,73 +181,104 @@ class LetterController extends Controller
 
     public function edit(Letter $letter)
     {
-        // Allow editing draft and pending letters
         if (!in_array($letter->status, ['draft', 'pending'])) {
-            return redirect()->route('letters.index')->with('error', 'Only draft and pending letters can be edited.');
+            return redirect()->route('letters.index')->with('error', 'Only Draft and Pending letters can be edited.');
         }
-        
-        // Only allow user who created the letter to edit
+
         if ($letter->user_id !== Auth::id()) {
             return redirect()->route('letters.index')->with('error', 'You cannot edit this letter.');
         }
-        
+
         $templates = LetterTemplate::where('is_active', true)->get();
         return view('letters.edit', compact('letter', 'templates'));
     }
 
     public function update(Request $request, Letter $letter)
     {
-        // Allow updating draft and pending letters
         if (!in_array($letter->status, ['draft', 'pending'])) {
-            return redirect()->route('letters.index')->with('error', 'Only draft and pending letters can be edited.');
+            return redirect()->route('letters.index')->with('error', 'Only Draft and Pending letters can be edited.');
         }
-        
-        // Only allow user who created the letter to update
+
         if ($letter->user_id !== Auth::id()) {
-            return redirect()->route('letters.index')->with('error', 'You cannot update this letter.');
+            return redirect()->route('letters.index')->with('error', 'You cannot edit this letter.');
         }
-        
+
         $request->validate([
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
-            'start_date' => 'nullable|string|max:255',
             'letter_type' => 'required|in:official,memo,notice',
             'letter_template_id' => 'nullable|exists:letter_templates,id',
-            'purpose' => 'nullable|string|max:255',
-            'end_date' => 'nullable|string|max:255',
-            'reason' => 'nullable|string',
-            'days' => 'nullable|string|max:255',
-            'period' => 'nullable|string|max:255',
-            'recommender_name' => 'nullable|string|max:255',
+            'dynamic_tags' => 'nullable|array',
         ]);
 
-        // Mass Assignment Fix: Only update specific fields, excluding status and approver_id
-        $letter->update($request->only([
-            'subject', 'content', 'start_date', 'letter_type', 'letter_template_id',
-            'purpose', 'end_date', 'reason', 'days', 'period', 'recommender_name'
-        ]));
-        
+        $content = $request->content;
+
+        // process replacing dynamic tags if the template is changed/refilled
+        if ($request->has('dynamic_tags')) {
+            foreach ($request->dynamic_tags as $tagName => $value) {
+                $displayValue = $value; // default value to be replaced into text
+
+                // check this tag type from database
+                $tagData = LetterTag::where('tag_name', $tagName)->first();
+
+                if ($tagData) {
+                    // if the type is date, change to localized format
+                    if ($tagData->input_type === 'date' && !empty($value)) {
+                        $displayValue = \Carbon\Carbon::parse($value)->locale('id')->translatedFormat('d F Y');
+                    }
+
+                    // if the type is a dropdown from the database, get the original name so the number "3" doesn't appear in the letter
+                    if ($tagData->input_type === 'dropdown' && $tagData->dropdown_type === 'model') {
+                        if ($tagData->dropdown_model === 'OfficeLocation') {
+                            $displayValue = \App\Models\OfficeLocation::find($value)?->name ?? $value;
+                        } elseif ($tagData->dropdown_model === 'Employee') {
+                            // get user name based on employee id
+                            $displayValue = \App\Models\Employee::with('user')->find($value)?->user?->name ?? $value;
+                        }
+                    }
+                }
+
+                // replace text inside the letter content
+                $content = str_replace('[' . $tagName . ']', $displayValue, $content);
+            }
+        }
+
+        $letter->update([
+            'subject' => $request->subject,
+            'content' => $content,
+            'meta_data' => $request->has('dynamic_tags') ? json_encode($request->dynamic_tags) : null,
+            'letter_type' => $request->letter_type,
+            'letter_template_id' => $request->letter_template_id,
+        ]);
+
         return redirect()->route('letters.show', $letter)->with('success', 'Letter updated successfully.');
     }
 
     public function destroy(Letter $letter)
     {
         $user = Auth::user();
-        if ($letter->user_id !== $user->id && ($user->employee && $user->employee->role->title !== 'HR Administrator' && $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)) {
-            return redirect()->route('letters.index')->with('error', 'You cannot delete this letter.');
+
+        // determine admin status using roles::isadmin helper (exactly like index)
+        $isAdmin = false;
+        if ($user && $user->employee && $user->employee->role) {
+            $isAdmin = \App\Constants\Roles::isAdmin($user->employee->role->title);
         }
-        
-        if ($letter->status !== 'draft') {
-            return redirect()->route('letters.index')->with('error', 'Only draft letters can be deleted.');
+
+        if ($isAdmin || ($user && $letter->user_id == $user->id && $letter->status === 'draft')) {
+            // if conditions are met, delete the data
+            $letter->delete();
+
+            return redirect()->route('letters.index')->with('success', 'Letter permanently deleted successfully.');
         }
-        
-        $letter->delete();
-        return redirect()->route('letters.index')->with('success', 'Letter deleted successfully.');
+
+        // if it reaches here, it means they are trying to cheat (kick using 403)
+        abort(403, 'Access Denied! You can only delete your own letters and the status MUST still be DRAFT.');
     }
 
     public function submit(Letter $letter)
     {
-        if ($letter->status !== 'draft') {
+        // the correct logic: "if the status is not draft and not rejected, then reject"
+        if (!in_array($letter->status, ['draft', 'rejected'])) {
             return redirect()->route('letters.index')->with('error', 'Letter cannot be submitted.');
         }
 
@@ -184,12 +288,13 @@ class LetterController extends Controller
         }
 
         $config->current_number++;
-        $letterNumber = $this->generateLetterNumber($config);
+        // passing the $letter object to pull the user's department data
+
         $config->save();
 
         $letter->update([
-            'letter_number' => $letterNumber,
             'status' => 'pending',
+            'reason' => null, // alright, use the 'reason' column
         ]);
 
         return redirect()->route('letters.show', $letter)->with('success', 'Letter submitted for approval.');
@@ -197,38 +302,86 @@ class LetterController extends Controller
 
     public function approve(Letter $letter)
     {
-        // Authorization check - only HR Administrator and Master Admin can approve
+        // authorization check - only hr administrator and master admin can approve
         $user = Auth::user();
-        if (!$user->employee || ($user->employee->role->title !== 'HR Administrator' && $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)) {
+        if (
+            !$user->employee ||
+            ($user->employee->role->title !== 'HR Administrator' &&
+                $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)
+        ) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         if ($letter->status !== 'pending') {
             return redirect()->route('letters.show', $letter)->with('error', 'Letter cannot be approved.');
         }
 
+        $config = LetterConfiguration::first();
+        $config->current_number++;
+        $letterNumber = $this->generateLetterNumber($config, $letter);
+
         $letter->update([
             'status' => 'approved',
+            'letter_number' => $letterNumber,
             'approver_id' => Auth::id(),
             'approved_date' => now(),
         ]);
+
+        $template = LetterTemplate::find($letter->letter_template_id);
+
+        if ($template && in_array($template->name, ['Surat Lupa Absen', 'Surat Telat Absen'])) {
+            // decode the json we saved during creation
+            $meta = json_decode($letter->meta_data, true);
+
+            if ($meta) {
+                $office = OfficeLocation::find($meta['lokasi_kantor']);
+
+                Presence::updateOrCreate(
+                    // parameter 1: search condition
+                    [
+                        'employee_id' => $letter->user->employee->id,
+                        'date' => $meta['tanggal_lupa_absen'] ?? $meta['tanggal_telat_absen'],
+                    ],
+                    // parameter 2: data to be inserted or updated
+                    [
+                        'check_in' => ($meta['tanggal_lupa_absen'] ?? $meta['tanggal_telat_absen']) . ' 09:00:00',
+                        'check_out' => ($meta['tanggal_lupa_absen'] ?? $meta['tanggal_telat_absen']) . ' 17:00:00',
+                        'latitude' => $office->latitude ?? '0.000000',
+                        'longitude' => $office->longitude ?? '0.000000',
+                        'check_out_latitude' => $office->latitude ?? '0.000000',
+                        'check_out_longitude' => $office->longitude ?? '0.000000',
+                        'office_location_id' => $meta['lokasi_kantor'],
+                        'work_type' => $meta['tipe_kehadiran_kerja'],
+                        'status' => 'present',
+                        'is_late' => 0,
+                        'photo_path' => 'assets/images/default/admin-manual-presence.png',
+                        'notes' =>
+                            'Manually created/updated by letter system, letter number : ' . $letter->letter_number,
+                    ],
+                );
+            }
+        }
 
         return redirect()->route('letters.show', $letter)->with('success', 'Letter approved.');
     }
 
     public function reject(Request $request, Letter $letter)
     {
-        // Authorization check - only HR Administrator and Master Admin can reject
+        // authorization check - only hr administrator and master admin can reject
         $user = Auth::user();
-        if (!$user->employee || ($user->employee->role->title !== 'HR Administrator' && $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)) {
+        if (
+            !$user->employee ||
+            ($user->employee->role->title !== 'HR Administrator' &&
+                $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)
+        ) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         $request->validate(['reason' => 'required|string']);
 
         $letter->update([
-            'status' => 'draft',
-            'notes' => $request->reason,
+            'status' => 'rejected',
+            'reason' => $request->reason,
         ]);
 
         return redirect()->route('letters.show', $letter)->with('success', 'Letter rejected.');
@@ -236,60 +389,106 @@ class LetterController extends Controller
 
     public function print(Letter $letter)
     {
-        // Authorization check - only HR Administrator and Master Admin can print
+        // authorization check - only hr administrator and master admin can print
         $user = Auth::user();
-        if (!$user->employee || ($user->employee->role->title !== 'HR Administrator' && $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)) {
+        if (
+            !$user->employee ||
+            ($user->employee->role->title !== 'HR Administrator' &&
+                $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)
+        ) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         if ($letter->status !== 'approved') {
             return redirect()->route('letters.show', $letter)->with('error', 'Only approved letters can be printed.');
         }
-        
+
         $letter->update([
             'status' => 'printed',
             'printed_date' => now(),
         ]);
-        
+
         return redirect()->route('letters.show', $letter)->with('success', 'Letter marked as printed.');
     }
 
     public function export(Letter $letter)
     {
-        // Authorization - only approved/printed letters can be exported, by HR Administrator/Master Admin
         $user = Auth::user();
-        if (!$user->employee || ($user->employee->role->title !== 'HR Administrator' && $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)) {
+        if (
+            !$user->employee ||
+            ($user->employee->role->title !== 'HR Administrator' &&
+                $user->employee->role->title !== \App\Constants\Roles::MASTER_ADMIN)
+        ) {
             abort(403, 'Unauthorized action.');
         }
-        
+
         if (!in_array($letter->status, ['approved', 'printed'])) {
-            return redirect()->route('letters.show', $letter)->with('error', 'Only approved or printed letters can be exported.');
+            return redirect()
+                ->route('letters.show', $letter)
+                ->with('error', 'Only approved or printed letters can be exported.');
         }
-        
-        // Create HTML content for PDF
+
         $config = LetterConfiguration::first();
+
+        // first render (silently) to count physical pages
         $html = view('letters.pdf', compact('letter', 'config'))->render();
-        
-        // Generate PDF
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
-        
-        // Return PDF download
-        $filename = 'Surat_' . str_replace('/', '_', $letter->letter_number ?? 'Draft') . '.pdf';
-        return $pdf->download($filename);
+        $pdf->render();
+        $pageCount = $pdf->getCanvas()->get_page_count();
+
+        // translate numbers to words (one, two, three...)
+        $terbilang = [
+            1 => 'One',
+            2 => 'Two',
+            3 => 'Three',
+            4 => 'Four',
+            5 => 'Five',
+            6 => 'Six',
+            7 => 'Seven',
+            8 => 'Eight',
+            9 => 'Nine',
+            10 => 'Ten',
+        ];
+        $word = $terbilang[$pageCount] ?? $pageCount;
+        $lampiranText = "{$word} ({$pageCount}) Sheets";
+
+        // overwrite placeholder with final attachment text
+        $finalHtml = str_replace('{TOTAL_PAGES_PLACEHOLDER}', $lampiranText, $html);
+
+        // second render (final) and download
+        $pdfFinal = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($finalHtml);
+        $filename = 'Letter_' . str_replace('/', '_', $letter->letter_number ?? 'Draft') . '.pdf';
+
+        return $pdfFinal->download($filename);
     }
 
-    private function generateLetterNumber(LetterConfiguration $config)
+    private function generateLetterNumber(LetterConfiguration $config, Letter $letter)
     {
         $format = $config->letter_number_format;
         $number = str_pad($config->current_number, 3, '0', STR_PAD_LEFT);
-        $month = str_pad(now()->month, 2, '0', STR_PAD_LEFT);
-        $year = now()->year;
-        $dept = 'HR Administrator';
 
-        return str_replace(
-            ['{NUMBER}', '{DEPT}', '{MONTH}', '{YEAR}'],
-            [$number, $dept, $month, $year],
-            $format
-        );
+        // convert month to roman numerals
+        $romanMonths = [
+            1 => 'I',
+            2 => 'II',
+            3 => 'III',
+            4 => 'IV',
+            5 => 'V',
+            6 => 'VI',
+            7 => 'VII',
+            8 => 'VIII',
+            9 => 'IX',
+            10 => 'X',
+            11 => 'XI',
+            12 => 'XII',
+        ];
+        $month = $romanMonths[now()->month];
+
+        $year = now()->year;
+
+        $deptName = $letter->user->employee->department->name ?? 'GENERAL';
+        $dept = strtoupper($deptName); // make it uppercase to keep the letter number neat
+
+        return str_replace(['{NUMBER}', '{DEPT}', '{MONTH}', '{YEAR}'], [$number, $dept, $month, $year], $format);
     }
 }

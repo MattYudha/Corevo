@@ -19,6 +19,7 @@ class Letter extends Model
         'created_date',
         'approved_date',
         'printed_date',
+        'meta_data',
         'notes',
         'purpose',
         'end_date',
@@ -72,7 +73,7 @@ class Letter extends Model
     {
         // Prefer the saved content; but if it's empty/too short, fall back to the selected template's content
         $content = trim((string) $this->content);
-        if ((strlen($content) < 50) && $this->template) {
+        if (strlen($content) < 50 && $this->template) {
             $content = $this->template->content ?? $content;
         }
 
@@ -83,7 +84,9 @@ class Letter extends Model
         $replacements = [
             '[NIK]' => $employee->nik ?? '-',
             '[NPWP]' => $employee->npwp ?? '-',
-            '[EMPLOYEE_STATUS]' => $employee->employee_status ? (\App\Models\Employee::getAvailableStatuses()[$employee->employee_status] ?? $employee->employee_status) : '-',
+            '[EMPLOYEE_STATUS]' => $employee->employee_status
+                ? \App\Models\Employee::getAvailableStatuses()[$employee->employee_status] ?? $employee->employee_status
+                : '-',
             '[EMPLOYEE_NAME]' => $employee->fullname ?? $user->name,
             '[COMPANY_NAME]' => $config->company_name ?? 'PT Aratech Indonesia',
             '[POSITION]' => $employee->role->title ?? '-',
@@ -92,8 +95,17 @@ class Letter extends Model
             '[ADDRESS]' => $employee->address ?? '-',
             '[PHONE]' => $employee->phone_number ?? '-',
             '[EMAIL]' => $employee->email ?? '-',
-            '[DATE]' => $this->created_date instanceof \Carbon\Carbon ? $this->created_date->format('d F Y') : \Carbon\Carbon::parse($this->created_date)->format('d F Y'),
-            '[START_DATE]' => $this->start_date ?: ($employee->hire_date ? ($employee->hire_date instanceof \Carbon\Carbon ? $employee->hire_date->format('d F Y') : \Carbon\Carbon::parse($employee->hire_date)->format('d F Y')) : '-'),
+            '[DATE]' =>
+                $this->created_date instanceof \Carbon\Carbon
+                    ? $this->created_date->format('d F Y')
+                    : \Carbon\Carbon::parse($this->created_date)->format('d F Y'),
+            '[START_DATE]' =>
+                $this->start_date ?:
+                ($employee->hire_date
+                    ? ($employee->hire_date instanceof \Carbon\Carbon
+                        ? $employee->hire_date->format('d F Y')
+                        : \Carbon\Carbon::parse($employee->hire_date)->format('d F Y'))
+                    : '-'),
             '[PURPOSE]' => $this->purpose ?? '-',
             '[END_DATE]' => $this->end_date ?? 'Present / Saat ini',
             '[REASON]' => $this->reason ?? '-',
@@ -102,10 +114,6 @@ class Letter extends Model
             '[RECOMMENDER_NAME]' => $this->recommender_name ?? '-',
         ];
 
-        return str_replace(
-            array_keys($replacements),
-            array_values($replacements),
-            $content
-        );
+        return str_replace(array_keys($replacements), array_values($replacements), $content);
     }
 }

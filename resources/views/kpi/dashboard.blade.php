@@ -786,7 +786,7 @@ body.modal-open {
     </div>
 </div>
 @empty
-<div class="text-center py-5 bg-white rounded-4 border shadow-sm">
+<div class="text-center py-5 bg-white rounded-3 border shadow-sm">
     <div class="mb-4">
         <div class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:90px;height:90px;background:rgba(59,130,246,0.08);">
             <i class="bi bi-clipboard2-data text-primary" style="font-size:2.75rem;"></i>
@@ -858,7 +858,7 @@ body.modal-open {
                 @csrf
                 <div class="modal-header border-0 pb-0">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="bg-primary-soft text-primary rounded-4 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: var(--kpi-accent-soft);">
+                        <div class="bg-primary-soft text-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: var(--kpi-accent-soft);">
                             <i class="bi bi-pencil-square fs-4 text-primary"></i>
                         </div>
                         <div>
@@ -911,7 +911,7 @@ body.modal-open {
                 
                 <div class="modal-header border-0 pb-0 bg-white">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-4 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; background: #EEF2FF;">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; background: #EEF2FF;">
                             <i class="bi bi-plus-circle-fill fs-3 text-primary"></i>
                         </div>
                         <div>

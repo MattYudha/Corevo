@@ -17,10 +17,16 @@ class Signature extends Model
         'signature_reason',
         'signed_date',
         'ip_address',
+        'otp_code',
         'user_agent',
         'is_verified',
         'verification_token',
         'verified_at',
+        'external_name',
+        'external_email',
+        'external_title',
+        'external_company',
+        'token',
     ];
 
     protected $casts = [
@@ -127,19 +133,19 @@ class Signature extends Model
         return $this;
     }
     public function signWithOpenSSL($data)
-{
-    $privateKey = openssl_get_privatekey(file_get_contents(base_path('private.pem')));
-    openssl_sign($data, $binarySignature, $privateKey, "sha256WithRSAEncryption");
-    
-    // Simpan hasil biner dalam format base64 agar aman di database
-    $this->signature_hash = base64_encode($binarySignature);
-    $this->save();
-}
-public function verifyWithOpenSSL($data)
-{
-    $publicKey = openssl_get_publickey(file_get_contents(base_path('public.pem')));
-    $binarySignature = base64_decode($this->signature_hash);
-    
-    return openssl_verify($data, $binarySignature, $publicKey, "sha256WithRSAEncryption") === 1;
-}
+    {
+        $privateKey = openssl_get_privatekey(file_get_contents(base_path('private.pem')));
+        openssl_sign($data, $binarySignature, $privateKey, 'sha256WithRSAEncryption');
+
+        // Simpan hasil biner dalam format base64 agar aman di database
+        $this->signature_hash = base64_encode($binarySignature);
+        $this->save();
+    }
+    public function verifyWithOpenSSL($data)
+    {
+        $publicKey = openssl_get_publickey(file_get_contents(base_path('public.pem')));
+        $binarySignature = base64_decode($this->signature_hash);
+
+        return openssl_verify($data, $binarySignature, $publicKey, 'sha256WithRSAEncryption') === 1;
+    }
 }
