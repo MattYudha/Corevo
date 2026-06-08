@@ -106,7 +106,7 @@ class SignatureController extends Controller
             return redirect()->route('letters.show', $id)->with('success', 'Document signed digitally successfully.');
         }
 
-        return redirect()->back()->with('success', 'Document signed successfully with OpenSSL digital signature.');
+        return redirect()->back()->with('success', 'Document signed digitally successfully.');
     }
 
     public function destroy($id)
