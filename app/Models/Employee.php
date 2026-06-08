@@ -30,6 +30,7 @@ class Employee extends Model
         'department_id',
         'office_location_id',
         'role_id',
+        'position_id',
         'supervisor_id',
         'status',
         'employee_status',
@@ -42,10 +43,10 @@ class Employee extends Model
         'permanent_date',
         'contract_expiry',
         'salary',
-        'basic_salary',       
-        'meal_allowance',     
+        'basic_salary',
+        'meal_allowance',
         'transport_allowance',
-        'position_allowance', 
+        'position_allowance',
         'foundation_id',
     ];
 
@@ -120,7 +121,6 @@ class Employee extends Model
         return $this->hasMany(EmployeePosition::class);
     }
 
-
     public function families()
     {
         return $this->hasMany(EmployeeFamily::class);
@@ -147,12 +147,11 @@ class Employee extends Model
     {
         return $this->hasMany(LeaveBalance::class);
     }
-    
+
     public function kpiRecords()
     {
         return $this->hasMany(EmployeeKPIRecord::class);
     }
-
 
     public function incidents()
     {
@@ -164,11 +163,10 @@ class Employee extends Model
      */
     public function getLeaveBalance($type = 'annual')
     {
-        return $this->leaveBalances()
-            ->firstOrCreate(
-                ['leave_type' => $type, 'year' => date('Y')],
-                ['entitlement' => 12, 'taken' => 0, 'balance' => 12]
-            );
+        return $this->leaveBalances()->firstOrCreate(
+            ['leave_type' => $type, 'year' => date('Y')],
+            ['entitlement' => 12, 'taken' => 0, 'balance' => 12],
+        );
     }
 
     public function scopeVisibleTo($query, User $user)
@@ -177,25 +175,26 @@ class Employee extends Model
         if ($user->isAdmin()) {
             return $query;
         }
-        
+
         $employee = $user->employee;
-        
+
         if (!$employee) {
             return $query->whereRaw('1 = 0');
         }
 
         if ($user->isManager()) {
-            return $query->where(function($q) use ($employee) {
-                $q->where('employees.department_id', $employee->department_id)
-                  ->orWhere('employees.supervisor_id', $employee->id);
+            return $query->where(function ($q) use ($employee) {
+                $q->where('employees.department_id', $employee->department_id)->orWhere(
+                    'employees.supervisor_id',
+                    $employee->id,
+                );
             });
         }
-        
+
         // Supervisors can see their subordinates
         if ($user->employee?->role?->title === \App\Constants\Roles::SUPERVISOR) {
-            return $query->where(function($q) use ($employee) {
-                $q->where('employees.supervisor_id', $employee->id)
-                  ->orWhere('employees.id', $employee->id);
+            return $query->where(function ($q) use ($employee) {
+                $q->where('employees.supervisor_id', $employee->id)->orWhere('employees.id', $employee->id);
             });
         }
 
@@ -232,4 +231,17 @@ class Employee extends Model
         ];
     }
 
+    /**
+     * Accessor Helper untuk mengambil posisi/jabatan yang sedang aktif
+     * Cara pakai di Blade/Controller: $employee->active_position
+     */
+    public function getActivePositionAttribute()
+    {
+        return $this->employeePositions()->where('is_active', true)->first()?->position;
+    }
+
+    public function position()
+    {
+        return $this->belongsTo(Position::class, 'position_id', 'position_id');
+    }
 }

@@ -1,9 +1,5 @@
-const theme = localStorage.getItem('theme') || 'light'
+const body = document.body;
+const theme = localStorage.getItem('theme')
 
-if (theme === 'dark') {
-  document.documentElement.setAttribute('data-bs-theme', 'dark')
-  document.documentElement.classList.add('dark')
-} else {
-  document.documentElement.setAttribute('data-bs-theme', 'light')
-  document.documentElement.classList.remove('dark')
-}
+if (theme) 
+  document.documentElement.setAttribute('data-bs-theme', theme)

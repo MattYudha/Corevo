@@ -1,149 +1,196 @@
-@extends('layouts.dashboard')
+@extends ('layouts.dashboard')
 
-@section('content')
+@section ('content')
+    <div class="page-heading mb-4">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <h3 class="mb-0">Riwayat Log Tanda Tangan</h3>
 
-<div class="page-heading mb-4">
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Signature Verification Logs</li>
-        </ol>
-    </nav>
-
-    <h3>Signature Verification Logs</h3>
-</div>
-
-<div class="page-content">
-    <div class="container-fluid">
-
-        <div class="row mb-3">
-            <div class="col-md-12">
-                <a href="{{ route('dashboard') }}" class="btn btn-secondary">
-                    <i class="bi bi-arrow-left-circle me-1"></i> Back to Dashboard
-                </a>
-            </div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 bg-transparent p-0">
+                    <li class="breadcrumb-item">
+                        <a href="{{ route('dashboard') }}" class="text-decoration-none">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">Signature Logs</li>
+                </ol>
+            </nav>
         </div>
+    </div>
+    <div class="page-content">
+        <div class="container-fluid">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-transparent border-bottom pt-4 pb-3">
+                    <h5 class="card-title mb-0">Daftar Validasi Tanda Tangan</h5>
+                    <p class="text-muted small mb-0">Kelola dan pantau seluruh aktivitas tanda tangan internal maupun eksternal dengan cepat.</p>
+                </div>
 
-        <div class="card">
-            <div class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
-                    <thead>
-                        <tr>
-                            <th>Signer</th>
-                            <th>Document</th>
-                            <th>Document Type</th>
-                            <th>Signed Date</th>
-                            <th>Status</th>
-                            <th>Verified</th>
-                            <th class="text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($signatures as $signature)
+                <div class="card-body">
+                    <table id="signatureLogsTable" class="table table-striped table-hover align-middle w-100">
+                        <thead>
                             <tr>
-                                <td>{{ $signature->signer->name }}</td>
-                                <td>
-                                    @if($signature->signable instanceof App\Models\Letter)
-                                        {{ $signature->signable->subject }}
-                                    @else
-                                        {{ class_basename($signature->signable) }}
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($signature->signable instanceof App\Models\Letter)
-                                        <span class="badge bg-info">Letter</span>
-                                    @else
-                                        <span class="badge bg-secondary">{{ class_basename($signature->signable) }}</span>
-                                    @endif
-                                </td>
-                                <td>{{ $signature->signed_date->format('d M Y H:i') }}</td>
-                                <td>
-                                    <span class="badge bg-{{ $signature->is_verified ? 'success' : 'warning' }}">
-                                        {{ $signature->is_verified ? 'Verified' : 'Pending' }}
-                                    </span>
-                                </td>
-                                <td>
-                                    @if($signature->verified_at)
-                                        {{ $signature->verified_at->format('d M Y H:i') }}
-                                    @else
-                                        <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-                                <td class="text-center">
-                                    <div class="d-flex justify-content-center gap-1 flex-wrap">
-                                        @if($signature->signable instanceof App\Models\Letter)
-                                            <a href="{{ route('letters.show', $signature->signable) }}" 
-                                               class="btn btn-sm btn-info" 
-                                               title="View Document">
-                                                <i class="bi bi-eye"></i>
-                                            </a>
+                                <th class="ps-3">Detail Penandatangan</th>
+                                <th>Dokumen Terkait</th>
+                                <th>Waktu & IP Address</th>
+                                <th>Status Approval</th>
+                                <th>Keamanan (OpenSSL)</th>
+                                <th class="text-center pe-3">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($signatures as $signature)
+                                <tr>
+                                    <td class="ps-3">
+                                        <strong>
+                                            @if ($signature->signer)
+                                                {{ $signature->signer->name }}
+                                                <span class="badge bg-primary ms-1" style="font-size: 0.7em"
+                                                    >Internal</span
+                                                >
+                                            @else
+                                                {{ $signature->external_name }}
+                                                <span class="badge bg-secondary ms-1" style="font-size: 0.7em"
+                                                    >Eksternal</span
+                                                >
+                                            @endif
+                                        </strong>
+
+                                        <small class="d-block text-muted mt-1" style="font-size: 0.85em">
+                                            @if ($signature->signer)
+                                                <i class="bi bi-person-badge"></i>
+                                                {{
+                                                    $signature->signer->employee->employeePositions
+                                                        ->where('is_active', true)
+                                                        ->first()->position->title ??
+                                                        ($signature->signer->employee->role->title ?? 'Staff')
+                                                }}
+                                                |
+                                                <i class="bi bi-envelope"></i>
+                                                {{ $signature->signer->email }}
+                                            @else
+                                                <i class="bi bi-person-badge"></i>
+                                                {{ $signature->external_title ?? 'Jabatan' }} di {{ $signature->external_company ?? 'Klien/Vendor' }}
+                                                @if ($signature->external_email)
+                                                    |
+                                                    <i class="bi bi-envelope"></i>
+                                                    {{ $signature->external_email }}
+                                                @endif
+                                            @endif
+                                        </small>
+                                    </td>
+                                    <td>
+                                        @if ($signature->signable instanceof App\Models\Letter)
+                                            <span class="d-block fw-bold">{{
+                                                $signature->signable->subject ??
+                                                    $signature->signable->letter_number
+                                            }}</span>
+                                            <span class="badge bg-info text-dark mt-1" style="font-size: 0.7em"
+                                                >Surat (Letter)</span
+                                            >
+                                        @else
+                                            <span
+                                                class="badge bg-secondary"
+                                                >{{ class_basename($signature->signable) }}</span
+                                            >
                                         @endif
-                                        <a href="{{ route('signatures.validate', $signature) }}" 
-                                           class="btn btn-sm btn-outline-secondary" 
-                                           onclick="validateSignature(event, this)" 
-                                           title="Validate Signature">
-                                            <i class="bi bi-check2-circle"></i>
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="text-center text-muted">
-                                    No signatures found
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                                    </td>
+                                    <td>
+                                        <span class="d-none">{{ $signature->signed_date->timestamp }}</span>
+                                        <small class="text-muted d-block mb-1">
+                                            <i class="bi bi-clock me-1"></i>
+                                            {{ $signature->signed_date->format('d M Y, H:i') }}
+                                        </small>
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-laptop me-1"></i>
+                                            {{ $signature->ip_address ?? 'N/A' }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        @if ($signature->is_verified)
+                                            <span class="badge bg-success mb-1">Terverifikasi</span>
+                                        @else
+                                            <span class="badge bg-warning text-dark mb-1">Menunggu</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if ($signature->isValid())
+                                            <span class="badge bg-info text-dark">
+                                                <i class="bi bi-shield-check me-1"></i> Enkripsi Valid
+                                            </span>
+                                        @else
+                                            <span class="badge bg-danger">
+                                                <i class="bi bi-shield-exclamation me-1"></i> Invalid / Rusak
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center pe-3">
+                                        <div class="btn-group btn-group-sm">
+                                            @if ($signature->signable instanceof App\Models\Letter)
+                                                <a
+                                                    href="{{ route('letters.show', $signature->signable) }}"
+                                                    class="btn btn-outline-primary"
+                                                    title="Lihat Dokumen"
+                                                >
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                            @endif
+
+                                            <a
+                                                href="{{ route('signatures.validate', $signature) }}"
+                                                class="btn {{ $signature->isValid() ? 'btn-outline-success' : 'btn-outline-danger' }}"
+                                                onclick="validateSignature(event, this)"
+                                                title="Cek Validasi"
+                                            >
+                                                <i class="bi bi-check2-circle"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @empty
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-
-     <!-- Pagination -->
-@if ($signatures->hasPages())
-        </div>
-        {{-- Tombol halaman --}}
-        <div class="col-md-12 d-flex justify-content-md-end justify-content-center">
-            {{ $signatures->onEachSide(1)->links('pagination::bootstrap-5') }}
-        </div>
     </div>
-@endif
-    </div>
-
-
-<script>
-function validateSignature(event, element) {
-    event.preventDefault();
-    const url = element.href;
-
-    Swal.fire({
-        title: 'Validasi',
-        text: 'Sedang memvalidasi tanda tangan...',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            Swal.close();
-            if (data.valid) {
-                Swal.fire('Valid', data.message, 'success');
-                element.classList.add('btn-success');
-                element.classList.remove('btn-outline-secondary');
-            } else {
-                Swal.fire('Invalid', data.message, 'error');
-                element.classList.add('btn-danger');
-                element.classList.remove('btn-outline-secondary');
-            }
-        })
-        .catch(error => {
-            Swal.close();
-            Swal.fire('Error', 'Gagal memvalidasi: ' + error.message, 'error');
+    <script>
+        // DataTables cukup dipanggil seperti biasa
+        $(document).ready(function () {
+            $('#signatureLogsTable').DataTable({
+                responsive: true,
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json',
+                },
+                order: [[2, 'desc']], // Urut berdasarkan Waktu terbaru
+            });
         });
-}
-</script>
+
+        function validateSignature(event, element) {
+            event.preventDefault();
+            const url = element.href;
+
+            Swal.fire({
+                title: 'Memvalidasi Enkripsi',
+                text: 'Sedang mengecek keaslian tanda tangan via OpenSSL...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
+
+            fetch(url)
+                .then((response) => response.json())
+                .then((data) => {
+                    Swal.close();
+                    if (data.valid) {
+                        Swal.fire('Valid!', data.message, 'success').then(() => location.reload());
+                    } else {
+                        Swal.fire('Invalid!', data.message, 'error').then(() => location.reload());
+                    }
+                })
+                .catch((error) => {
+                    Swal.close();
+                    Swal.fire('Error', 'Gagal memvalidasi: ' + error.message, 'error');
+                });
+        }
+    </script>
 @endsection

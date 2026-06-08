@@ -1,0 +1,320 @@
+/* logo config */
+.logo-dark {
+    display: none;
+}
+[data-bs-theme='dark'] .logo-light {
+    display: none !important;
+}
+[data-bs-theme='dark'] .logo-dark {
+    display: inline-block !important;
+}
+
+.logo-container {
+    flex-grow: 1;
+}
+.custom-logo-size {
+    height: 55px !important;
+    width: 150px;
+    transition: all 0.3s ease;
+}
+
+/* custom scrollbar with reserve space and no layout shift */
+.sidebar-wrapper {
+    z-index: 998 !important;
+    transition:
+        transform 0.3s ease,
+        left 0.3s ease !important;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+.sidebar-wrapper:hover {
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+[data-bs-theme='dark'] .sidebar-wrapper:hover {
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.sidebar-wrapper::-webkit-scrollbar {
+    width: 6px;
+    background-color: transparent;
+}
+.sidebar-wrapper::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+.sidebar-wrapper::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 10px;
+    transition: background-color 0.3s ease;
+}
+.sidebar-wrapper:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+[data-bs-theme='dark'] .sidebar-wrapper:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* custom toggle button for light / dark mode */
+.custom-theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    cursor: pointer;
+}
+.switch-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #e9ecef;
+    border-radius: 34px;
+    transition: background-color 0.3s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+[data-bs-theme='dark'] .switch-slider {
+    background-color: #2b313d;
+}
+.switch-circle {
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    top: 3px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    transition:
+        transform 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+        background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+input:checked + .switch-slider .switch-circle {
+    transform: translateX(22px);
+}
+[data-bs-theme='dark'] .switch-circle {
+    background-color: #1e222b;
+}
+.switch-circle i {
+    line-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px !important;
+}
+
+.icon-spin {
+    animation: spinIcon 0.4s ease-out;
+}
+@keyframes spinIcon {
+    0% {
+        transform: rotate(-180deg) scale(0.5);
+        opacity: 0;
+    }
+    100% {
+        transform: rotate(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* another layout config */
+.sidebar-backdrop {
+    z-index: 997 !important;
+}
+#main {
+    transition: margin-left 0.3s ease !important;
+}
+@media (min-width: 1200px) {
+    body.sidebar-collapsed .sidebar-wrapper {
+        transform: translateX(-100%) !important;
+    }
+    body.sidebar-collapsed #main {
+        margin-left: 0 !important;
+    }
+}
+.mobile-sticky-topbar {
+    position: sticky;
+    top: 0;
+    margin-top: -2rem;
+    margin-left: -2rem;
+    margin-right: -2rem;
+    padding: 1rem 2rem;
+    z-index: 996 !important;
+    background-color: var(--bs-body-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 1199.98px) {
+    .mobile-sticky-topbar {
+        margin-top: -1.5rem;
+        margin-left: -1.5rem;
+        margin-right: -1.5rem;
+        padding: 1rem 1.5rem;
+    }
+
+    .custom-logo-size {
+        height: 40px !important;
+        width: 100px;
+        transition: all 0.3s ease;
+    }
+    .logo-container {
+        text-align: left !important;
+        padding-left: 4px;
+    }
+}
+
+.sidebar-menu .submenu.active {
+    display: block;
+}
+
+/* icon toggle handler on dark mode */
+html[data-bs-theme='dark'] .switch-circle {
+    transform: translateX(22px);
+}
+.icon-moon {
+    display: none !important;
+}
+.icon-sun {
+    display: flex !important;
+}
+
+html[data-bs-theme='dark'] .icon-sun {
+    display: none !important;
+}
+html[data-bs-theme='dark'] .icon-moon {
+    display: flex !important;
+}
+.switch-circle i {
+    transition: transform 0.5s ease;
+}
+html[data-bs-theme='dark'] .switch-circle i {
+    transform: rotate(360deg);
+}
+
+/* custom datatables loader */
+div.dataTables_wrapper div.dataTables_processing {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    margin: 0 !important;
+    width: auto !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    z-index: 1050;
+}
+.custom-loader-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 24px;
+    background-color: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(8px);
+    border-radius: 50px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+html[data-bs-theme='dark'] .custom-loader-box {
+    background-color: rgba(30, 34, 43, 0.85);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.modern-spinner {
+    width: 22px;
+    height: 22px;
+    border: 3px solid var(--bs-primary);
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 0.8s linear infinite;
+}
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+.loader-text {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--bs-gray-700);
+    letter-spacing: 0.5px;
+}
+html[data-bs-theme='dark'] .loader-text {
+    color: var(--bs-gray-300);
+}
+
+/* override default datatable loading animation */
+div.dataTables_wrapper div.dataTables_processing > div:not(.custom-loader-box) {
+    display: none !important;
+}
+
+/* fix datatables pagination color on darkmode */
+html[data-bs-theme='dark'] .dataTables_wrapper .page-item.active .page-link {
+    background-color: var(--bs-primary) !important;
+    border-color: var(--bs-primary) !important;
+    color: #ffffff !important;
+    font-weight: bold;
+}
+html[data-bs-theme='dark'] .dataTables_wrapper .page-item:not(.active) .page-link {
+    background-color: transparent !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: var(--bs-gray-300) !important;
+}
+html[data-bs-theme='dark'] .dataTables_wrapper .page-item:not(.active) .page-link:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+}
+html[data-bs-theme='dark'] .dataTables_wrapper .page-item.disabled .page-link {
+    color: rgba(255, 255, 255, 0.2) !important;
+    background-color: transparent !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.theme-toggle-wrapper {
+    background-color: rgba(0, 0, 0, 0.04);
+    border-radius: 8px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition:
+        background-color 0.3s ease,
+        border-color 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    box-sizing: border-box;
+}
+
+[data-bs-theme='dark'] .theme-toggle-wrapper {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.theme-label-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #435ebe;
+    transition: color 0.3s ease;
+}
+
+[data-bs-theme='dark'] .theme-label-text {
+    color: #f8f9fa;
+}
+
+.theme-label-text::after {
+    content: 'Light Mode';
+}
+
+[data-bs-theme='dark'] .theme-label-text::after {
+    content: 'Dark Mode';
+}

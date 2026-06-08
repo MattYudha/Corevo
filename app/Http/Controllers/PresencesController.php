@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
+use App\Services\HolidayService;
 
 class PresencesController extends Controller
 {
@@ -19,24 +20,34 @@ class PresencesController extends Controller
     {
         if ($request->ajax()) {
             $query = Presence::with(['employee.officeLocation', 'officeLocation']);
-            
+
             if (!in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN])) {
                 $query->where('employee_id', session('employee_id'));
             }
-            
+
             return DataTables::of($query)
                 ->addIndexColumn()
-                ->addColumn('action', function($row){
+                ->addColumn('action', function ($row) {
                     $btns = '<div class="btn-group btn-group-sm" role="group">';
+                    $btns .=
+                        '<a href="' .
+                        route('presences.show', $row->id) .
+                        '" class="btn btn-outline-info" title="View Details"><i class="bi bi-eye"></i></a>';
 
-                    $btns .= '<a href="'.route('presences.show', $row->id).'" class="btn btn-outline-info" title="View Details"><i class="bi bi-eye"></i></a>';
-                    
                     if (in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN])) {
-                        $btns .= '<a href="'.route('presences.edit', $row->id).'" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>';
+                        $btns .=
+                            '<a href="' .
+                            route('presences.edit', $row->id) .
+                            '" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>';
                         $csrf = csrf_token();
-                        $btns .= '
-                            <form action="'.route('presences.destroy', $row->id).'" method="POST" class="d-inline">
-                                <input type="hidden" name="_token" value="'.$csrf.'">
+                        $btns .=
+                            '
+                            <form action="' .
+                            route('presences.destroy', $row->id) .
+                            '" method="POST" class="d-inline">
+                                <input type="hidden" name="_token" value="' .
+                            $csrf .
+                            '">
                                 <input type="hidden" name="_method" value="DELETE">
                                 <button type="submit" class="btn btn-outline-danger" onclick="return confirm(\'Delete this record?\')">
                                     <i class="bi bi-trash"></i>
@@ -44,35 +55,35 @@ class PresencesController extends Controller
                             </form>
                         ';
                     }
-                    
+
                     $btns .= '</div>';
                     return $btns;
                 })
-                ->addColumn('status_badge', function($row){
-                    $class = match($row->status) {
+                ->addColumn('status_badge', function ($row) {
+                    $class = match ($row->status) {
                         'present' => 'bg-success',
                         'absent' => 'bg-danger',
                         'leave' => 'bg-info',
-                        default => 'bg-secondary'
+                        default => 'bg-secondary',
                     };
-                    $badge = '<span class="badge '.$class.'">'.ucfirst($row->status).'</span>';
-                    
+                    $badge = '<span class="badge ' . $class . '">' . ucfirst($row->status) . '</span>';
+
                     if ($row->status === 'present' && $row->is_late) {
                         $badge .= ' <span class="badge bg-warning text-dark">Late</span>';
                     }
-                    
+
                     return $badge;
                 })
-                ->addColumn('work_type_badge', function($row){
-                    $class = match($row->work_type) {
+                ->addColumn('work_type_badge', function ($row) {
+                    $class = match ($row->work_type) {
                         'WFO' => 'bg-primary',
                         'WFH' => 'bg-secondary',
                         'WFA' => 'bg-dark',
-                        default => 'bg-light text-dark'
+                        default => 'bg-light text-dark',
                     };
-                    return '<span class="badge '.$class.'">'.($row->work_type ?? 'WFO').'</span>';
+                    return '<span class="badge ' . $class . '">' . ($row->work_type ?? 'WFO') . '</span>';
                 })
-                ->addColumn('office_location_name', function($row){
+                ->addColumn('office_location_name', function ($row) {
                     if ($row->officeLocation) {
                         return e($row->officeLocation->name);
                     }
@@ -81,32 +92,86 @@ class PresencesController extends Controller
                     }
                     return '-';
                 })
-                ->editColumn('date', function($row){
+                ->editColumn('date', function ($row) {
                     return $row->date ? Carbon::parse($row->date)->format('d M Y') : '-';
                 })
-                ->editColumn('check_in', function($row){
+                ->editColumn('check_in', function ($row) {
                     return $row->check_in ? Carbon::parse($row->check_in)->format('H:i:s') : '-';
                 })
-                ->editColumn('check_out', function($row){
+                ->editColumn('check_out', function ($row) {
                     if ($row->check_out) {
                         return Carbon::parse($row->check_out)->format('H:i:s');
                     }
-                    if (session('employee_id') == $row->employee_id && 
-                        Carbon::parse($row->date)->isToday() && $row->check_in && !$row->check_out) {
-                        return '<a href="'.route('presences.checkout').'" class="btn btn-sm btn-success">Check Out</a>';
+                    if (
+                        session('employee_id') == $row->employee_id &&
+                        Carbon::parse($row->date)->isToday() &&
+                        $row->check_in &&
+                        !$row->check_out
+                    ) {
+                        return '<a href="' .
+                            route('presences.checkout') .
+                            '" class="btn btn-sm btn-success">Check Out</a>';
                     }
                     return '-';
                 })
                 ->rawColumns(['action', 'status_badge', 'work_type_badge', 'check_out'])
                 ->make(true);
         }
-        
-        return view('presences.index');
+
+        // --- additional holiday check for alert in index ---
+        $todayDate = Carbon::today()->format('Y-m-d');
+        $year = Carbon::today()->year;
+        $month = Carbon::today()->month;
+
+        $holidays = HolidayService::getHolidays($year, $month);
+        $isHolidayToday = false;
+        $holidayName = '';
+
+        if (Carbon::today()->isWeekend()) {
+            $isHolidayToday = true;
+            $holidayName = 'Weekend (Saturday / Sunday)';
+        } else {
+            foreach ($holidays as $h) {
+                if ($h['date'] === $todayDate) {
+                    $isHolidayToday = true;
+                    $holidayName = $h['name'];
+                    break;
+                }
+            }
+        }
+
+        return view('presences.index', compact('isHolidayToday', 'holidayName'));
     }
 
-    // Show the form to create a new attendance record
+    // show the form to create a new attendance record
     public function create()
     {
+        // double protection: prevent direct url access for everyone during holidays.
+        // admins should use master presence for manual attendance, not here.
+        $todayDate = Carbon::today()->format('Y-m-d');
+        $year = Carbon::today()->year;
+        $month = Carbon::today()->month;
+
+        if (Carbon::today()->isWeekend()) {
+            return redirect()
+                ->route('presences.index')
+                ->with(
+                    'error',
+                    'System Closed: Today is the weekend (Saturday/Sunday). You cannot perform self-attendance.',
+                );
+        }
+
+        $holidayDates = HolidayService::getHolidayDates($year, $month);
+
+        if (in_array($todayDate, $holidayDates)) {
+            return redirect()
+                ->route('presences.index')
+                ->with(
+                    'error',
+                    'System Closed: Today is a National Holiday / Collective Leave. You cannot perform self-attendance.',
+                );
+        }
+
         $employees = Employee::all();
         $currentEmployee = Auth::user()?->employee;
 
@@ -120,7 +185,7 @@ class PresencesController extends Controller
         return view('presences.create', compact('employees', 'wfoOfficeLocations', 'selectedWfoOfficeLocation'));
     }
 
-    // Store a newly created attendance record
+    // store a newly created attendance record
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -128,13 +193,17 @@ class PresencesController extends Controller
             return redirect()->route('login');
         }
 
-        if (session('role')  == 'HR Administrator') {
-
+        // fix: we check from the request, not the role.
+        // so if master admin clicks the wfo button from a mobile phone, they still enter self-attendance.
+        if ($request->has('employee_id') && $request->has('check_in')) {
+            // ==========================================
+            // block 1: manual admin form (bypass holidays)
+            // ==========================================
             $validator = Validator::make($request->all(), [
                 'employee_id' => 'required|exists:employees,id',
                 'check_in' => 'required|date',
                 'check_out' => 'nullable|date|after_or_equal:check_in',
-                'status' => 'required|in:present,absent,leave'
+                'status' => 'required|in:present,absent,leave',
             ]);
 
             if ($validator->fails()) {
@@ -144,68 +213,99 @@ class PresencesController extends Controller
             Presence::create([
                 'employee_id' => $request->employee_id,
                 'check_in' => Carbon::parse($request->check_in)->format('Y-m-d H:i:s'),
-                'check_out' => $request->filled('check_out') ? Carbon::parse($request->check_out)->format('Y-m-d H:i:s') : null,
+                'check_out' => $request->filled('check_out')
+                    ? Carbon::parse($request->check_out)->format('Y-m-d H:i:s')
+                    : null,
                 'date' => Carbon::parse($request->check_in)->format('Y-m-d'),
                 'status' => $request->status,
-                'work_type' => 'WFO'
+                'work_type' => 'WFO',
             ]);
-
         } else {
+            // ==========================================
+            // block 2: self attendance (wfo / wfh / wfa)
+            // ==========================================
 
-            // Regular employee mode, handle WFO/WFH/WFA
+            if (Carbon::today()->isWeekend()) {
+                return redirect()
+                    ->back()
+                    ->with(
+                        'error',
+                        'System Closed: Today is the weekend (Saturday/Sunday). You cannot perform attendance.',
+                    );
+            }
+
+            // holiday check: reject attendance if today is a public holiday / collective leave
+            $todayDate = Carbon::today()->format('Y-m-d');
+            $year = Carbon::today()->year;
+            $month = Carbon::today()->month;
+
+            $holidayDates = HolidayService::getHolidayDates($year, $month);
+
+            if (in_array($todayDate, $holidayDates)) {
+                return redirect()
+                    ->back()
+                    ->with(
+                        'error',
+                        'System Closed: Today is a National Holiday / Collective Leave. You cannot perform attendance.',
+                    );
+            }
+
             $workType = $request->work_type ?? 'WFO';
             $fingerprint = $request->fingerprint;
-            // Handle is_mobile as string "0" or "1" from form
             $isMobile = $request->is_mobile == '1' || $request->is_mobile === 1 || $request->is_mobile === true;
             $ssid = $request->ssid ?? '';
-            
-            \Log::info('Presence store request', [
-                'work_type' => $workType,
-                'has_fingerprint' => !empty($fingerprint),
-                'is_mobile' => $isMobile,
-                'has_latitude' => $request->has('latitude'),
-                'has_longitude' => $request->has('longitude'),
-                'has_ssid' => $request->has('ssid'),
-            ]);
 
             $employeeId = session('employee_id');
             $employee = $employeeId ? Employee::with('officeLocation')->find($employeeId) : null;
             $officeLocationConfig = $this->resolveOfficeLocationForEmployee($employee);
             $selectedWfoOfficeLocationId = null;
-            
-            // 1. Device Fingerprinting Logic (required for all work types)
+
+            // device fingerprinting logic
             if (empty($fingerprint)) {
-                return redirect()->back()->with('error', 'Failed to verify your device identity. Please refresh the page and try again.');
+                return redirect()
+                    ->back()
+                    ->with('error', 'Failed to verify your device identity. Please refresh the page and try again.');
             }
-            
+
             try {
                 if ($isMobile) {
                     if (!$user->browser_fingerprint_mobile) {
                         $user->update(['browser_fingerprint_mobile' => $fingerprint]);
                     } elseif ($user->browser_fingerprint_mobile !== $fingerprint) {
-                        $this->logSuspicious($user->id, 'wrong_fingerprint', "Mobile fingerprint mismatch. Got: $fingerprint");
-                        return redirect()->back()->with('error', 'Unregistered mobile device. Please use your original device.');
+                        $this->logSuspicious(
+                            $user->id,
+                            'wrong_fingerprint',
+                            "Mobile fingerprint mismatch. Got: $fingerprint",
+                        );
+                        return redirect()
+                            ->back()
+                            ->with('error', 'Mobile device is unregistered. Please use your registered device.');
                     }
                 } else {
                     if (!$user->browser_fingerprint_desktop) {
                         $user->update(['browser_fingerprint_desktop' => $fingerprint]);
                     } elseif ($user->browser_fingerprint_desktop !== $fingerprint) {
-                        $this->logSuspicious($user->id, 'wrong_fingerprint', "Desktop fingerprint mismatch. Got: $fingerprint");
-                        return redirect()->back()->with('error', 'Unregistered browser. Please use your primary browser.');
+                        $this->logSuspicious(
+                            $user->id,
+                            'wrong_fingerprint',
+                            "Desktop fingerprint mismatch. Got: $fingerprint",
+                        );
+                        return redirect()
+                            ->back()
+                            ->with('error', 'Browser is unregistered. Please use your registered browser.');
                     }
                 }
             } catch (\Exception $e) {
-                \Log::error('Error updating fingerprint: ' . $e->getMessage());
-                return redirect()->back()->with('error', 'An error occurred while verifying the device. Please try again.');
+                return redirect()->back()->with('error', 'An error occurred while verifying the device.');
             }
 
-            // For WFO, validate selected office, GPS, and WiFi
+            // wfo validation
             if ($workType === 'WFO') {
                 $validator = Validator::make($request->all(), [
                     'office_location_id' => 'required|integer|exists:office_locations,id',
                     'latitude' => 'required|numeric',
                     'longitude' => 'required|numeric',
-                    'accuracy' => 'required|numeric'
+                    'accuracy' => 'required|numeric',
                 ]);
 
                 if ($validator->fails()) {
@@ -216,48 +316,58 @@ class PresencesController extends Controller
                 $officeLocationConfig = $this->resolveOfficeLocationForSelection($selectedWfoOfficeLocationId);
 
                 if (!$officeLocationConfig) {
-                    return redirect()->back()->withInput()->with('error', 'Invalid or inactive WFO office location.');
+                    return redirect()->back()->withInput()->with('error', 'WFO location is invalid or inactive.');
                 }
 
-                // check gps accuracy to help detect fake gps
-                // spoofed gps may return 1m or unrealistically perfect values
-                // real gps usually fluctuates between 10-65m
                 if ($request->accuracy <= 5) {
-                    $this->logSuspicious($user->id, 'fake_gps', "Unnatural accuracy detected (too perfect): {$request->accuracy}m");
-                    return redirect()->back()->with('error', 'Your location is detected using a third-party application (Fake GPS). Please disable it and try again.');
+                    $this->logSuspicious($user->id, 'fake_gps', "Unnatural accuracy detected: {$request->accuracy}m");
+                    return redirect()
+                        ->back()
+                        ->with(
+                            'error',
+                            'Location detected using a Fake GPS application. Please disable it and try again.',
+                        );
                 }
 
-                // verify user location on the server using radius-based geofencing
                 $officeLat = $officeLocationConfig['latitude'];
                 $officeLon = $officeLocationConfig['longitude'];
                 $radius = $officeLocationConfig['radius'];
                 $distance = $this->calculateDistance($request->latitude, $request->longitude, $officeLat, $officeLon);
-                
+
                 if ($distance > $radius) {
-                    $this->logSuspicious($user->id, 'out_of_radius', "Attendance attempt from $distance meters away from {$officeLocationConfig['name']}.");
-                    return redirect()->back()->with('error', "You are outside the radius of {$officeLocationConfig['name']} (Your distance: " . round($distance) . " meters).");
+                    $this->logSuspicious($user->id, 'out_of_radius', "Attendance attempt from $distance meters away.");
+                    return redirect()
+                        ->back()
+                        ->with(
+                            'error',
+                            "You are outside the radius of {$officeLocationConfig['name']} (Your distance: " .
+                                round($distance) .
+                                ' meters).',
+                        );
                 }
 
-                // validate network security using ip address instead of manual ssid checks
-                // significantly harder to bypass than gps spoofing
                 $allowedIPs = $officeLocationConfig['allowed_ips'] ?? [];
                 $clientIp = request()->ip();
 
-                // run validation only when the office has an ip configured
-                if (!empty($allowedIPs)) {
-                    if (!in_array($clientIp, $allowedIPs)) {
-                        $this->logSuspicious($user->id, 'invalid_ip', "Attendance attempt from an unknown network: $clientIp");
-                        return redirect()->back()->with('error', "The system rejected your WFO attendance because your device's IP ($clientIp) is not connected to the official office WiFi network.");
-                    }
+                if (!empty($allowedIPs) && !in_array($clientIp, $allowedIPs)) {
+                    $this->logSuspicious(
+                        $user->id,
+                        'invalid_ip',
+                        "Attendance attempt from an unknown network: $clientIp",
+                    );
+                    return redirect()
+                        ->back()
+                        ->with(
+                            'error',
+                            "The system rejected your WFO attendance because your device IP ($clientIp) is not connected to the official office WiFi.",
+                        );
                 }
             }
 
-            // Validate employee_id exists in session
             if (!$employeeId) {
                 return redirect()->back()->with('error', 'Invalid session. Please log in again.');
             }
 
-            // Check if already checked in today
             $today = Carbon::today();
             $existingPresence = Presence::where('employee_id', $employeeId)
                 ->whereDate('date', $today)
@@ -266,98 +376,92 @@ class PresencesController extends Controller
 
             if ($existingPresence) {
                 if ($existingPresence->check_out) {
-                    return redirect()->back()->with('error', 'You have already checked in and checked out today.');
+                    return redirect()->back()->with('error', 'You have already Checked-In and Checked-Out today.');
                 } else {
-                    return redirect()->back()->with('error', 'You have already checked in today. Please check out first.');
+                    return redirect()->back()->with('error', 'You have already Checked-In today. Please Check-Out.');
                 }
             }
 
-            // Check for late check-in
             $checkInTime = Carbon::now();
             $workStartTimeStr = Setting::getValue('work_start_time', '08:00');
             $workStartTime = Carbon::parse(date('Y-m-d') . ' ' . $workStartTimeStr);
             $lateThreshold = (int) Setting::getValue('late_threshold_minutes', 15);
-            $isLate = $this->isLateCheckIn($presence ?? new Presence(['status' => 'present', 'work_type' => $workType, 'check_in' => $checkInTime]));
 
             try {
-                // Store GPS data for all work types (WFO, WFH, WFA)
                 $latitude = $request->has('latitude') && !empty($request->latitude) ? $request->latitude : null;
                 $longitude = $request->has('longitude') && !empty($request->longitude) ? $request->longitude : null;
-                
+
                 $photoPath = null;
                 if ($request->filled('photo_data')) {
-                    $image_parts = explode(";base64,", $request->photo_data);
+                    $image_parts = explode(';base64,', $request->photo_data);
                     if (count($image_parts) == 2) {
-                        $image_type_aux = explode("image/", $image_parts[0]);
+                        $image_type_aux = explode('image/', $image_parts[0]);
                         $image_type = $image_type_aux[1];
                         $image_base64 = base64_decode($image_parts[1]);
-                        
+
                         $fileName = 'presence_' . $employeeId . '_' . time() . '.' . $image_type;
-                        $folderPath = 'presence_photos/' . date('Y-m'); 
-                        
-                        \Illuminate\Support\Facades\Storage::disk('public')->put($folderPath . '/' . $fileName, $image_base64);
+                        $folderPath = 'presence_photos/' . date('Y-m');
+
+                        \Illuminate\Support\Facades\Storage::disk('public')->put(
+                            $folderPath . '/' . $fileName,
+                            $image_base64,
+                        );
                         $photoPath = $folderPath . '/' . $fileName;
                     }
                 }
 
                 $dummyPresence = new Presence([
-                    'status' => 'present', 
-                    'work_type' => $workType, 
+                    'status' => 'present',
+                    'work_type' => $workType,
                     'check_in' => $checkInTime->format('Y-m-d H:i:s'),
-                    'date' => $checkInTime->format('Y-m-d')
+                    'date' => $checkInTime->format('Y-m-d'),
                 ]);
                 $isLate = $this->isLateCheckIn($dummyPresence);
 
                 $presenceData = [
                     'employee_id' => $employeeId,
-                    'office_location_id' => $workType === 'WFO' ? ($selectedWfoOfficeLocationId ?: ($officeLocationConfig['id'] ?? null)) : null,
+                    'office_location_id' =>
+                        $workType === 'WFO'
+                            ? ($selectedWfoOfficeLocationId ?:
+                            $officeLocationConfig['id'] ?? null)
+                            : null,
                     'check_in' => $checkInTime->format('Y-m-d H:i:s'),
                     'date' => $checkInTime->format('Y-m-d'),
                     'status' => 'present',
                     'work_type' => $workType,
                     'is_late' => $isLate,
-                    'photo_path' => $photoPath, 
+                    'photo_path' => $photoPath,
                 ];
-                
-                // Add GPS data if it exists
-                if ($latitude !== null) $presenceData['latitude'] = $latitude;
-                if ($longitude !== null) $presenceData['longitude'] = $longitude;
-                
+
+                if ($latitude !== null) {
+                    $presenceData['latitude'] = $latitude;
+                }
+                if ($longitude !== null) {
+                    $presenceData['longitude'] = $longitude;
+                }
+
                 $presence = Presence::create($presenceData);
-                
-                \Log::info('Presence created successfully', [
-                    'presence_id' => $presence->id,
-                    'employee_id' => $employeeId,
-                    'work_type' => $workType
-                ]);
-            } catch (\Illuminate\Database\QueryException $e) {
-                \Log::error('Database error creating presence: ' . $e->getMessage(), [
-                    'employee_id' => $employeeId,
-                    'work_type' => $workType,
-                    'sql_error' => $e->getSql(),
-                    'bindings' => $e->getBindings()
-                ]);
-                return redirect()->back()->with('error', 'Failed to save attendance data to the database. Please try again or contact the administrator.');
             } catch (\Exception $e) {
-                \Log::error('Error creating presence: ' . $e->getMessage(), [
-                    'employee_id' => $employeeId,
-                    'work_type' => $workType,
-                    'error' => $e->getTraceAsString()
-                ]);
-                return redirect()->back()->with('error', 'Failed to save attendance data: ' . $e->getMessage());
+                return redirect()
+                    ->back()
+                    ->with('error', 'Failed to save attendance data: ' . $e->getMessage());
             }
 
-            // Show warning if late
             if ($isLate) {
                 $lateMinutes = $checkInTime->diffInMinutes($workStartTime->copy()->addMinutes($lateThreshold));
-                $targetRoute = in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]) ? 'presences.index' : 'dashboard';
-                return redirect()->route($targetRoute)->with('warning', "Attendance recorded successfully. You are {$lateMinutes} minutes late.");
+                $targetRoute = in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN])
+                    ? 'presences.index'
+                    : 'dashboard';
+                return redirect()
+                    ->route($targetRoute)
+                    ->with('warning', "Attendance successfully recorded. You are {$lateMinutes} minutes late.");
             }
-            
         }
 
-        $targetRoute = in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]) ? 'presences.index' : 'dashboard';
-        return redirect()->route($targetRoute)->with('success', 'Attendance recorded successfully.');
+        $targetRoute = in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN])
+            ? 'presences.index'
+            : 'dashboard';
+        return redirect()->route($targetRoute)->with('success', 'Attendance successfully recorded.');
     }
 
     private function getSelectableWfoOfficeLocations(): array
@@ -365,7 +469,7 @@ class PresencesController extends Controller
         return OfficeLocation::active()
             ->orderBy('name')
             ->get()
-            ->map(fn (OfficeLocation $officeLocation) => $this->mapOfficeLocationToConfig($officeLocation))
+            ->map(fn(OfficeLocation $officeLocation) => $this->mapOfficeLocationToConfig($officeLocation))
             ->values()
             ->all();
     }
@@ -421,11 +525,11 @@ class PresencesController extends Controller
         return [
             'id' => null,
             'name' => 'Head Office',
-            'latitude' => (float) config('presence.office_latitude', -6.200000),
+            'latitude' => (float) config('presence.office_latitude', -6.2),
             'longitude' => (float) config('presence.office_longitude', 106.816666),
             'radius' => (int) config('presence.location_radius', 1000),
-            'allowed_ssids' => [], 
-            'allowed_ips' => [], 
+            'allowed_ssids' => [],
+            'allowed_ips' => [],
             'address' => null,
         ];
     }
@@ -437,8 +541,10 @@ class PresencesController extends Controller
         return [
             'id' => $officeLocation->id,
             'name' => $officeLocation->name,
-            'latitude' => $officeLocation->latitude !== null ? (float) $officeLocation->latitude : $defaultConfig['latitude'],
-            'longitude' => $officeLocation->longitude !== null ? (float) $officeLocation->longitude : $defaultConfig['longitude'],
+            'latitude' =>
+                $officeLocation->latitude !== null ? (float) $officeLocation->latitude : $defaultConfig['latitude'],
+            'longitude' =>
+                $officeLocation->longitude !== null ? (float) $officeLocation->longitude : $defaultConfig['longitude'],
             'radius' => !empty($officeLocation->radius) ? (int) $officeLocation->radius : $defaultConfig['radius'],
             'allowed_ssids' => !empty($officeLocation->allowed_ssids)
                 ? array_values(array_filter($officeLocation->allowed_ssids))
@@ -456,7 +562,7 @@ class PresencesController extends Controller
             return 'You must be connected to the registered office WiFi for WFO attendance.';
         }
 
-        $ssidList = implode(', ', array_map(fn ($ssid) => '"' . $ssid . '"', $allowedSSIDs));
+        $ssidList = implode(', ', array_map(fn($ssid) => '"' . $ssid . '"', $allowedSSIDs));
 
         return "You must be connected to the {$officeName} WiFi ({$ssidList}) for WFO attendance.";
     }
@@ -464,7 +570,7 @@ class PresencesController extends Controller
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)
     {
         $earthRadius = 6371000; // in meters
-        
+
         $latFrom = deg2rad($lat1);
         $lonFrom = deg2rad($lon1);
         $latTo = deg2rad($lat2);
@@ -473,9 +579,8 @@ class PresencesController extends Controller
         $latDelta = $latTo - $latFrom;
         $lonDelta = $lonTo - $lonFrom;
 
-        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) +
-            cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
-            
+        $angle = 2 * asin(sqrt(pow(sin($latDelta / 2), 2) + cos($latFrom) * cos($latTo) * pow(sin($lonDelta / 2), 2)));
+
         return $angle * $earthRadius;
     }
 
@@ -490,14 +595,14 @@ class PresencesController extends Controller
         ]);
     }
 
-    // Show the form for editing an attendance record
+    // show the form for editing an attendance record
     public function edit(Presence $presence)
     {
         $employees = Employee::all();
         return view('presences.edit', compact('presence', 'employees'));
     }
 
-    // Update the specified attendance record
+    // update the specified attendance record
     public function update(Request $request, Presence $presence)
     {
         $request->validate([
@@ -512,7 +617,7 @@ class PresencesController extends Controller
         return redirect()->route('presences.index')->with('success', 'Attendance data updated successfully.');
     }
 
-    // Delete an attendance record
+    // delete an attendance record
     public function destroy(Presence $presence)
     {
         if ($presence->photo_path && Storage::disk('public')->exists($presence->photo_path)) {
@@ -520,11 +625,11 @@ class PresencesController extends Controller
         }
 
         $presence->delete();
-        
-        return redirect()->route('presences.index')->with('success', 'Attendance data deleted successfully');
+
+        return redirect()->route('presences.index')->with('success', 'Attendance data deleted successfully.');
     }
 
-    // Check-out functionality - Show form
+    // check-out functionality - show form
     public function checkout()
     {
         $user = Auth::user();
@@ -534,8 +639,8 @@ class PresencesController extends Controller
 
         $employeeId = session('employee_id');
         $employee = $employeeId ? Employee::with('officeLocation')->find($employeeId) : null;
-        
-        // Find today's presence record with check-in but no check-out
+
+        // find today's presence record with check-in but no check-out
         $today = Carbon::today();
         $presence = Presence::with('officeLocation')
             ->where('employee_id', $employeeId)
@@ -545,20 +650,23 @@ class PresencesController extends Controller
             ->first();
 
         if (!$presence) {
-            return redirect()->route('presences.index')->with('error', 'No check-in record found for today. Please check in first.');
+            return redirect()
+                ->route('presences.index')
+                ->with('error', 'No check-in record found for today. Please check in first.');
         }
 
         $workType = $presence->work_type ?? 'WFO';
-        // Only resolve office location config for WFO; WFH/WFA don't need it
-        $officeLocationConfig = $workType === 'WFO'
-            ? $this->resolveOfficeLocationForPresence($presence, $employee)
-            : $this->defaultOfficeLocationConfig();
+        // only resolve office location config for wfo; wfh/wfa don't need it
+        $officeLocationConfig =
+            $workType === 'WFO'
+                ? $this->resolveOfficeLocationForPresence($presence, $employee)
+                : $this->defaultOfficeLocationConfig();
         $checkInTime = Carbon::parse($presence->check_in)->format('H:i:s');
 
         return view('presences.checkout', compact('presence', 'checkInTime', 'officeLocationConfig'));
     }
 
-    // Check-out functionality - Process checkout
+    // check-out functionality - process checkout
     public function processCheckout(Request $request)
     {
         $user = Auth::user();
@@ -568,8 +676,8 @@ class PresencesController extends Controller
 
         $employeeId = session('employee_id');
         $employee = $employeeId ? Employee::with('officeLocation')->find($employeeId) : null;
-        
-        // Find today's presence record with check-in but no check-out
+
+        // find today's presence record with check-in but no check-out
         $today = Carbon::today();
         $presence = Presence::with('officeLocation')
             ->where('employee_id', $employeeId)
@@ -579,236 +687,278 @@ class PresencesController extends Controller
             ->first();
 
         if (!$presence) {
-            return redirect()->route('presences.index')->with('error', 'No check-in record found for today. Please check in first.');
+            return redirect()
+                ->route('presences.index')
+                ->with('error', 'No check-in record found for today. Please check in first.');
         }
 
         $workType = $presence->work_type ?? 'WFO';
-        // Only resolve office location config for WFO; WFH/WFA don't need geofencing
-        $officeLocationConfig = $workType === 'WFO'
-            ? $this->resolveOfficeLocationForPresence($presence, $employee)
-            : $this->defaultOfficeLocationConfig();
+        // only resolve office location config for wfo; wfh/wfa don't need geofencing
+        $officeLocationConfig =
+            $workType === 'WFO'
+                ? $this->resolveOfficeLocationForPresence($presence, $employee)
+                : $this->defaultOfficeLocationConfig();
 
-        // Validate check-out cannot be before check-in
+        // validate check-out cannot be before check-in
         $checkInTime = Carbon::parse($presence->check_in);
         $checkOutTime = Carbon::now();
 
         if ($checkOutTime->lt($checkInTime)) {
-            return redirect()->route('presences.checkout')->with('error', 'Check-out time cannot be before check-in time.');
+            return redirect()
+                ->route('presences.checkout')
+                ->with('error', 'Check-out time cannot be before check-in time.');
         }
 
-        // For WFO, calculate GPS distance but DO NOT block the checkout if out of bounds
+        // for wfo, calculate gps distance but do not block the checkout if out of bounds
         if ($presence->work_type === 'WFO' && $request->has('latitude')) {
             $validator = Validator::make($request->all(), [
                 'latitude' => 'required|numeric',
                 'longitude' => 'required|numeric',
-                'accuracy' => 'required|numeric'
+                'accuracy' => 'required|numeric',
             ]);
 
             if ($validator->fails()) {
                 return redirect()->back()->withErrors($validator)->withInput();
             }
 
-            // Calculate distance
+            // calculate distance
             $officeLat = $officeLocationConfig['latitude'];
             $officeLon = $officeLocationConfig['longitude'];
             $radius = $officeLocationConfig['radius'];
             $distance = $this->calculateDistance($request->latitude, $request->longitude, $officeLat, $officeLon);
-            
+
             if ($distance > $radius) {
-                // Log the suspicious activity but allow the checkout to proceed
-                $this->logSuspicious($user->id, 'out_of_radius_checkout', "User checked out $distance meters from {$officeLocationConfig['name']} (Limit: {$radius}m).");
+                // log the suspicious activity but allow the checkout to proceed
+                $this->logSuspicious(
+                    $user->id,
+                    'out_of_radius_checkout',
+                    "User checked out $distance meters from {$officeLocationConfig['name']} (Limit: {$radius}m).",
+                );
             }
         }
 
-        // Proceed to update check-out time and explicitly save to the new check_out coordinate columns
+        // proceed to update check-out time and explicitly save to the new check_out coordinate columns
         $presence->update([
             'check_out' => $checkOutTime->format('Y-m-d H:i:s'),
             'check_out_latitude' => $request->latitude ?? null,
             'check_out_longitude' => $request->longitude ?? null,
         ]);
 
-        $targetRoute = in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]) ? 'presences.index' : 'dashboard';
+        $targetRoute = in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN])
+            ? 'presences.index'
+            : 'dashboard';
         return redirect()->route($targetRoute)->with('success', 'Check-out recorded successfully.');
     }
 
     public function show(Presence $presence)
     {
-        // Ensure the user is authorized to view this record
-        if (!in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]) && session('employee_id') != $presence->employee_id) {
+        // ensure the user is authorized to view this record
+        if (
+            !in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]) &&
+            session('employee_id') != $presence->employee_id
+        ) {
             abort(403, 'Unauthorized access to this presence record.');
         }
 
         $presence->load(['employee.department', 'employee.role', 'officeLocation']);
         $officeConfig = $this->resolveOfficeLocationForPresence($presence, $presence->employee);
-        
-        // 1. Check late status using the controller's built-in function
+
+        // check late status using the controller's built-in function
         $isLate = $presence->is_late;
 
-        // 2. Check-In Geofence Calculations
+        // check-in geofence calculations
         $checkInDistance = 0;
         $isCheckInOutOfRadius = false;
         if ($presence->work_type === 'WFO' && $presence->latitude && $presence->longitude) {
-            $checkInDistance = $this->calculateDistance($presence->latitude, $presence->longitude, $officeConfig['latitude'], $officeConfig['longitude']);
+            $checkInDistance = $this->calculateDistance(
+                $presence->latitude,
+                $presence->longitude,
+                $officeConfig['latitude'],
+                $officeConfig['longitude'],
+            );
             if ($checkInDistance > $officeConfig['radius']) {
                 $isCheckInOutOfRadius = true;
             }
         }
 
-        // 3. Check-Out Geofence Calculations
+        // check-out geofence calculations
         $checkOutDistance = 0;
         $isCheckOutOutOfRadius = false;
         if ($presence->work_type === 'WFO' && $presence->check_out_latitude && $presence->check_out_longitude) {
-            $checkOutDistance = $this->calculateDistance($presence->check_out_latitude, $presence->check_out_longitude, $officeConfig['latitude'], $officeConfig['longitude']);
+            $checkOutDistance = $this->calculateDistance(
+                $presence->check_out_latitude,
+                $presence->check_out_longitude,
+                $officeConfig['latitude'],
+                $officeConfig['longitude'],
+            );
             if ($checkOutDistance > $officeConfig['radius']) {
                 $isCheckOutOutOfRadius = true;
             }
         }
 
-        return view('presences.show', compact(
-            'presence', 'officeConfig', 
-            'checkInDistance', 'isCheckInOutOfRadius', 
-            'checkOutDistance', 'isCheckOutOutOfRadius',
-            'isLate' // <-- Ensure this variable is sent to the view
-        ));
+        return view(
+            'presences.show',
+            compact(
+                'presence',
+                'officeConfig',
+                'checkInDistance',
+                'isCheckInOutOfRadius',
+                'checkOutDistance',
+                'isCheckOutOutOfRadius',
+                'isLate',
+            ),
+        );
     }
 
-    // Calendar view
+    // calendar view
     public function calendar(Request $request)
     {
-        $employeeId = session('employee_id');
+        $userRole = session('role');
+        $isAdmin = in_array($userRole, ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]);
+        $currentEmployeeId = session('employee_id');
+
         $currentYear = Carbon::now()->year;
         $currentMonth = Carbon::now()->month;
-        
+
         $year = (int) $request->get('year', $currentYear);
         $month = (int) $request->get('month', $currentMonth);
-        
-        // Validate year and month
+
         if ($year < 2000 || $year > 2100) {
             $year = $currentYear;
         }
         if ($month < 1 || $month > 12) {
             $month = $currentMonth;
         }
-        
-        // Handle month overflow/underflow
-        if ($month < 1) {
-            $month = 12;
-            $year--;
-        } elseif ($month > 12) {
-            $month = 1;
-            $year++;
+
+        $selectedEmployeeId = $request->has('employee_id') ? $request->get('employee_id') : $currentEmployeeId;
+        if (!$isAdmin) {
+            $selectedEmployeeId = $currentEmployeeId;
         }
-
-        $query = Presence::with('employee')
-            ->whereYear('date', $year)
-            ->whereMonth('date', $month);
-
-        if (!in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]) && $employeeId) {
-            $query->where('employee_id', $employeeId);
-        }
-
-        $presences = $query->get()->map(function ($presence) {
-            try {
-                $date = $presence->date instanceof \DateTime 
-                    ? $presence->date->format('Y-m-d') 
-                    : Carbon::parse($presence->date)->format('Y-m-d');
-                
-                $checkIn = null;
-                if ($presence->check_in) {
-                    try {
-                        $checkIn = Carbon::parse($presence->check_in)->format('H:i');
-                    } catch (\Exception $e) {
-                        // If check_in is already in time format, try to parse it differently
-                        $checkIn = $presence->check_in;
-                    }
-                }
-                
-                $checkOut = null;
-                if ($presence->check_out) {
-                    try {
-                        $checkOut = Carbon::parse($presence->check_out)->format('H:i');
-                    } catch (\Exception $e) {
-                        $checkOut = $presence->check_out;
-                    }
-                }
-                
-                return [
-                    'id' => $presence->id,
-                    'employee' => $presence->employee->fullname ?? 'Unknown',
-                    'date' => $date,
-                    'check_in' => $checkIn,
-                    'check_out' => $checkOut,
-                    'status' => $presence->status,
-                    'work_type' => $presence->work_type ?? 'WFO',
-                    'is_late' => $presence->is_late, 
-                ];
-            } catch (\Exception $e) {
-                \Log::error('Error processing presence in calendar: ' . $e->getMessage(), [
-                    'presence_id' => $presence->id ?? null,
-                    'error' => $e->getTraceAsString()
-                ]);
-                return null;
-            }
-        })->filter();
-
-        return view('presences.calendar', compact('presences', 'year', 'month'));
-    }
-
-    // Statistics/Reports
-    public function statistics(Request $request)
-    {
-        $employeeId = session('employee_id');
-        $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
 
         $employees = [];
-        $selectedEmployeeId = $request->get('employee_id');
-
-        $query = Presence::with('employee')
-            ->whereBetween('date', [$startDate, $endDate]);
-
-        if (in_array(session('role'), ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN])) {
+        if ($isAdmin) {
             $employees = Employee::orderBy('fullname')->get();
-            if ($selectedEmployeeId) {
-                $query->where('employee_id', $selectedEmployeeId);
-            }
-        } else {
-            $query->where('employee_id', $employeeId);
+        }
+
+        // fetch holiday data
+        $holidays = \App\Services\HolidayService::getHolidays($year, $month);
+        $holidayDates = array_column($holidays, 'date');
+        $events = [];
+
+        // fetch actual presence data
+        $query = Presence::with('employee')->whereYear('date', $year)->whereMonth('date', $month);
+
+        if ($selectedEmployeeId) {
+            $query->where('employee_id', $selectedEmployeeId);
         }
 
         $presences = $query->get();
 
-        // Calculate statistics
-        $stats = [
-            'total_days' => $presences->count(),
-            'present' => $presences->where('status', 'present')->count(),
-            'absent' => $presences->where('status', 'absent')->count(),
-            'leave' => $presences->where('status', 'leave')->count(),
-            // 'late_checkins' => $presences->filter(function ($presence) {
-            //     return $this->isLateCheckIn($presence);
-            // })->count(), --> old checking
-            'late_checkins' => $presences->where('is_late', true)->count(),
-            'average_hours' => $presences->filter(function ($presence) {
-                return $presence->check_in && $presence->check_out;
-            })->map(function ($presence) {
-                return Carbon::parse($presence->check_in)->diffInHours(Carbon::parse($presence->check_out));
-            })->avg(),
-            'work_type_breakdown' => (function() use ($presences) {
-                $grouped = $presences->groupBy(function ($p) {
-                    return strtoupper($p->work_type ?? 'WFO');
-                });
-                return [
-                    'WFO' => $grouped->get('WFO', collect())->count(),
-                    'WFH' => $grouped->get('WFH', collect())->count(),
-                    'WFA' => $grouped->get('WFA', collect())->count(),
-                ];
-            })(),
+        $summary = [
+            'working_days' => 0,
+            'present' => 0,
+            'late' => 0,
+            'leave' => 0,
+            'absent' => 0,
+            'wfo' => 0,
+            'wfh' => 0,
+            'wfa' => 0,
         ];
 
-        return view('presences.statistics', compact('stats', 'startDate', 'endDate', 'employees', 'selectedEmployeeId'));
+        $presenceDates = [];
+
+        foreach ($presences as $p) {
+            $date = Carbon::parse($p->date)->format('Y-m-d');
+            $status = $p->status;
+
+            if ($selectedEmployeeId && $status !== 'absent') {
+                $presenceDates[] = $date;
+            }
+
+            if ($status === 'present') {
+                $summary['present']++;
+                if ($p->is_late) {
+                    $summary['late']++;
+                }
+
+                $wt = strtolower($p->work_type);
+                if (isset($summary[$wt])) {
+                    $summary[$wt]++;
+                }
+
+                $titleStr =
+                    ($p->check_in ? Carbon::parse($p->check_in)->format('H:i') : '?') .
+                    ' - ' .
+                    ($p->check_out ? Carbon::parse($p->check_out)->format('H:i') : '...');
+                $color = $p->is_late ? '#ffc107' : '#198754'; // yellow (late) or green (on time)
+                $textColor = $p->is_late ? '#000' : '#fff';
+            } elseif ($status === 'leave') {
+                $summary['leave']++;
+                $titleStr = 'Leave';
+                $color = '#0dcaf0';
+                $textColor = '#000';
+            } else {
+                // if explicitly recorded as "absent" in db
+                $summary['absent']++;
+                $titleStr = 'Absent';
+                $color = '#dc3545';
+                $textColor = '#fff';
+                $presenceDates[] = $date;
+            }
+
+            $displayName = !$selectedEmployeeId && $isAdmin ? $p->employee->fullname . ': ' : '';
+
+            $events[] = [
+                'title' => $displayName . $titleStr,
+                'start' => $date,
+                'color' => $color,
+                'textColor' => $textColor,
+                'allDay' => true,
+                'url' => route('presences.show', $p->id),
+            ];
+        }
+
+        // check past working days that have not been attended
+        if ($selectedEmployeeId) {
+            $startDate = Carbon::create($year, $month, 1);
+            $endDate = $startDate->copy()->endOfMonth();
+            $today = Carbon::today();
+            $effectiveEnd = $endDate->greaterThan($today) ? $today : $endDate;
+
+            $summary['working_days'] = HolidayService::getEffectiveWorkingDays(
+                $startDate->format('Y-m-d'),
+                $endDate->format('Y-m-d'),
+            );
+
+            $current = $startDate->copy();
+            while ($current <= $effectiveEnd) {
+                $dateStr = $current->format('Y-m-d');
+                // if not weekend, not holiday, and no attendance/leave record = absent
+                if (
+                    !$current->isWeekend() &&
+                    !in_array($dateStr, $holidayDates) &&
+                    !in_array($dateStr, $presenceDates)
+                ) {
+                    $summary['absent']++;
+                    $events[] = [
+                        'title' => 'Absent',
+                        'start' => $dateStr,
+                        'color' => '#dc3545', // dark red
+                        'textColor' => '#fff',
+                        'allDay' => true,
+                    ];
+                }
+                $current->addDay();
+            }
+        }
+
+        return view(
+            'presences.calendar',
+            compact('events', 'holidays', 'year', 'month', 'employees', 'selectedEmployeeId', 'summary', 'isAdmin'),
+        );
     }
 
-    // Helper method to check if check-in is late
+    // helper method to check if check-in is late
     private function isLateCheckIn($presence)
     {
         try {
@@ -817,25 +967,24 @@ class PresencesController extends Controller
             }
 
             $workType = strtolower($presence->work_type ?? 'wfo');
-            
-            // Get toggle status according to work type (wfo, wfh, wfa)
-            $isLateEnabled = \App\Models\Setting::getValue('enable_late_' . $workType, '0');
-            
-            // If disabled from master presence, it is automatically never late
+
+            // get toggle status according to work type (wfo, wfh, wfa)
+            $isLateEnabled = Setting::getValue('enable_late_' . $workType, '0');
+
+            // if disabled from master presence, it is automatically never late
             if ($isLateEnabled == '0') {
                 return false;
             }
 
             $checkInTime = Carbon::parse($presence->check_in);
-            $dateStr = $presence->date instanceof \DateTime 
-                ? $presence->date->format('Y-m-d') 
-                : (string) $presence->date;
-            
-            $workStartTimeStr = \App\Models\Setting::getValue('work_start_time', '08:00');
+            $dateStr =
+                $presence->date instanceof \DateTime ? $presence->date->format('Y-m-d') : (string) $presence->date;
+
+            $workStartTimeStr = Setting::getValue('work_start_time', '08:00');
             $workStartTime = Carbon::parse($dateStr . ' ' . $workStartTimeStr);
-            
-            // Get specific minute tolerance according to the work type
-            $lateThreshold = (int) \App\Models\Setting::getValue('late_threshold_' . $workType, 15);
+
+            // get specific minute tolerance according to the work type
+            $lateThreshold = (int) Setting::getValue('late_threshold_' . $workType, 15);
 
             return $checkInTime->gt($workStartTime->copy()->addMinutes($lateThreshold));
         } catch (\Exception $e) {
@@ -859,18 +1008,10 @@ class PresencesController extends Controller
         $filename = 'Presences_' . $startDate . '_to_' . $endDate . '.csv';
         $handle = fopen('php://memory', 'r+');
 
-        // Header
-        fputcsv($handle, [
-            'Employee Name',
-            'Date',
-            'Check In',
-            'Check Out',
-            'Work Type',
-            'Status',
-            'Is Late'
-        ]);
+        // header
+        fputcsv($handle, ['Employee Name', 'Date', 'Check In', 'Check Out', 'Work Type', 'Status', 'Is Late']);
 
-        // Data
+        // data
         foreach ($presences as $presence) {
             fputcsv($handle, [
                 $presence->employee->fullname ?? 'Unknown',
@@ -879,7 +1020,7 @@ class PresencesController extends Controller
                 $presence->check_out ? Carbon::parse($presence->check_out)->format('H:i:s') : '-',
                 $presence->work_type ?? 'WFO',
                 ucfirst($presence->status),
-                $presence->is_late ? 'Yes' : 'No' 
+                $presence->is_late ? 'Yes' : 'No',
             ]);
         }
 

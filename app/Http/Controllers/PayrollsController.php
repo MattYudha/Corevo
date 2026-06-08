@@ -144,7 +144,22 @@ class PayrollsController extends Controller
 
         $defaultAccountId = \App\Models\Setting::getValue('default_payroll_account');
 
-        return view('payrolls.index', compact('assetAccounts', 'defaultAccountId'));
+        $months = [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December',
+        ];
+
+        return view('payrolls.index', compact('assetAccounts', 'defaultAccountId', 'months'));
     }
 
     public function create()
@@ -454,17 +469,15 @@ class PayrollsController extends Controller
                 return Carbon::parse($item->date)->format('Y-m-d');
             });
 
-        // 4. Hitung working days (Sama kayak yang kita bahas sebelumnya)
+        // 4. Setup tanggal awal dan akhir bulan
         $startDate = Carbon::create($year, $month, 1);
         $endDate = $startDate->copy()->endOfMonth();
-        $workingDays = 0;
-        $current = $startDate->copy();
-        while ($current <= $endDate) {
-            if (!$current->isWeekend() && !in_array($current->format('Y-m-d'), $holidayDates)) {
-                $workingDays++;
-            }
-            $current->addDay();
-        }
+
+        // Panggil fungsi ajaib dari HolidayService buat ngitung Total Hari Kerja (tanpa libur)
+        $workingDays = \App\Services\HolidayService::getEffectiveWorkingDays(
+            $startDate->format('Y-m-d'),
+            $endDate->format('Y-m-d'),
+        );
 
         // 5. Karena $presences udah disaring super bersih, hitungnya gampang!
         $daysPresent = $presences->count();
@@ -480,15 +493,10 @@ class PayrollsController extends Controller
         // absent days = working days that have passed - days present - approved leaves
         $today = Carbon::today();
         $effectiveEnd = $endDate->greaterThan($today) ? $today : $endDate;
-        $passedWorkingDays = 0;
-        $current = $startDate->copy();
-        while ($current <= $effectiveEnd) {
-            // skip national holidays and collective leave dates
-            if (!$current->isWeekend() && !in_array($current->format('Y-m-d'), $holidayDates)) {
-                $passedWorkingDays++;
-            }
-            $current->addDay();
-        }
+        $passedWorkingDays = \App\Services\HolidayService::getEffectiveWorkingDays(
+            $startDate->format('Y-m-d'),
+            $effectiveEnd->format('Y-m-d'),
+        );
 
         // count approved leave days in the period
         $leaveCount = \App\Models\LeaveRequest::where('employee_id', $employeeId)
@@ -845,6 +853,68 @@ class PayrollsController extends Controller
                 ];
 
                 fputcsv($file, $row);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportDataCsv(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return redirect()->back()->with('error', 'Please select at least one payroll record.');
+        }
+
+        $payrolls = Payroll::whereIn('id', $ids)->where('status', 'paid')->with('employee')->get();
+
+        if ($payrolls->isEmpty()) {
+            return redirect()->back()->with('error', 'No paid payroll records were found in the selected data.');
+        }
+
+        $fileName = 'payroll_data_paid_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $columns = [
+            'Payroll ID',
+            'Employee ID',
+            'Employee Name',
+            'Period',
+            'Base Salary',
+            'Total Allowances',
+            'Total Deductions',
+            'Net Salary',
+            'Status',
+        ];
+
+        $callback = function () use ($payrolls, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+
+            foreach ($payrolls as $payroll) {
+                // Carbon::setLocale('id'); //for indonesian format month name
+                $period = Carbon::create()->month($payroll->period_month)->translatedFormat('F');
+                fputcsv($file, [
+                    $payroll->id,
+                    $payroll->employee->nik ?? '-',
+                    $payroll->employee->fullname ?? 'Unknown',
+                    $period,
+                    $payroll->base_salary ?? 0,
+                    $payroll->total_allowances ?? 0,
+                    $payroll->total_deductions ?? 0,
+                    $payroll->net_salary ?? 0,
+                    strtoupper($payroll->status),
+                ]);
             }
 
             fclose($file);

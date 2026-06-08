@@ -17,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Yajra\DataTables\Facades\DataTables;
+use App\Models\Position;
 
 class EmployeeController extends Controller
 {
@@ -36,25 +37,35 @@ class EmployeeController extends Controller
 
             return DataTables::of($data)
                 ->addIndexColumn()
-                ->addColumn('action', function($row) use ($user){
+                ->addColumn('action', function ($row) use ($user) {
                     $viewUrl = route('employees.show', $row->id);
                     $editUrl = route('employees.edit', $row->id);
                     $deleteUrl = route('employees.destroy', $row->id);
                     $csrf = csrf_token();
-                    
+
                     $canUpdate = $user->can('update', $row);
                     $canDelete = $user->can('delete', $row);
-                    
+
                     $btns = '<div class="btn-group btn-group-sm" role="group">';
-                    $btns .= '<a href="'.$viewUrl.'" class="btn btn-outline-info"><i class="bi bi-eye"></i></a>';
-                    
+                    $btns .= '<a href="' . $viewUrl . '" class="btn btn-outline-info"><i class="bi bi-eye"></i></a>';
+
                     if ($canUpdate) {
-                        $btns .= '<a href="'.$editUrl.'" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>';
+                        $btns .=
+                            '<a href="' .
+                            $editUrl .
+                            '" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>';
                     }
                     if ($canDelete) {
-                        $btns .= '
-                            <form action="'.$deleteUrl.'" method="POST" class="d-inline delete-form" data-id="'.$row->id.'">
-                                <input type="hidden" name="_token" value="'.$csrf.'">
+                        $btns .=
+                            '
+                            <form action="' .
+                            $deleteUrl .
+                            '" method="POST" class="d-inline delete-form" data-id="' .
+                            $row->id .
+                            '">
+                                <input type="hidden" name="_token" value="' .
+                            $csrf .
+                            '">
                                 <input type="hidden" name="_method" value="DELETE">
                                 <button type="submit" class="btn btn-outline-danger btn-delete" title="Delete Employee">
                                     <i class="bi bi-trash"></i>
@@ -65,32 +76,41 @@ class EmployeeController extends Controller
 
                     if ($user->isAdmin()) {
                         $resetDeviceUrl = route('employees.reset-device', $row->id);
-                        $btns .= '
-                            <form action="'.$resetDeviceUrl.'" method="POST" class="d-inline" data-id="'.$row->id.'">
-                                <input type="hidden" name="_token" value="'.$csrf.'">
-                                <button type="submit" class="btn btn-outline-secondary" title="Reset Device Fingerprint" onclick="return confirm(\'Reset device fingerprint for '.$row->fullname.'?\')">
+                        $btns .=
+                            '
+                            <form action="' .
+                            $resetDeviceUrl .
+                            '" method="POST" class="d-inline" data-id="' .
+                            $row->id .
+                            '">
+                                <input type="hidden" name="_token" value="' .
+                            $csrf .
+                            '">
+                                <button type="submit" class="btn btn-outline-secondary" title="Reset Device Fingerprint" onclick="return confirm(\'Reset device fingerprint for ' .
+                            $row->fullname .
+                            '?\')">
                                     <i class="bi bi-phone-vibrate"></i>
                                 </button>
                             </form>
                         ';
                     }
-                    
+
                     $btns .= '</div>';
                     return $btns;
                 })
-                ->addColumn('status_badge', function($row){
-                    if($row->status === 'active'){
+                ->addColumn('status_badge', function ($row) {
+                    if ($row->status === 'active') {
                         return '<span class="badge bg-success">Active</span>';
                     }
                     return '<span class="badge bg-warning text-dark">Inactive</span>';
                 })
-                ->addColumn('employee_status_badge', function($row){
+                ->addColumn('employee_status_badge', function ($row) {
                     return $row->employee_status_badge;
                 })
-                ->addColumn('office_location_name', function($row){
+                ->addColumn('office_location_name', function ($row) {
                     return $row->officeLocation?->name ?? '-';
                 })
-                ->editColumn('salary', function($row) use ($user) {
+                ->editColumn('salary', function ($row) use ($user) {
                     if ($user->isAdmin()) {
                         return 'Rp ' . number_format($row->salary, 0, ',', '.');
                     }
@@ -110,10 +130,13 @@ class EmployeeController extends Controller
         $roles = Role::all();
         $officeLocations = OfficeLocation::orderBy('name')->get();
         // Filter supervisors to only those with "Manager / Unit Head" role
-        $employees = Employee::whereHas('role', function($q) {
+        $employees = Employee::whereHas('role', function ($q) {
             $q->where('title', \App\Constants\Roles::MANAGER_UNIT_HEAD);
-        })->orderBy('fullname')->get();
-        return view('employees.create', compact('departments', 'roles', 'officeLocations', 'employees'));
+        })
+            ->orderBy('fullname')
+            ->get();
+        $positions = Position::all();
+        return view('employees.create', compact('departments', 'roles', 'officeLocations', 'employees', 'positions'));
     }
 
     // Store a newly created employee in storage
@@ -132,6 +155,7 @@ class EmployeeController extends Controller
             'place_of_birth' => 'nullable|string|max:255',
             'gender' => 'nullable|string|max:50',
             'religion' => 'nullable|string|max:100',
+            'position_id' => 'required|exists:positions,position_id',
             'marital_status' => 'nullable|string|max:100',
             'hire_date' => 'required|date',
             'resign_date' => 'nullable|date',
@@ -187,7 +211,7 @@ class EmployeeController extends Controller
         // Auto-create a User account for this employee if not exists
         $user = User::where('email', $employee->email)->first();
 
-        if (! $user) {
+        if (!$user) {
             User::create([
                 'name' => $employee->fullname,
                 'email' => $employee->email,
@@ -212,7 +236,7 @@ class EmployeeController extends Controller
     {
         $employee = Employee::with(['department', 'role', 'officeLocation'])->findOrFail($id);
         $this->authorize('view', $employee);
-        
+
         $present = Presence::where(['employee_id' => $id, 'status' => 'present'])->count();
         $absent = Presence::where(['employee_id' => $id, 'status' => 'absent'])->count();
         $leave = Presence::where(['employee_id' => $id, 'status' => 'leave'])->count();
@@ -235,11 +259,28 @@ class EmployeeController extends Controller
         $bankAccounts = $employee->bankAccounts()->get();
         $documentIdentities = $employee->documentIdentities()->get();
         $userAccount = User::where('employee_id', $id)->first();
-        
+        $positions = Position::all();
+
         // Potential supervisors (all employees except self)
         $potentialSupervisors = Employee::where('id', '!=', $id)->get();
-        
-        return view('employees.edit', compact('employee', 'departments', 'roles', 'officeLocations', 'potentialSupervisors', 'educationLevels', 'families', 'bankAccounts', 'documentIdentities', 'identityTypes', 'userAccount'));
+
+        return view(
+            'employees.edit',
+            compact(
+                'employee',
+                'departments',
+                'roles',
+                'officeLocations',
+                'potentialSupervisors',
+                'educationLevels',
+                'families',
+                'bankAccounts',
+                'documentIdentities',
+                'identityTypes',
+                'userAccount',
+                'positions',
+            ),
+        );
     }
 
     // Update the specified employee in storage
@@ -247,7 +288,7 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
         $this->authorize('update', $employee);
-        
+
         $user = auth()->user();
         $isAdmin = $user->isAdmin();
 
@@ -261,6 +302,7 @@ class EmployeeController extends Controller
                 'position_allowance' => $employee->position_allowance,
                 'department_id' => $employee->department_id,
                 'office_location_id' => $employee->office_location_id,
+                'position_id' => $employee->active_position?->id,
                 'role_id' => $employee->role_id,
                 'status' => $employee->status,
                 'employee_status' => $employee->employee_status,
@@ -285,6 +327,7 @@ class EmployeeController extends Controller
             'office_location_id' => 'required|exists:office_locations,id',
             'role_id' => 'required|exists:roles,id',
             'supervisor_id' => 'nullable|exists:employees,id',
+            'position_id' => 'required|exists:positions,position_id',
             'status' => 'required|string|max:50',
             'employee_status' => 'required|string|in:permanent,contract,probation,internship',
             'working_type' => 'required|string|in:full_time,part_time',
@@ -336,22 +379,22 @@ class EmployeeController extends Controller
             $data['supervisor_id'] = $request->supervisor_id;
         }
 
-        if (! $canEditEducation) {
+        if (!$canEditEducation) {
             unset($data['education_level_id']);
         }
-        
+
         // Admins and Manager / Unit Heads apply changes directly
         if ($isAdmin || $user->canManage($employee)) {
-             $employee->update($data);
-             
-             // Update password if provided by Admin
-             if ($isAdmin && $request->filled('password')) {
-                 if ($employee->user) {
-                     $employee->user->update([
-                         'password' => Hash::make($request->password)
-                     ]);
-                 }
-             }
+            $employee->update($data);
+
+            // Update password if provided by Admin
+            if ($isAdmin && $request->filled('password')) {
+                if ($employee->user) {
+                    $employee->user->update([
+                        'password' => Hash::make($request->password),
+                    ]);
+                }
+            }
         }
 
         // All users can update their own personal data sections (Family, Bank, Documents)
@@ -360,13 +403,15 @@ class EmployeeController extends Controller
         $existingFamilies = $employee->families()->get()->keyBy('id');
 
         foreach ($familiesInput as $family) {
-            $fields = collect($family)->only([
-                'nik', 'no_kk', 'fullname', 'place_of_birth', 'date_of_birth', 'gender', 'relation'
-            ])->toArray();
+            $fields = collect($family)
+                ->only(['nik', 'no_kk', 'fullname', 'place_of_birth', 'date_of_birth', 'gender', 'relation'])
+                ->toArray();
 
-            $isEmpty = collect($fields)->filter(function ($value) {
-                return filled($value);
-            })->isEmpty();
+            $isEmpty = collect($fields)
+                ->filter(function ($value) {
+                    return filled($value);
+                })
+                ->isEmpty();
 
             if ($isEmpty) {
                 continue;
@@ -393,10 +438,14 @@ class EmployeeController extends Controller
         $existingBanks = $employee->bankAccounts()->get()->keyBy('id');
 
         foreach ($banksInput as $index => $bank) {
-            $fields = collect($bank)->only(['bank_name', 'account_no', 'account_holder'])->toArray();
-            if (empty($fields['bank_name']) && empty($fields['account_no'])) continue;
-            
-            $fields['is_primary'] = ($index == $primaryIndex);
+            $fields = collect($bank)
+                ->only(['bank_name', 'account_no', 'account_holder'])
+                ->toArray();
+            if (empty($fields['bank_name']) && empty($fields['account_no'])) {
+                continue;
+            }
+
+            $fields['is_primary'] = $index == $primaryIndex;
 
             if (!empty($bank['id']) && $existingBanks->has($bank['id'])) {
                 $existingBanks[$bank['id']]->update($fields);
@@ -415,8 +464,12 @@ class EmployeeController extends Controller
         $existingDocs = $employee->documentIdentities()->get()->keyBy('id');
 
         foreach ($docsInput as $index => $doc) {
-            $fields = collect($doc)->only(['identity_type_id', 'identity_number', 'description'])->toArray();
-            if (empty($fields['identity_number'])) continue;
+            $fields = collect($doc)
+                ->only(['identity_type_id', 'identity_number', 'description'])
+                ->toArray();
+            if (empty($fields['identity_number'])) {
+                continue;
+            }
 
             if (!empty($doc['id']) && $existingDocs->has($doc['id'])) {
                 $existingDocs[$doc['id']]->update($fields);
@@ -431,11 +484,10 @@ class EmployeeController extends Controller
         }
 
         // Track mutation if key fields changed
-        $hasMutation = (
-            (int)$oldData['department_id'] !== (int)$employee->department_id ||
-            (int)$oldData['role_id'] !== (int)$employee->role_id ||
-            (float)$oldData['salary'] !== (float)$employee->salary
-        );
+        $hasMutation =
+            (int) $oldData['department_id'] !== (int) $employee->department_id ||
+            (int) $oldData['role_id'] !== (int) $employee->role_id ||
+            (float) $oldData['salary'] !== (float) $employee->salary;
 
         if ($hasMutation) {
             EmployeeMutation::create([
@@ -481,17 +533,25 @@ class EmployeeController extends Controller
                 }
             }
         }
-        
+
         if ($isAdmin || $user->canManage($employee)) {
             return redirect()->route('employees.index')->with('success', 'Employee updated successfully.');
         } else {
             // For regular employees editing themselves, submit for approval
             // Exclude non-editable or sensitive fields for submission
             $editableFields = [
-                'fullname', 'email', 'phone_number', 'address', 'place_of_birth', 
-                'birth_date', 'gender', 'religion', 'marital_status', 'education_level_id'
+                'fullname',
+                'email',
+                'phone_number',
+                'address',
+                'place_of_birth',
+                'birth_date',
+                'gender',
+                'religion',
+                'marital_status',
+                'education_level_id',
             ];
-            
+
             $submissionData = collect($data)->only($editableFields)->toArray();
             $oldDataSubmit = [];
             $changes = [];
@@ -515,7 +575,9 @@ class EmployeeController extends Controller
                 'status' => 'pending',
             ]);
 
-            return redirect()->route('my-profile')->with('success', 'Your update request has been submitted for approval.');
+            return redirect()
+                ->route('my-profile')
+                ->with('success', 'Your update request has been submitted for approval.');
         }
     }
 
@@ -524,7 +586,7 @@ class EmployeeController extends Controller
     {
         $employee = Employee::findOrFail($id);
         $this->authorize('delete', $employee);
-        
+
         // When an employee is deleted, also delete their user account
         $user = User::where('employee_id', $employee->id)->first();
         if ($user) {
@@ -536,7 +598,7 @@ class EmployeeController extends Controller
         if ($request->ajax()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Employee deleted successfully.'
+                'message' => 'Employee deleted successfully.',
             ]);
         }
 
@@ -548,13 +610,13 @@ class EmployeeController extends Controller
      */
     private function determineMutationType($old, $new)
     {
-        if ((float)$new->salary > (float)$old['salary']) {
+        if ((float) $new->salary > (float) $old['salary']) {
             return 'promotion';
         }
-        if ((float)$new->salary < (float)$old['salary']) {
+        if ((float) $new->salary < (float) $old['salary']) {
             return 'demotion';
         }
-        if ((int)$old['role_id'] !== (int)$new->role_id) {
+        if ((int) $old['role_id'] !== (int) $new->role_id) {
             return 'mutation';
         }
         return 'adjustment';
@@ -578,9 +640,14 @@ class EmployeeController extends Controller
 
         $user->update([
             'browser_fingerprint_desktop' => null,
-            'browser_fingerprint_mobile' => null
+            'browser_fingerprint_mobile' => null,
         ]);
 
-        return redirect()->back()->with('success', 'Perangkat berhasil di-reset. Karyawan dapat meregistrasikan ulang browser mereka saat absen berikutnya.');
+        return redirect()
+            ->back()
+            ->with(
+                'success',
+                'Perangkat berhasil di-reset. Karyawan dapat meregistrasikan ulang browser mereka saat absen berikutnya.',
+            );
     }
 }

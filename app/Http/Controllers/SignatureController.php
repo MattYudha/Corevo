@@ -9,33 +9,54 @@ use App\Models\Letter;
 use App\Models\LetterConfiguration;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Constants\Roles;
 
 class SignatureController extends Controller
 {
-    /**
-     * Show signature pad for signing a document
-     */
+    // show signature pad for signing a document
     public function pad($signable, $id)
     {
-        // Find the signable model
         $model = $this->findSignableModel($signable, $id);
         if (!$model) {
-            return redirect()->back()->with('error', 'Document not found.');
+            abort(404, 'Document not found.');
         }
 
-        // Check if user has already signed
-        $existingSignature = $model->signatures()->where('user_id', Auth::id())->first();
-        if ($existingSignature) {
-            return redirect()->route('signatures.list', ['signable' => $signable, 'id' => $id])
-                ->with('error', 'You have already signed this document.');
+        $user = auth()->user();
+
+        // check if user exists in signatures table
+        $signature = $model->signatures()->where('user_id', $user->id)->first();
+
+        // vip logic: if not registered, check if creator or admin
+        if (!$signature) {
+            $isOwner = $model->user_id == $user->id;
+            $isAdmin =
+                $user->employee &&
+                in_array($user->employee->role->title, ['HR Administrator', \App\Constants\Roles::MASTER_ADMIN]);
+
+            if ($isOwner || $isAdmin) {
+                // automatically register them to the signatures table
+                $signature = $model->signatures()->create([
+                    'user_id' => $user->id,
+                    'signature_image' => 'PENDING',
+                    'signature_hash' => \Illuminate\Support\Str::random(64),
+                    'token' => \Illuminate\Support\Str::uuid()->toString(),
+                ]);
+            } else {
+                abort(403, 'You are not registered as a signer for this document.');
+            }
         }
 
-        return view('signatures.pad', compact('model', 'signable', 'id'));
+        // pull the last signature used by this user
+        $lastUsedSignature = \App\Models\Signature::where('user_id', $user->id)
+            ->whereNotNull('signature_image')
+            ->where('signature_image', '!=', 'PENDING')
+            ->latest('signed_date')
+            ->first();
+
+        return view('signatures.pad', compact('model', 'signature', 'signable', 'id', 'lastUsedSignature'));
     }
 
-    /**
-     * Store a new signature
-     */
+    // store a new signature
     public function store(Request $request, $signable, $id)
     {
         $request->validate([
@@ -45,53 +66,84 @@ class SignatureController extends Controller
 
         $model = $this->findSignableModel($signable, $id);
         if (!$model) {
-            return redirect()->back()->with('error', 'Document not found.');
+            return redirect()->route('letters.index')->with('error', 'Document not found.');
         }
 
-        // Security check: Check if user has already signed
+        // find their signature registration data
         $existingSignature = $model->signatures()->where('user_id', Auth::id())->first();
-        if ($existingSignature) {
-            return redirect()->route('signatures.list', ['signable' => $signable, 'id' => $id])
-                ->with('error', 'You have already signed this document.');
+
+        if (!$existingSignature) {
+            return redirect()
+                ->route('letters.show', $id)
+                ->with('error', 'You are not registered as a signer for this document.');
         }
 
-        // Generate initial signature hash (internal tracking)
-        $signatureHash = Signature::generateSignatureHash(
-            $request->signature_image,
-            Auth::id(),
-            $model->id
-        );
+        if ($existingSignature->signature_image !== 'PENDING' && $existingSignature->signature_image !== null) {
+            return redirect()->route('letters.show', $id)->with('error', 'You have already signed this document.');
+        }
 
-        // Store signature record
-        $signature = Signature::create([
-            'user_id' => Auth::id(),
-            'signable_type' => get_class($model),
-            'signable_id' => $model->id,
+        // generate initial signature hash
+        $signatureHash = Signature::generateSignatureHash($request->signature_image, Auth::id(), $model->id);
+
+        // update the existing pending signature data instead of creating a new one
+        $existingSignature->update([
             'signature_image' => $request->signature_image,
             'signature_hash' => $signatureHash,
             'signature_reason' => $request->signature_reason,
-            'verification_token' => Str::random(64),
             'ip_address' => $request->ip(),
             'user_agent' => $request->userAgent(),
             'signed_date' => now(),
         ]);
 
-        // Integrate OpenSSL Digital Signature
-        // Data to be locked cryptographically
-        $dataToSign = $model->id . '|' . Auth::id() . '|' . $signature->signed_date->toDateTimeString();
-        
-        // Sign with OpenSSL (this updates signature_hash with the encrypted signature)
-        $signature->signWithOpenSSL($dataToSign);
+        // integrate openssl digital signature
+        $existingSignature->refresh();
+        $dataToSign = $model->id . '|' . Auth::id() . '|' . $existingSignature->signed_date->toDateTimeString();
 
-        return redirect()->route('signatures.list', ['signable' => $signable, 'id' => $id])
-            ->with('success', 'Document signed successfully with OpenSSL digital signature.');
+        $existingSignature->signWithOpenSSL($dataToSign);
+
+        // explicit redirect to the letter page
+        if ($signable === 'letter') {
+            return redirect()->route('letters.show', $id)->with('success', 'Document signed digitally successfully.');
+        }
+
+        return redirect()->back()->with('success', 'Document signed successfully with OpenSSL digital signature.');
     }
 
-    /**
-     * List signatures for a document
-     */
+    public function destroy($id)
+    {
+        $user = Auth::user();
+        $signature = Signature::findOrFail($id);
+
+        $userRole = $user->employee->role->title ?? null;
+        if (!Roles::isAdmin($userRole)) {
+            abort(403, 'Only HR Administrators or Master Admins can delete signatures.');
+        }
+
+        $signableType = $signature->signable_type;
+        $signableId = $signature->signable_id;
+
+        $signature->delete();
+
+        // redirect back to signature list
+        if ($signableType === Letter::class) {
+            return redirect()
+                ->route('signatures.list', ['signable' => 'letter', 'id' => $signableId])
+                ->with('success', 'Signature successfully removed from the document.');
+        }
+
+        return redirect()->back()->with('success', 'Signature successfully removed from the document.');
+    }
+
+    // list signatures for a document
     public function list($signable, $id)
     {
+        // block access: only admins can manage signatures
+        $user = Auth::user();
+        $userRole = $user->employee->role->title ?? null;
+        if (!Roles::isAdmin($userRole)) {
+            abort(403, 'Access Denied! Only HR Administrators or Master Admins can manage signatures.');
+        }
+
         $model = $this->findSignableModel($signable, $id);
         if (!$model) {
             return redirect()->back()->with('error', 'Document not found.');
@@ -99,37 +151,47 @@ class SignatureController extends Controller
 
         $signatures = $model->signatures()->with('signer', 'verifications')->get();
 
-        return view('signatures.list', compact('model', 'signatures', 'signable', 'id'));
+        // pull employee data for internal modal
+        $users = \App\Models\User::whereHas('employee')->with('employee.position')->get();
+
+        return view('signatures.list', compact('model', 'signatures', 'signable', 'id', 'users'));
     }
 
-    /**
-     * View verification logs
-     */
+    public function mySignatures()
+    {
+        $user = auth()->user();
+
+        // pull all data (signed and unsigned)
+        $mySignatures = Signature::with('signable')->where('user_id', $user->id)->latest()->get();
+
+        return view('signatures.my-signatures', compact('mySignatures'));
+    }
+
+    // view verification logs
     public function logs()
     {
         $user = Auth::user();
-        $query = Signature::with('signer', 'signable', 'verifications');
 
-        // HR Administrator/Master Admin see all signatures
-        if ($user->employee && !\App\Constants\Roles::isAdmin($user->employee->role->title)) {
+        $query = Signature::with(['signer.employee.role', 'signable', 'verifications']);
+
+        // hr administrator/master admin see all signatures
+        if ($user->employee && !Roles::isAdmin($user->employee->role->title)) {
             $query->where('user_id', $user->id);
         }
 
-        $signatures = $query->latest()->paginate(20);
+        $signatures = $query->latest()->get();
 
         return view('signatures.logs', compact('signatures'));
     }
 
-    /**
-     * Verify a signature (HR Administrator/Master Admin only)
-     */
+    // verify a signature (hr administrator/master admin only)
     public function verify(Request $request, Signature $signature)
     {
-        // Authorization - HR Administrator/Master Admin only
+        // authorization - hr administrator/master admin only
         $user = Auth::user();
         $userRole = $user->employee->role->title ?? null;
-        if (!\App\Constants\Roles::isAdmin($userRole)) {
-            abort(403, 'Only HR Administrator or Master Admins can verify signatures.');
+        if (!Roles::isAdmin($userRole)) {
+            abort(403, 'Only HR Administrators or Master Admins can verify signatures.');
         }
 
         $request->validate([
@@ -137,7 +199,7 @@ class SignatureController extends Controller
             'remarks' => 'nullable|string|max:500',
         ]);
 
-        // Create verification record
+        // create verification record
         SignatureVerification::create([
             'signature_id' => $signature->id,
             'verified_by_id' => Auth::id(),
@@ -146,69 +208,72 @@ class SignatureController extends Controller
             'verification_date' => now(),
         ]);
 
-        // Update signature status
+        // update signature status
         $signature->update([
-            'is_verified' => $request->status === 'verified'
+            'is_verified' => $request->status === 'verified',
         ]);
 
-        return redirect()->back()->with('success', 'Signature ' . $request->status . ' successfully.');
+        return redirect()
+            ->back()
+            ->with('success', 'Signature ' . $request->status . ' successfully.');
     }
 
-    /**
-     * Download signed document as PDF
-     */
+    // download signed document as pdf
     public function download(Signature $signature)
     {
-        // Authorization check
+        // authorization check
         $user = Auth::user();
-        if ($signature->user_id !== $user->id && ($user->employee && !\App\Constants\Roles::isAdmin($user->employee->role->title) && $user->employee->role->title !== 'Manager / Unit Head')) {
+        if (
+            $signature->user_id !== $user->id &&
+            ($user->employee &&
+                !\App\Constants\Roles::isAdmin($user->employee->role->title) &&
+                $user->employee->role->title !== 'Manager / Unit Head')
+        ) {
             abort(403, 'Unauthorized action.');
         }
 
-        // Eager load relationships for PDF rendering
+        // eager load relationships for pdf rendering
         $signature->load('signer', 'verifications.verifier');
 
-        // Get the signable model
+        // get the signable model
         $model = $signature->signable;
 
         if ($model instanceof Letter) {
-            // Fetch all signatures for this document to show in PDF
-            $allSignatures = $model->signatures()->with('signer.employee.role')->get();
+            // fetch all signatures for this document to show in pdf
+            $allSignatures = $model->signatures()->with('signer.employee.position')->get();
 
-            // Build verification URL for QR code (for the specific signature being downloaded)
+            // build verification url for qr code (for the specific signature being downloaded)
             $verificationUrl = route('signatures.public-verify', [
                 'id' => $signature->id,
                 'token' => $signature->verification_token,
             ]);
 
-            // Generate PDF with signatures
+            // generate pdf with signatures
             $config = LetterConfiguration::first();
             $html = view('signatures.signed-letter-pdf', [
-                'letter' => $model, 
+                'letter' => $model,
                 'signatures' => $allSignatures,
-                'signature' => $signature, // Keep original for primary QR/context
+                'signature' => $signature, // keep original for primary qr/context
                 'verificationUrl' => $verificationUrl,
-                'config' => $config
+                'config' => $config,
             ])->render();
-            
-            // Load PDF options to disable image processing if GD is not available
+
+            // load pdf options to disable image processing if gd is not available
             $options = new \Dompdf\Options();
             $options->set('isRemoteEnabled', true);
             $options->set('chroot', public_path());
-            
+
             $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
             $pdf->getDomPDF()->getOptions()->set('isRemoteEnabled', true);
 
-            $filename = 'Surat_Tertandatangan_' . str_replace('/', '_', $model->letter_number ?? 'Draft') . '.pdf';
+            $filename = 'Signed_Letter_' . str_replace('/', '_', $model->letter_number ?? 'Draft') . '.pdf';
             return $pdf->download($filename);
         }
 
         return redirect()->back()->with('error', 'Cannot download this document type.');
     }
 
-    /**
-     * Validate/verify signature authenticity
-     */
+    // validate/verify signature authenticity
     public function validate(Signature $signature)
     {
         if ($signature->isValid()) {
@@ -218,36 +283,50 @@ class SignatureController extends Controller
             ]);
         }
 
-        return response()->json([
-            'valid' => false,
-            'message' => 'Signature validation failed. Document may have been tampered with.',
-        ], 422);
+        return response()->json(
+            [
+                'valid' => false,
+                'message' => 'Signature validation failed. Document may have been tampered with.',
+            ],
+            422,
+        );
     }
 
-    /**
-     * Public verification page (for QR code scans)
-     */
+    // public verification page (for qr code scans)
     public function publicVerify(Request $request)
     {
         $signatureId = $request->query('id');
-        $token = $request->query('token');
 
-        if (!$signatureId || !$token) {
-            abort(404, 'Invalid verification link.');
+        if (!$signatureId) {
+            return view('signatures.public-verify', [
+                'isValid' => false,
+                'document' => null,
+                'signatures' => [],
+            ]);
         }
 
-        $signature = Signature::with('signer', 'signable', 'verifications.verifier')->find($signatureId);
+        $signature = Signature::with('signable')->find($signatureId);
 
-        if (!$signature || $signature->verification_token !== $token) {
-            abort(404, 'Signature not found or token mismatch.');
+        if (!$signature || !$signature->signable) {
+            return view('signatures.public-verify', [
+                'isValid' => false,
+                'document' => null,
+                'signatures' => [],
+            ]);
         }
 
-        return view('signatures.public-verify', compact('signature'));
+        $document = $signature->signable;
+
+        $allSignatures = $document->signatures()->with('signer')->get();
+
+        return view('signatures.public-verify', [
+            'isValid' => true,
+            'document' => $document,
+            'signatures' => $allSignatures,
+        ]);
     }
 
-    /**
-     * Find signable model based on type and ID
-     */
+    // find signable model based on type and id
     private function findSignableModel($signable, $id)
     {
         switch ($signable) {
@@ -256,5 +335,180 @@ class SignatureController extends Controller
             default:
                 return null;
         }
+    }
+
+    public function publicPad($token)
+    {
+        $signature = Signature::where('token', $token)->firstOrFail();
+
+        if ($signature->signature_image !== null && $signature->signature_image !== 'PENDING') {
+            return view('signatures.public-success', [
+                'title' => 'Link Expired',
+                'message' => 'You have already signed this document. Thank you!',
+            ]);
+        }
+
+        // check if user passed otp in this session
+        if (!session('signature_otp_verified_' . $token)) {
+            return view('signatures.public-otp', compact('signature'));
+        }
+
+        return view('signatures.public-pad', compact('signature'));
+    }
+
+    // process external signature submission
+    public function publicSubmit(Request $request, $token)
+    {
+        $signature = Signature::where('token', $token)->firstOrFail();
+
+        if ($signature->signature_image !== null && $signature->signature_image !== 'PENDING') {
+            abort(403, 'Access Denied. This document has already been signed.');
+        }
+
+        $request->validate([
+            'signature_image' => 'required|string',
+        ]);
+
+        $signature->update([
+            'signature_image' => $request->signature_image,
+            'signed_date' => now(),
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'is_verified' => true,
+        ]);
+
+        // refresh data directly from database to ensure precision
+        $signature->refresh();
+
+        // use model method to ensure matching encrypted text structure
+        $signature->signWithOpenSSL($signature->getSignableData());
+
+        return redirect()->route('signatures.public.success')->with('success', 'Signature saved successfully.');
+    }
+
+    public function generatePublicLink(Request $request, $signable, $id)
+    {
+        // block access
+        $user = Auth::user();
+        $userRole = $user->employee->role->title ?? null;
+        if (!Roles::isAdmin($userRole)) {
+            abort(403, 'Access Denied! Only HR Administrators or Master Admins can create public links.');
+        }
+
+        // validate external data
+        $request->validate([
+            'external_name' => 'required|string|max:255',
+            'external_email' => 'required|email|max:255',
+            'external_title' => 'nullable|string|max:255',
+            'external_company' => 'required|string|max:255',
+        ]);
+
+        $model = $this->findSignableModel($signable, $id);
+        if (!$model) {
+            return redirect()->route('letters.index')->with('error', 'Document not found.');
+        }
+
+        $token = Str::random(64);
+
+        // generate 6-digit otp code
+        $otp = (string) mt_rand(100000, 999999);
+
+        $signature = Signature::create([
+            'user_id' => null,
+            'signable_type' => get_class($model),
+            'signable_id' => $model->id,
+            'token' => $token,
+            'otp_code' => $otp, // save otp to database
+            'verification_token' => Str::random(64),
+            'external_name' => $request->external_name,
+            'external_email' => $request->external_email,
+            'external_title' => $request->external_title,
+            'external_company' => $request->external_company,
+            'signature_image' => 'PENDING',
+            'signature_hash' => 'PENDING',
+            'is_verified' => false,
+        ]);
+
+        $publicUrl = route('signatures.public.pad', ['token' => $token]);
+
+        return redirect()
+            ->route('signatures.list', ['signable' => $signable, 'id' => $id])
+            ->with('success', 'Public Signature Link & OTP successfully created!')
+            ->with('generated_link', $publicUrl)
+            ->with('generated_otp', $otp); // pass otp to view
+    }
+
+    // success page (after signing)
+    public function publicSuccess()
+    {
+        return view('signatures.public-success');
+    }
+
+    public function storeInternal(Request $request, $signable, $id)
+    {
+        // block access
+        $user = Auth::user();
+        $userRole = $user->employee->role->title ?? null;
+        if (!Roles::isAdmin($userRole)) {
+            abort(403, 'Access Denied! Only HR Administrators or Master Admins can add signers.');
+        }
+
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
+        ]);
+
+        $model = $this->findSignableModel($signable, $id);
+        if (!$model) {
+            return redirect()->route('letters.index')->with('error', 'Document not found.');
+        }
+
+        // check if user was already added to prevent duplicates
+        $exists = Signature::where('signable_type', get_class($model))
+            ->where('signable_id', $model->id)
+            ->where('user_id', $request->user_id)
+            ->exists();
+
+        if ($exists) {
+            return redirect()
+                ->route('signatures.list', ['signable' => $signable, 'id' => $id])
+                ->with('error', 'This employee is already on the signer list.');
+        }
+
+        // save pending internal signature to database
+        Signature::create([
+            'signable_type' => get_class($model),
+            'signable_id' => $model->id,
+            'user_id' => $request->user_id,
+            'signature_image' => 'PENDING',
+            'signature_hash' => \Illuminate\Support\Str::random(64),
+            'token' => Str::random(32),
+            'verification_token' => Str::random(64),
+            'is_verified' => false,
+        ]);
+
+        return redirect()
+            ->route('signatures.list', ['signable' => $signable, 'id' => $id])
+            ->with('success', 'Employee successfully added as an internal signer.');
+    }
+
+    public function verifyPublicOtp(Request $request, $token)
+    {
+        $signature = Signature::where('token', $token)->firstOrFail();
+
+        $request->validate([
+            'otp_code' => 'required|string|max:6',
+        ]);
+
+        // check if otp matches
+        if ($request->otp_code === $signature->otp_code) {
+            // if correct, set special session to allow access to pad
+            session(['signature_otp_verified_' . $token => true]);
+
+            return redirect()->route('signatures.public.pad', $token);
+        }
+
+        return redirect()
+            ->route('signatures.public.pad', $token)
+            ->with('error', 'Incorrect OTP code. Please check again.');
     }
 }
