@@ -93,7 +93,7 @@
                                     id="email"
                                     class="form-control"
                                     name="email"
-                                    value="{{ old('email', '-') }}"
+                                    value="{{ old('email') }}"
                                 />
                             </div>
                         </div>
@@ -136,7 +136,7 @@
                                     id="source"
                                     class="form-control"
                                     name="source"
-                                    value="{{ old('source', 'aratech gmaps scraper') }}"
+                                    value="{{ old('source') }}"
                                 />
                             </div>
                         </div>
