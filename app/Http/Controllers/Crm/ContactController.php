@@ -10,8 +10,7 @@ class ContactController extends Controller
 {
     public function index()
     {
-        // using paginate(10) to synchronize with the pagination links {{ $contacts->links() }} in the view
-        $contacts = CrmContact::latest()->paginate(10);
+        $contacts = CrmContact::latest()->get();
         return view('crm.contacts.index', compact('contacts'));
     }
 
@@ -37,8 +36,8 @@ class ContactController extends Controller
 
         // set fallback values if the user leaves the input form empty
         $validated['website_url'] = $request->input('website_url') ?: '-';
-        $validated['email'] = $request->input('email') ?: '-';
-        $validated['source'] = $request->input('source') ?: 'aratech gmaps scraper';
+        $validated['email'] = $request->input('email') ?: null;
+        $validated['source'] = $request->input('source') ?: 'user input';
 
         CrmContact::create($validated);
 
@@ -73,8 +72,8 @@ class ContactController extends Controller
         // handle the website toggle and fallback text again for the update process
         $validated['has_website'] = $request->has('has_website');
         $validated['website_url'] = $request->input('website_url') ?: '-';
-        $validated['email'] = $request->input('email') ?: '-';
-        $validated['source'] = $request->input('source') ?: 'aratech gmaps scraper';
+        $validated['email'] = $request->input('email') ?: null;
+        $validated['source'] = $request->input('source') ?: 'user input';
 
         $contact->update($validated);
 
