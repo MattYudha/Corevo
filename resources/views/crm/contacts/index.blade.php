@@ -39,24 +39,23 @@
                     <table class="table table-striped table-hover align-middle" id="contact-table" style="width: 100%">
                         <thead>
                             <tr>
-                                <th>No</th>
-                                <th>Company Name</th>
-                                <th>Phone</th>
-                                <th>Email</th>
-                                <th>Source</th>
-                                <th class="text-center">Actions</th>
+                                <th style="width: 35%">Company Name</th>
+                                <th style="width: 20%">Phone</th>
+                                <th style="width: 25%">Email</th>
+                                <th style="width: 20%" class="text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($contacts as $contact)
                                 <tr>
-                                    <td>{{ $loop->iteration }}</td>
-                                    <td class="fw-bold">{{ $contact->company_name }}</td>
+                                    <td
+                                        class="fw-bold text-truncate-custom"
+                                        data-fulltext="{{ $contact->company_name }}"
+                                    >
+                                        {{ $contact->company_name }}
+                                    </td>
                                     <td>{{ $contact->phone ?? '-' }}</td>
                                     <td>{{ $contact->email ?? '-' }}</td>
-                                    <td>
-                                        <span class="badge bg-light-primary">{{ $contact->source ?? '-' }}</span>
-                                    </td>
                                     <td class="text-center">
                                         <a
                                             href="{{ route('crm.contacts.show', $contact->id) }}"
@@ -96,7 +95,49 @@
             $(document).ready(function () {
                 $('#contact-table').DataTable({
                     responsive: true,
-                    columnDefs: [{ orderable: false, targets: -1 }],
+                    pageLength: 25,
+                    columnDefs: [
+                        { orderable: false, targets: -1 },
+                        {
+                            targets: [0, 2],
+                            render: function (data, type, row, meta) {
+                                let maxLength = 25;
+
+                                if (!data) return '-';
+
+                                if (type === 'display' && data.length > maxLength) {
+                                    let shortText = data.substr(0, maxLength) + '...';
+                                    let fullText = data.replace(/"/g, '&quot;');
+
+                                    return (
+                                        '<span class="short-text">' +
+                                        shortText +
+                                        '</span>' +
+                                        '<span class="full-text d-none">' +
+                                        fullText +
+                                        '</span>' +
+                                        ' <a href="javascript:void(0);" class="read-more-btn text-primary small ms-1">Read more</a>'
+                                    );
+                                }
+                                return data;
+                            },
+                        },
+                    ],
+                });
+
+                $('#contact-table').on('click', '.read-more-btn', function () {
+                    let btn = $(this);
+                    let parent = btn.parent();
+
+                    if (btn.text() === 'Read more') {
+                        parent.find('.short-text').addClass('d-none');
+                        parent.find('.full-text').removeClass('d-none');
+                        btn.text('Show less').removeClass('text-primary').addClass('text-secondary');
+                    } else {
+                        parent.find('.full-text').addClass('d-none');
+                        parent.find('.short-text').removeClass('d-none');
+                        btn.text('Read more').removeClass('text-secondary').addClass('text-primary');
+                    }
                 });
 
                 $(document).on('submit', '.form-delete', function (e) {
