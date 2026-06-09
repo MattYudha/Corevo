@@ -1,6 +1,10 @@
-<?php 
+<?php
 use App\Http\Controllers\Api\WaWebhookController;
 use Illuminate\Support\Facades\Route;
-   
-   // route for catching location fro m whatsapp bot
-   Route::post('/webhook/wa-checkout', [WaWebhookController::class, 'handleCheckout']);
+use App\Http\Controllers\Api\CrmContactApiController;
+
+// route for catching location from whatsapp bot
+Route::post('/webhook/wa-checkout', [WaWebhookController::class, 'handleCheckout']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('crm/contacts', CrmContactApiController::class);
+});

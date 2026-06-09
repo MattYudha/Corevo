@@ -123,6 +123,8 @@
                             $activeIncidents = request()->is('incidents*');
                             $activeHolidaysManagement = request()->is('holidays*');
 
+                            $activeCrmContacts = request()->is('crm/contacts*');
+
                             $activeKpiDashboard = request()->is('kpi/dashboard*') || request()->is('kpi-dashboard*');
                             $activeKpiTeam = request()->is('kpi/team*');
                             $activeKpiDepartment = request()->is('kpi/department*');
@@ -178,6 +180,7 @@
                                 $activeIncidents ||
                                 $activePositions ||
                                 $activeHolidaysManagement;
+                            $crmMenuActive = $activeCrmContacts;
                             $kpiMenuActive = $activeKpiDashboard || $activeKpiTeam || $activeKpiDepartment || $activeKpiPending;
                             $financeMenuActive =
                                 $activeFinanceTransactions ||
@@ -243,7 +246,7 @@
                         <li class="sidebar-item has-sub {{ $hrMenuActive ? 'active' : '' }}">
                             <a href="#" class="sidebar-link">
                                 <i class="bi bi-people-fill"></i>
-                                <span>HR Admin</span>
+                                <span>Human Resources</span>
                             </a>
                             <ul class="submenu {{ $hrMenuActive ? 'active' : '' }}">
                                 @if ($isAdmin || $isManager)
@@ -283,6 +286,20 @@
                                 </li>
                             </ul>
                         </li>
+
+                        @if ($isAdmin || $isManager)
+                            <li class="sidebar-item has-sub {{ $crmMenuActive ? 'active' : '' }}">
+                                <a href="#" class="sidebar-link">
+                                    <i class="bi bi-people-fill"></i>
+                                    <span>CRM</span>
+                                </a>
+                                <ul class="submenu {{ $crmMenuActive ? 'active' : '' }}">
+                                    <li class="submenu-item {{ $activeCrmContacts ? 'active' : '' }}">
+                                        <a href="{{ url('crm/contacts') }}" class="submenu-link">Contacts</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        @endif
 
                         @if ($showPayrollGroup)
                             <li class="sidebar-item has-sub {{ $activePayroll || $kpiMenuActive ? 'active' : '' }}">
