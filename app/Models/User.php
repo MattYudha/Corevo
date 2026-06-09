@@ -6,11 +6,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
@@ -23,7 +24,7 @@ class User extends Authenticatable
         'password',
         'employee_id',
         'browser_fingerprint_desktop',
-        'browser_fingerprint_mobile'
+        'browser_fingerprint_mobile',
     ];
 
     /**
@@ -31,10 +32,7 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
+    protected $hidden = ['password', 'remember_token'];
 
     /**
      * Get the attributes that should be cast.
@@ -65,7 +63,7 @@ class User extends Authenticatable
     }
 
     /* ==================== ROLE HELPER METHODS ==================== */
-    
+
     /**
      * Check if user is HR Administrator
      */
@@ -73,7 +71,7 @@ class User extends Authenticatable
     {
         return $this->employee?->role?->title === \App\Constants\Roles::HR_ADMINISTRATOR;
     }
-    
+
     /**
      * Check if user is Master Admin
      */
@@ -82,7 +80,7 @@ class User extends Authenticatable
         $title = $this->employee?->role?->title;
         return $title === \App\Constants\Roles::MASTER_ADMIN || $title === \App\Constants\Roles::SUPER_ADMIN;
     }
-    
+
     /**
      * Check if user is Manager / Unit Head
      */
@@ -90,7 +88,7 @@ class User extends Authenticatable
     {
         return $this->employee?->role?->title === \App\Constants\Roles::MANAGER_UNIT_HEAD;
     }
-    
+
     /**
      * Check if user is Finance
      */
@@ -98,8 +96,7 @@ class User extends Authenticatable
     {
         return $this->employee?->role?->title === \App\Constants\Roles::FINANCE;
     }
-    
-    
+
     /**
      * Check if user is an admin (HR Administrator or Master Admin)
      */
@@ -108,13 +105,10 @@ class User extends Authenticatable
         if (!$this->employee?->role?->title) {
             return false;
         }
-        
-        return in_array(
-            $this->employee->role->title,
-            \App\Constants\Roles::ADMIN_ROLES
-        );
+
+        return in_array($this->employee->role->title, \App\Constants\Roles::ADMIN_ROLES);
     }
-    
+
     /**
      * Check if user is a supervisor (HR Administrator, Master Admin, Manager / Unit Head, or Supervisor)
      */
@@ -123,13 +117,10 @@ class User extends Authenticatable
         if (!$this->employee?->role?->title) {
             return false;
         }
-        
-        return in_array(
-            $this->employee->role->title,
-            \App\Constants\Roles::SUPERVISOR_ROLES
-        );
+
+        return in_array($this->employee->role->title, \App\Constants\Roles::SUPERVISOR_ROLES);
     }
-    
+
     /**
      * Check if this user is direct supervisor of another user
      */
@@ -138,10 +129,10 @@ class User extends Authenticatable
         if (!$targetUser || !$this->employee || !$targetUser->employee) {
             return false;
         }
-        
+
         return $targetUser->employee->supervisor_id === $this->employee->id;
     }
-    
+
     /**
      * Check if user can manage an employee (admin, manager of same dept, or supervisor)
      */
@@ -151,35 +142,33 @@ class User extends Authenticatable
         if ($this->isAdmin()) {
             return true;
         }
-        
+
         if (!$this->employee) {
             return false;
         }
-        
+
         // Manager / Unit Heads can manage their department
-        if ($this->isManager() && 
-            $this->employee->department_id === $employee->department_id) {
+        if ($this->isManager() && $this->employee->department_id === $employee->department_id) {
             return true;
         }
-        
+
         // Direct supervisors can manage subordinates
         if ($employee->supervisor_id === $this->employee->id) {
             return true;
         }
-        
+
         // Users can manage themselves
         return $this->employee->id === $employee->id;
     }
-    
+
     /**
      * Check if user is in same department as employee
      */
     public function isSameDepartment(Employee $employee): bool
     {
-        return $this->employee &&
-               $this->employee->department_id === $employee->department_id;
+        return $this->employee && $this->employee->department_id === $employee->department_id;
     }
-    
+
     /**
      * Check if user has access to a specific module (dynamic RBAC)
      */
@@ -192,7 +181,7 @@ class User extends Authenticatable
         }
 
         $access = $this->employee?->role?->access;
-        
+
         if (is_array($access)) {
             return in_array($module, $access);
         }

@@ -5,14 +5,14 @@ namespace App\Constants;
 class Roles
 {
     // Role Titles
-    const SUPER_ADMIN        = 'Super Admin';
-    const MASTER_ADMIN       = 'Master Admin'; // Rebranded from Super Admin
-    const HR_ADMINISTRATOR   = 'HR Administrator';
-    const MANAGER_UNIT_HEAD  = 'Manager / Unit Head';
-    const SUPERVISOR         = 'Supervisor';
-    const EMPLOYEE           = 'Employee';
-    const MARKETING          = 'Marketing';
-    const FINANCE            = 'Finance';
+    const SUPER_ADMIN = 'Super Admin';
+    const MASTER_ADMIN = 'Master Admin'; // Rebranded from Super Admin
+    const HR_ADMINISTRATOR = 'HR Administrator';
+    const MANAGER_UNIT_HEAD = 'Manager / Unit Head';
+    const SUPERVISOR = 'Supervisor';
+    const EMPLOYEE = 'Employee';
+    const MARKETING = 'Marketing';
+    const FINANCE = 'Finance';
 
     // Role Groups
     const ADMIN_ROLES = [self::SUPER_ADMIN, self::MASTER_ADMIN, self::HR_ADMINISTRATOR];

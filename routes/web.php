@@ -543,3 +543,4 @@ Route::post('/signatures/public/{token}/verify-otp', [SignatureController::class
 
 require __DIR__ . '/auth.php';
 require __DIR__ . '/web_finance.php';
+require __DIR__ . '/web_crm.php';
