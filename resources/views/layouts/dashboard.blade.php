@@ -124,6 +124,7 @@
                             $activeHolidaysManagement = request()->is('holidays*');
 
                             $activeCrmContacts = request()->is('crm/contacts*');
+                            $activeCrmEmailBlasts = request()->is('crm/email-blasts*');
 
                             $activeKpiDashboard = request()->is('kpi/dashboard*') || request()->is('kpi-dashboard*');
                             $activeKpiTeam = request()->is('kpi/team*');
@@ -180,7 +181,7 @@
                                 $activeIncidents ||
                                 $activePositions ||
                                 $activeHolidaysManagement;
-                            $crmMenuActive = $activeCrmContacts;
+                            $crmMenuActive = $activeCrmContacts || $activeCrmEmailBlasts;
                             $kpiMenuActive = $activeKpiDashboard || $activeKpiTeam || $activeKpiDepartment || $activeKpiPending;
                             $financeMenuActive =
                                 $activeFinanceTransactions ||
@@ -245,7 +246,7 @@
 
                         <li class="sidebar-item has-sub {{ $hrMenuActive ? 'active' : '' }}">
                             <a href="#" class="sidebar-link">
-                                <i class="bi bi-people-fill"></i>
+                                <i class="bi bi-person-vcard"></i>
                                 <span>Human Resources</span>
                             </a>
                             <ul class="submenu {{ $hrMenuActive ? 'active' : '' }}">
@@ -296,6 +297,9 @@
                                 <ul class="submenu {{ $crmMenuActive ? 'active' : '' }}">
                                     <li class="submenu-item {{ $activeCrmContacts ? 'active' : '' }}">
                                         <a href="{{ url('crm/contacts') }}" class="submenu-link">Contacts</a>
+                                    </li>
+                                    <li class="submenu-item {{ $activeCrmEmailBlasts ? 'active' : '' }}">
+                                        <a href="{{ url('crm/email-blasts') }}" class="submenu-link">Email Blasts</a>
                                     </li>
                                 </ul>
                             </li>
