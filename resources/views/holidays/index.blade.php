@@ -91,6 +91,13 @@
                             <button type="submit" class="btn btn-primary w-100 fw-bold rounded-3 shadow-sm mt-2">
                                 <i class="bi bi-save me-1"></i> Save Holiday Data
                             </button>
+                            <button
+                                type="button"
+                                class="btn btn-warning w-100 fw-bold rounded-3 shadow-sm mt-2"
+                                id="btnSyncHolidays"
+                            >
+                                <i class="bi bi-cloud-arrow-down-fill me-1"></i> Auto-Sync Holiday
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -206,6 +213,51 @@
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
                 return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
+        $('#btnSyncHolidays').click(function () {
+            Swal.fire({
+                title: 'Synchronize Holidays?',
+                text: 'The system will automatically pull national holiday and collective leave data from libur.deno.dev.',
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: '<i class="bi bi-cloud-arrow-down"></i> Yes, Pull Data!',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#ffc107',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Pulling Data...',
+                        html: 'Please wait, communicating with the central server.',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        },
+                    });
+
+                    $.ajax({
+                        url: '{{ route('holidays.sync') }}',
+                        type: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}',
+                        },
+                        success: function (res) {
+                            if (res.success) {
+                                Swal.fire('Success!', res.message, 'success').then(() => {
+                                    if ($.fn.DataTable.isDataTable('#holiday-table')) {
+                                        $('#holiday-table').DataTable().ajax.reload(null, false);
+                                    } else {
+                                        location.reload();
+                                    }
+                                });
+                            }
+                        },
+                        error: function (err) {
+                            Swal.fire('Failed!', err.responseJSON?.message || 'Failed to connect to the system.', 'error');
+                        },
+                    });
+                }
             });
         });
     </script>

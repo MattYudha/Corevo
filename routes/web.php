@@ -528,6 +528,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('holidays', HolidayController::class)
         ->only(['index', 'store', 'destroy'])
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+
+    Route::post('/holidays/sync', [HolidayController::class, 'sync'])
+        ->name('holidays.sync')
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
 });
 Route::get('/document/sign/success', [SignatureController::class, 'publicSuccess'])->name('signatures.public.success');
 Route::get('/document/sign/{token}', [SignatureController::class, 'publicPad'])->name('signatures.public.pad');
