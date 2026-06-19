@@ -1,70 +1,6 @@
 @extends ('layouts.dashboard')
 
-@push ('styles')
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet" />
-    <style>
-        /* summernote ui adjustments for size and spacing */
-        .note-editor .note-toolbar .note-btn {
-            padding: 0.25rem 0.5rem !important;
-            font-size: 0.875rem !important;
-            height: auto !important;
-            min-height: 30px !important;
-            margin: 2px !important;
-        }
-        .note-editor .note-toolbar {
-            padding: 0.5rem !important;
-            margin: 0 !important;
-        }
 
-        /* summernote adjustments for mazer dark mode via bs-theme attribute */
-        html[data-bs-theme='dark'] .note-editor.note-frame {
-            border: 1px solid #434c5e;
-            background-color: #1e1e2d;
-        }
-        html[data-bs-theme='dark'] .note-editor .note-toolbar,
-        html[data-bs-theme='dark'] .note-editor .note-statusbar {
-            background-color: #151521;
-            border-color: #434c5e;
-        }
-        html[data-bs-theme='dark'] .note-editing-area .note-editable {
-            color: #ced4da;
-            background-color: #1e1e2d;
-        }
-        html[data-bs-theme='dark'] .note-btn {
-            color: #ced4da;
-            background: transparent;
-            border-color: transparent;
-        }
-        html[data-bs-theme='dark'] .note-btn:hover,
-        html[data-bs-theme='dark'] .note-btn.active {
-            background-color: #2b2b40;
-            color: #ffffff;
-        }
-        html[data-bs-theme='dark'] .note-dropdown-menu,
-        html[data-bs-theme='dark'] .note-modal-content {
-            background-color: #1e1e2d;
-            border: 1px solid #434c5e;
-            color: #ced4da;
-        }
-        html[data-bs-theme='dark'] .note-dropdown-item {
-            color: #ced4da;
-        }
-        html[data-bs-theme='dark'] .note-dropdown-item:hover {
-            background-color: #2b2b40;
-        }
-        html[data-bs-theme='dark'] .note-modal-header {
-            border-bottom: 1px solid #434c5e;
-        }
-        html[data-bs-theme='dark'] .note-modal-title {
-            color: #ced4da;
-        }
-        html[data-bs-theme='dark'] .note-input {
-            background-color: #151521;
-            border: 1px solid #434c5e;
-            color: #ced4da;
-        }
-    </style>
-@endpush
 
 @section ('content')
     <div class="page-heading mb-4">
@@ -267,7 +203,6 @@
                                 id="body"
                                 class="form-control @error('body') is-invalid @enderror"
                                 name="body"
-                                required
                                 >{{ old('body') }}</textarea
                             >
                             @error ('body')
@@ -301,7 +236,7 @@
 @endsection
 
 @push ('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
     <script>
         $(document).ready(function () {
             // 1. show / hide contact checkbox area based on selection
@@ -328,20 +263,18 @@
                 $('.contact-item:visible .contact-checkbox').prop('checked', isChecked);
             });
 
-            // 4. initialize summernote editor with full toolbar settings
-            $('#body').summernote({
-                placeholder: 'Type your email message here...',
-                tabsize: 2,
+            // 4. initialize tinymce editor with full toolbar settings
+            let isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            tinymce.init({
+                selector: '#body',
+                plugins: 'advlist autolink lists link image charmap preview anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking table emoticons template help',
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | pagebreak | charmap emoticons | fullscreen preview print | insertfile image media template link anchor codesample | ltr rtl',
                 height: 400,
-                toolbar: [
-                    ['style', ['style']],
-                    ['font', ['bold', 'italic', 'underline', 'strikethrough', 'clear']],
-                    ['color', ['color']],
-                    ['para', ['ul', 'ol', 'paragraph']],
-                    ['table', ['table']],
-                    ['insert', ['link', 'picture', 'hr']],
-                    ['view', ['fullscreen', 'codeview', 'help']],
-                ],
+                menubar: 'file edit view insert format tools table help',
+                skin: isDarkMode ? 'oxide-dark' : 'oxide',
+                content_css: isDarkMode ? 'dark' : 'default',
+                content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+                table_use_colgroups: false
             });
 
             // 5. inject template data from server to js without needing additional ajax calls
@@ -352,8 +285,8 @@
                 let id = $(this).val();
 
                 if (id && templatesData[id]) {
-                    // insert template content into summernote workspace
-                    $('#body').summernote('code', templatesData[id].content || '');
+                    // insert template content into tinymce workspace
+                    tinymce.get('body').setContent(templatesData[id].content || '');
 
                     // automatically fill subject column if template has a name and subject is not manually filled
                     if (!$('#subject').val()) {
@@ -361,7 +294,7 @@
                     }
                 } else {
                     // clear editor if user goes back to selecting manual input
-                    $('#body').summernote('code', '');
+                    tinymce.get('body').setContent('');
                 }
             });
         });

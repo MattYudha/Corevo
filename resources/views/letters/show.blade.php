@@ -3,33 +3,27 @@
 @section ('content')
     @php
         $config = \App\Models\LetterConfiguration::first();
-        $pdfHtml = view('letters.pdf', compact('letter', 'config'))->render();
+        $html = view('letters.pdf', compact('letter', 'config'))->render();
+        
+        // Render PDF once to count pages
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'portrait');
+        $pdf->render();
+        $pageCount = $pdf->getCanvas()->get_page_count();
 
-        // replace local folder path with web url so logo appears in browser
-        $pdfHtml = str_replace(public_path('img/logo-aratech-document.png'), asset('img/logo-aratech-document.png'), $pdfHtml);
+        // translate numbers to words
+        $terbilang = [
+            1 => 'One', 2 => 'Two', 3 => 'Three', 4 => 'Four', 5 => 'Five',
+            6 => 'Six', 7 => 'Seven', 8 => 'Eight', 9 => 'Nine', 10 => 'Ten',
+        ];
+        $word = $terbilang[$pageCount] ?? $pageCount;
+        $lampiranText = "{$word} ({$pageCount}) Sheets";
 
-        // inject special iframe css (padding bottom 30mm so footer is not hit by signature)
-        $injectedCSS = '
-                                                                                                                                                                <style>
-                                                                                                                                                                    @media screen {
-                                                                                                                                                                        html, body {
-                                                                                                                                                                            background-color: transparent !important;
-                                                                                                                                                                            margin: 0 !important;
-                                                                                                                                                                            padding: 0 !important;
-                                                                                                                                                                            overflow: hidden !important;
-                                                                                                                                                                        }
-                                                                                                                                                                        body {
-                                                                                                                                                                            background-color: #ffffff !important;
-                                                                                                                                                                            width: 210mm !important;
-                                                                                                                                                                            height: 297mm !important;
-                                                                                                                                                                            padding: 15mm 20mm 30mm 20mm !important;
-                                                                                                                                                                            box-sizing: border-box !important;
-                                                                                                                                                                            position: relative !important;
-                                                                                                                                                                        }
-                                                                                                                                                                        .footer { position: absolute !important; bottom: 10mm !important; left: 20mm !important; right: 20mm !important; }
-                                                                                                                                                                    }
-                                                                                                                                                                </style></head>';
-        $pdfHtml = str_replace('</head>', $injectedCSS, $pdfHtml);
+        // overwrite placeholder with final attachment text
+        $finalHtml = str_replace('{TOTAL_PAGES_PLACEHOLDER}', $lampiranText, $html);
+
+        // second render (final) to get the final PDF output
+        $pdfFinal = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($finalHtml)->setPaper('a4', 'portrait');
+        $pdfBase64 = base64_encode($pdfFinal->output());
 
         $isAdmin =
             Auth::user()->employee &&
@@ -135,22 +129,14 @@
                     >
                         <div
                             class="preview-wrapper"
-                            style="width: 100%; height: 800px; overflow: auto; background: #e9ecef; padding: 20px"
+                            style="width: 100%; height: 800px; overflow: auto; background: #e9ecef; padding: 20px 0;"
                         >
-                            <iframe
-                                src="data:text/html;charset=utf-8;base64,{{ base64_encode($pdfHtml) }}"
-                                style="
-                                    display: block;
-                                    margin: 0 auto;
-                                    width: 210mm;
-                                    height: 297mm;
-                                    border: none;
-                                    background: #ffffff;
-                                    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-                                "
-                                title="PDF Preview"
-                                scrolling="no"
-                            ></iframe>
+                            <div id="pdf-viewer" class="d-flex flex-column align-items-center gap-3">
+                                <div class="text-muted" id="pdf-loading">
+                                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                    Loading PDF preview...
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -365,4 +351,64 @@
             </div>
         </div>
     </div>
+
+@push('scripts')
+    <!-- PDF.js library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        // Set worker URL
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Read Base64 data and decode it to binary
+            const base64Data = '{!! $pdfBase64 !!}';
+            const pdfData = atob(base64Data);
+
+            const loadingTask = pdfjsLib.getDocument({ data: pdfData });
+            
+            loadingTask.promise.then(function(pdf) {
+                const viewer = document.getElementById('pdf-viewer');
+                const loadingIndicator = document.getElementById('pdf-loading');
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+
+                // Fetch and render all pages
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    pdf.getPage(pageNum).then(function(page) {
+                        // Use scale 1.5 for better resolution
+                        const viewport = page.getViewport({ scale: 1.5 });
+
+                        // Create wrapper for the canvas to look like a physical page
+                        const pageContainer = document.createElement('div');
+                        pageContainer.className = 'pdf-page shadow-sm bg-white';
+                        // Insert according to page number order to avoid async race condition rendering pages out of order
+                        pageContainer.style.order = pageNum; 
+
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        canvas.style.width = '100%';
+                        canvas.style.maxWidth = viewport.width + 'px';
+                        canvas.style.display = 'block';
+
+                        pageContainer.appendChild(canvas);
+                        viewer.appendChild(pageContainer);
+
+                        const renderContext = {
+                            canvasContext: context,
+                            viewport: viewport
+                        };
+                        page.render(renderContext);
+                    });
+                }
+            }).catch(function(error) {
+                console.error("Error loading PDF: ", error);
+                const loadingIndicator = document.getElementById('pdf-loading');
+                if (loadingIndicator) {
+                    loadingIndicator.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Failed to load PDF preview. Please download the document instead.</span>';
+                }
+            });
+        });
+    </script>
+@endpush
 @endsection

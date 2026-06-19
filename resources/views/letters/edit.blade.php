@@ -1,73 +1,6 @@
 @extends ('layouts.dashboard')
 
-@push ('styles')
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet" />
-    <style>
-        .note-editor .note-toolbar .note-btn {
-            padding: 0.25rem 0.5rem !important;
-            font-size: 0.875rem !important;
-            height: auto !important;
-            min-height: 30px !important;
-            margin: 2px !important;
-        }
-        .note-editor .note-toolbar {
-            padding: 0.5rem !important;
-            margin: 0 !important;
-        }
-        html[data-bs-theme='dark'] .note-editor.note-frame {
-            border: 1px solid #434c5e;
-            background-color: #1e1e2d;
-        }
-        html[data-bs-theme='dark'] .note-editor .note-toolbar {
-            background-color: #151521;
-            border-bottom: 1px solid #434c5e;
-        }
-        html[data-bs-theme='dark'] .note-editor .note-statusbar {
-            background-color: #151521;
-            border-top: 1px solid #434c5e;
-        }
-        html[data-bs-theme='dark'] .note-editing-area .note-editable {
-            color: #ced4da;
-            background-color: #1e1e2d;
-        }
-        html[data-bs-theme='dark'] .note-btn {
-            color: #ced4da;
-            background: transparent;
-            border-color: transparent;
-        }
-        html[data-bs-theme='dark'] .note-btn:hover,
-        html[data-bs-theme='dark'] .note-btn.active {
-            background-color: #2b2b40;
-            color: #ffffff;
-        }
-        html[data-bs-theme='dark'] .note-dropdown-menu {
-            background-color: #1e1e2d;
-            border: 1px solid #434c5e;
-        }
-        html[data-bs-theme='dark'] .note-dropdown-item {
-            color: #ced4da;
-        }
-        html[data-bs-theme='dark'] .note-dropdown-item:hover {
-            background-color: #2b2b40;
-        }
-        html[data-bs-theme='dark'] .note-modal-content {
-            background-color: #1e1e2d;
-            border: 1px solid #434c5e;
-            color: #ced4da;
-        }
-        html[data-bs-theme='dark'] .note-modal-header {
-            border-bottom: 1px solid #434c5e;
-        }
-        html[data-bs-theme='dark'] .note-modal-title {
-            color: #ced4da;
-        }
-        html[data-bs-theme='dark'] .note-input {
-            background-color: #151521;
-            border: 1px solid #434c5e;
-            color: #ced4da;
-        }
-    </style>
-@endpush
+
 
 @section ('content')
     <div class="page-heading mb-4">
@@ -195,7 +128,6 @@
                                 class="form-control"
                                 id="content"
                                 name="content"
-                                required
                                 >{{ old('content', $letter->content) }}</textarea
                             >
                         </div>
@@ -216,25 +148,55 @@
 @endsection
 
 @push ('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.8.3/tinymce.min.js"></script>
     <script>
         // === capture active user data from php to javascript ===
         const currentUserData = @json (\App\Constants\LetterTagConfig::getAutoFillValues(auth()->user()));
 
         $(document).ready(function () {
-            $('#content').summernote({
-                placeholder: 'Type the letter content here...',
-                tabsize: 2,
+            let isDarkMode = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+            tinymce.init({
+                selector: '#content',
+                plugins: 'advlist autolink lists link image charmap preview anchor pagebreak searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking table emoticons template help',
+                toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | outdent indent | numlist bullist | forecolor backcolor removeformat | pagebreak | charmap emoticons | fullscreen preview print | insertfile image media template link anchor codesample | ltr rtl',
                 height: 400,
-                toolbar: [
-                    ['style', ['style']],
-                    ['font', ['bold', 'italic', 'underline', 'strikethrough', 'clear']],
-                    ['color', ['color']],
-                    ['para', ['ul', 'ol', 'paragraph']],
-                    ['table', ['table']],
-                    ['insert', ['link', 'picture', 'hr']],
-                    ['view', ['fullscreen', 'codeview', 'help']],
-                ],
+                menubar: 'file edit view insert format tools table help',
+                skin: isDarkMode ? 'oxide-dark' : 'oxide',
+                content_css: isDarkMode ? 'dark' : 'default',
+                content_style: `
+                    body {
+                        width: 210mm !important;
+                        margin: 0 auto !important;
+                        padding: 20px 20mm !important;
+                        box-sizing: border-box !important;
+                        font-family: 'Helvetica', 'Arial', sans-serif !important;
+                        font-size: 12px !important;
+                        line-height: 1.5 !important;
+                        text-align: justify !important;
+                    }
+                    p, span, div, td, th {
+                        margin-top: 0 !important;
+                        margin-bottom: 5px !important;
+                        line-height: 1.5 !important;
+                        font-family: 'Helvetica', 'Arial', sans-serif !important;
+                        font-size: 12px !important;
+                    }
+                    ul, ol {
+                        padding-left: 24px !important;
+                        margin-top: 5px !important;
+                        margin-bottom: 10px !important;
+                    }
+                    li {
+                        margin-bottom: 4px !important;
+                        text-align: left !important;
+                    }
+                    h1, h2, h3, h4, h5, h6 {
+                        margin-top: 8px !important;
+                        margin-bottom: 4px !important;
+                        line-height: 1.2 !important;
+                    }
+                `,
+                table_use_colgroups: false
             });
 
             $('#form-letter').on('submit', function (e) {
@@ -261,7 +223,7 @@
                         type: 'GET',
                         dataType: 'json',
                         success: function (data) {
-                            $('#content').summernote('code', data.content);
+                            tinymce.get('content').setContent(data.content || '');
                             if (data.template) {
                                 $('#subject').val(data.template.name);
                                 $('#letter_type').val(data.template.type);

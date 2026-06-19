@@ -128,8 +128,10 @@ class LetterController extends Controller
                         if ($tagData->dropdown_model === 'OfficeLocation') {
                             $displayValue = \App\Models\OfficeLocation::find($value)?->name ?? $value;
                         } elseif ($tagData->dropdown_model === 'Employee') {
-                            // get user name based on employee id
-                            $displayValue = \App\Models\Employee::with('user')->find($value)?->user?->name ?? $value;
+                            // get user name based on user id
+                            $displayValue = \App\Models\User::find($value)?->name ?? $value;
+                        } elseif ($tagData->dropdown_model === 'Position') {
+                            $displayValue = \App\Models\Position::find($value)?->position_name ?? $value;
                         }
                     }
                 }
@@ -232,8 +234,10 @@ class LetterController extends Controller
                         if ($tagData->dropdown_model === 'OfficeLocation') {
                             $displayValue = \App\Models\OfficeLocation::find($value)?->name ?? $value;
                         } elseif ($tagData->dropdown_model === 'Employee') {
-                            // get user name based on employee id
-                            $displayValue = \App\Models\Employee::with('user')->find($value)?->user?->name ?? $value;
+                            // get user name based on user id
+                            $displayValue = \App\Models\User::find($value)?->name ?? $value;
+                        } elseif ($tagData->dropdown_model === 'Position') {
+                            $displayValue = \App\Models\Position::find($value)?->position_name ?? $value;
                         }
                     }
                 }
@@ -423,7 +427,7 @@ class LetterController extends Controller
 
         // first render (silently) to count physical pages
         $html = view('letters.pdf', compact('letter', 'config'))->render();
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html);
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'portrait');
         $pdf->render();
         $pageCount = $pdf->getCanvas()->get_page_count();
 
@@ -447,7 +451,7 @@ class LetterController extends Controller
         $finalHtml = str_replace('{TOTAL_PAGES_PLACEHOLDER}', $lampiranText, $html);
 
         // second render (final) and download
-        $pdfFinal = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($finalHtml);
+        $pdfFinal = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($finalHtml)->setPaper('a4', 'portrait');
         $filename = 'Letter_' . str_replace('/', '_', $letter->letter_number ?? 'Draft') . '.pdf';
 
         return $pdfFinal->download($filename);
