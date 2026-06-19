@@ -76,7 +76,7 @@
         .meta-table {
             width: 100%;
             margin-bottom: 20px;
-            font-size: 11px;
+            font-size: 12px;
         }
 
         .meta-table td {
@@ -102,22 +102,35 @@
             margin-bottom: 20px;
             word-wrap: break-word !important;
             overflow-wrap: break-word !important;
+            font-size: 12px !important;
+            color: #000000 !important;
+            font-family: 'Helvetica', 'Arial', sans-serif !important;
         }
 
+        .content *,
         .content p,
         .content span,
         .content div,
-        .content ul,
-        .content ol,
-        .content li,
         .content td,
         .content th {
+            line-height: 1.5 !important;
+            margin-top: 0;
+            margin-bottom: 5px;
+            background-color: transparent;
+            font-family: 'Helvetica', 'Arial', sans-serif !important;
             font-size: 12px !important;
-            color: #000000 !important;
-            line-height: 1.15 !important;
-            margin-top: 0 !important;
-            margin-bottom: 5px !important;
-            background-color: transparent !important;
+        }
+
+        .content ul,
+        .content ol {
+            padding-left: 24px !important;
+            margin-top: 5px !important;
+            margin-bottom: 10px !important;
+        }
+
+        .content li {
+            margin-bottom: 4px !important;
+            text-align: left !important;
         }
 
         .content h1,
@@ -130,6 +143,7 @@
             margin-top: 8px !important;
             margin-bottom: 4px !important;
             line-height: 1.2 !important;
+            font-family: 'Helvetica', 'Arial', sans-serif !important;
         }
 
         /* ======================================================== */
@@ -160,27 +174,30 @@
         }
 
         .content table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            margin-bottom: 15px !important;
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            word-wrap: break-word;
         }
 
         .content table,
         .content table th,
         .content table td {
-            border: 1px solid #000000 !important;
+            border: 1px solid #000000;
         }
 
         .content table th,
         .content table td {
-            padding: 6px 8px !important;
-            vertical-align: top !important;
+            padding: 6px 8px;
+            vertical-align: top;
             text-align: left; /* adjust if center alignment is needed */
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .content table th {
-            background-color: #f2f2f2 !important; /* add a little gray to make the header look nice */
-            font-weight: bold !important;
+            background-color: #f2f2f2; /* add a little gray to make the header look nice */
+            font-weight: bold;
         }
     </style>
 </head>
@@ -241,7 +258,7 @@
         </tr>
     </table>
 
-    <div class="content">{!! $letter->formatted_content !!}</div>
+    <div class="content">{!! str_replace('<!-- pagebreak -->', '<div style="page-break-before: always;"></div>', $letter->formatted_content) !!}</div>
 
     <div style="margin-top: 30px; padding-bottom: 10mm; page-break-inside: avoid">
         @php

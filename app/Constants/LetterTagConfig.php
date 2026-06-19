@@ -27,6 +27,8 @@ class LetterTagConfig
             'user_position' => 'Position (Letter Creator)',
             'user_department' => 'Department (Letter Creator)',
             'today_date' => 'Today\'s Date',
+            'today_day' => 'Today\'s Day',
+            'today_date_full' => 'Today\'s Full Date',
             // add new auto-fill options here (e.g., user_nik)
         ];
     }
@@ -39,6 +41,8 @@ class LetterTagConfig
             'user_position' => $user->employee->position->position_name ?? '-',
             'user_department' => $user->employee->department->name ?? '-',
             'today_date' => now()->format('Y-m-d'),
+            'today_day' => now()->locale('id')->translatedFormat('l'),
+            'today_date_full' => now()->locale('id')->translatedFormat('l, d F Y'),
             // adjust the data fetching logic here
         ];
     }
@@ -50,6 +54,8 @@ class LetterTagConfig
         return [
             'OfficeLocation' => 'Office Location Data (OfficeLocation)',
             'Employee' => 'Active Employee Data (Employee)',
+            'EmployeeNIK' => 'Employee NIK Data (Employee)',
+            'Position' => 'Position Data (Position)',
             // add new db tables for dropdown here
         ];
     }
@@ -63,6 +69,16 @@ class LetterTagConfig
 
             case 'Employee':
                 return \App\Models\User::has('employee')->pluck('name', 'id')->toArray();
+
+            case 'EmployeeNIK':
+                return \App\Models\Employee::whereNotNull('nik')
+                    ->get()
+                    ->mapWithKeys(function ($emp) {
+                        return [$emp->nik => $emp->fullname . ' - ' . $emp->nik];
+                    })->toArray();
+
+            case 'Position':
+                return \App\Models\Position::pluck('position_name', 'position_id')->toArray();
 
             default:
                 return [];
