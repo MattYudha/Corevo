@@ -202,14 +202,14 @@
                                                 <i class="bi bi-briefcase me-1"></i>
                                                 {{
                                                     $sig->user_id
-                                                        ? $sig->signer->employee->position->position_name ?? 'Employee'
+                                                        ? $sig->external_title ?? ($sig->signer->employee->position->position_name ?? 'Employee')
                                                         : $sig->external_title ?? 'Vendor / External'
                                                 }}
                                                 <br />
                                                 <i class="bi bi-building me-1"></i>
                                                 {{
                                                     $sig->user_id
-                                                        ? 'Company Internal'
+                                                        ? $sig->external_company ?? 'Company Internal'
                                                         : $sig->external_company ?? '-'
                                                 }}
                                             </p>
@@ -368,6 +368,26 @@
                                     @endif
                                 </select>
                             </div>
+                            
+                            <div class="form-group mb-3">
+                                <label class="form-label fw-semibold text-body">Format Jabatan (Ditampilkan di PDF)</label>
+                                <select name="role_format" id="role_format" class="form-select bg-body-tertiary text-body" onchange="toggleCustomRole(this.value)">
+                                    <option value="official">Gunakan Jabatan Bawaan Karyawan</option>
+                                    <option value="custom">Kustom Jabatan (Misal: Pihak Pertama)</option>
+                                </select>
+                                <small class="text-body-secondary mt-1 d-block" id="role_format_hint">Akan mencetak jabatan karyawan dan "PT. Aratech Nusantara Indonesia".</small>
+                            </div>
+
+                            <div id="custom_role_fields" style="display: none;">
+                                <div class="form-group mb-3">
+                                    <label class="form-label fw-semibold text-body">Jabatan Kustom <span class="text-danger">*</span></label>
+                                    <input type="text" name="custom_title" id="custom_title" class="form-control bg-body-tertiary text-body" placeholder="Contoh: Pihak Pertama">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label class="form-label fw-semibold text-body">Instansi Kustom <span class="text-danger">*</span></label>
+                                    <input type="text" name="custom_company" id="custom_company" class="form-control bg-body-tertiary text-body" placeholder="Contoh: - (Isi tanda strip jika tidak ada)">
+                                </div>
+                            </div>
                         </div>
                         <div class="modal-footer border-top-0 pb-4 px-4">
                             <button
@@ -475,6 +495,25 @@
 
 @push ('scripts')
     <script>
+        function toggleCustomRole(val) {
+            const fields = document.getElementById('custom_role_fields');
+            const titleInput = document.getElementById('custom_title');
+            const companyInput = document.getElementById('custom_company');
+            const hint = document.getElementById('role_format_hint');
+
+            if (val === 'custom') {
+                fields.style.display = 'block';
+                titleInput.required = true;
+                companyInput.required = true;
+                hint.innerText = "Akan mencetak jabatan dan instansi kustom yang Anda masukkan di bawah.";
+            } else {
+                fields.style.display = 'none';
+                titleInput.required = false;
+                companyInput.required = false;
+                hint.innerText = "Akan mencetak jabatan karyawan dan \"PT. Aratech Nusantara Indonesia\".";
+            }
+        }
+
         function copyLink(elementId, btnElement) {
             var copyText = document.getElementById(elementId);
             copyText.select();

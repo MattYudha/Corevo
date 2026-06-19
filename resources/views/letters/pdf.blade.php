@@ -275,13 +275,13 @@
                         <span style="font-size: 11px; color: #000">
                             @if ($sig->user_id)
                                 {{
-                                    $sig->signer->employee->position->position_name ??
-                                        'Employee'
+                                    $sig->external_title ?? ($sig->signer->employee->position->position_name ??
+                                        'Employee')
                                 }}<br
                                  />
                                 {{
-                                    $config->company_name ??
-                                        'PT Aratech Nusantara Indonesia'
+                                    $sig->external_company ?? ($config->company_name ??
+                                        'PT Aratech Nusantara Indonesia')
                                 }}
                             @else
                                 {{ $sig->external_title ?? 'Company Partner' }}<br
@@ -315,13 +315,13 @@
                                 <span style="font-size: 11px; color: #000">
                                     @if ($sig->user_id)
                                         {{
-                                            $sig->signer->employee->position->position_name ??
-                                                'Employee'
+                                            $sig->external_title ?? ($sig->signer->employee->position->position_name ??
+                                                'Employee')
                                         }}<br
                                          />
                                         {{
-                                            $config->company_name ??
-                                                'PT Aratech Nusantara Indonesia'
+                                            $sig->external_company ?? ($config->company_name ??
+                                                'PT Aratech Nusantara Indonesia')
                                         }}
                                     @else
                                         {{ $sig->external_title ?? 'Company Partner' }}<br

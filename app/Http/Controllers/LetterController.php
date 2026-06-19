@@ -134,6 +134,17 @@ class LetterController extends Controller
                             $displayValue = \App\Models\Position::find($value)?->position_name ?? $value;
                         }
                     }
+
+                    // if the type is currency, format it to Rp X.XXX.XXX
+                    if ($tagData->input_type === 'currency' && !empty($value)) {
+                        $displayValue = 'Rp' . number_format((float)$value, 0, ',', '.');
+                    }
+
+                    // if the type is terbilang, read the referenced value and convert it
+                    if ($tagData->input_type === 'terbilang' && !empty($value)) {
+                        $angka = $request->dynamic_tags[$value] ?? 0;
+                        $displayValue = \App\Helpers\Terbilang::make($angka);
+                    }
                 }
 
                 // replace text inside the letter content
@@ -239,6 +250,17 @@ class LetterController extends Controller
                         } elseif ($tagData->dropdown_model === 'Position') {
                             $displayValue = \App\Models\Position::find($value)?->position_name ?? $value;
                         }
+                    }
+
+                    // if the type is currency, format it to Rp X.XXX.XXX
+                    if ($tagData->input_type === 'currency' && !empty($value)) {
+                        $displayValue = 'Rp' . number_format((float)$value, 0, ',', '.');
+                    }
+
+                    // if the type is terbilang, read the referenced value and convert it
+                    if ($tagData->input_type === 'terbilang' && !empty($value)) {
+                        $angka = $request->dynamic_tags[$value] ?? 0;
+                        $displayValue = \App\Helpers\Terbilang::make($angka);
                     }
                 }
 
@@ -391,6 +413,25 @@ class LetterController extends Controller
         return redirect()->route('letters.show', $letter)->with('success', 'Letter rejected.');
     }
 
+    // approve / reject pending letters (for reviewers)
+    public function updateStatus(Request $request, Letter $letter)
+    {
+        $userRole = Auth::user()->employee->role->title ?? null;
+        if (!in_array($userRole, ['Manager / Unit Head', 'HR Administrator', \App\Constants\Roles::MASTER_ADMIN])) {
+            return redirect()->back()->with('error', 'Unauthorized action.');
+        }
+
+        $request->validate([
+            'status' => 'required|in:approved,rejected',
+        ]);
+
+        $letter->update([
+            'status' => $request->status,
+        ]);
+
+        return redirect()->back()->with('success', 'Letter status updated to ' . $request->status . '.');
+    }
+
     public function print(Letter $letter)
     {
         // authorization check - only hr administrator and master admin can print
@@ -486,4 +527,5 @@ class LetterController extends Controller
 
         return str_replace(['{NUMBER}', '{DEPT}', '{MONTH}', '{YEAR}'], [$number, $dept, $month, $year], $format);
     }
+
 }
