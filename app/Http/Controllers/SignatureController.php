@@ -455,6 +455,9 @@ class SignatureController extends Controller
 
         $request->validate([
             'user_id' => 'required|exists:users,id',
+            'role_format' => 'required|in:official,custom',
+            'custom_title' => 'required_if:role_format,custom|string|max:255|nullable',
+            'custom_company' => 'required_if:role_format,custom|string|max:255|nullable',
         ]);
 
         $model = $this->findSignableModel($signable, $id);
@@ -474,11 +477,16 @@ class SignatureController extends Controller
                 ->with('error', 'This employee is already on the signer list.');
         }
 
+        $externalTitle = $request->role_format === 'custom' ? $request->custom_title : null;
+        $externalCompany = $request->role_format === 'custom' ? $request->custom_company : null;
+
         // save pending internal signature to database
         Signature::create([
             'signable_type' => get_class($model),
             'signable_id' => $model->id,
             'user_id' => $request->user_id,
+            'external_title' => $externalTitle,
+            'external_company' => $externalCompany,
             'signature_image' => 'PENDING',
             'signature_hash' => \Illuminate\Support\Str::random(64),
             'token' => Str::random(32),

@@ -11,9 +11,11 @@ class LetterTagConfig
             'short_text' => 'Short Text (Auto-Fill Supported)',
             'long_text' => 'Long Text (Paragraph)',
             'number' => 'Number',
+            'currency' => 'Currency (Rupiah Format)',
             'date' => 'Date (Auto-Fill Supported)',
             'time' => 'Time',
             'dropdown' => 'Dropdown (Dynamic Choices)',
+            'terbilang' => 'Terbilang (Auto Convert Number)',
             // add new html input types here
         ];
     }

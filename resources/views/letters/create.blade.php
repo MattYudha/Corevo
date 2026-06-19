@@ -234,6 +234,11 @@
                                         inputElement = `<input type="time" name="dynamic_tags[${tag.tag_name}]" class="form-control" value="${defaultValue}" required ${isReadOnly}>`;
                                     } else if (tag.input_type === 'number') {
                                         inputElement = `<input type="number" name="dynamic_tags[${tag.tag_name}]" class="form-control" value="${defaultValue}" required ${isReadOnly}>`;
+                                    } else if (tag.input_type === 'currency') {
+                                        inputElement = `<div class="input-group">
+                                            <span class="input-group-text">Rp</span>
+                                            <input type="number" name="dynamic_tags[${tag.tag_name}]" class="form-control" value="${defaultValue}" required ${isReadOnly}>
+                                        </div>`;
                                     } else if (tag.input_type === 'dropdown') {
                                         // === automatic dropdown rendering ===
                                         let optionsHtml = '<option value="">-- Select Data --</option>';
@@ -244,6 +249,16 @@
                                             }
                                         }
                                         inputElement = `<select name="dynamic_tags[${tag.tag_name}]" class="form-select" required>${optionsHtml}</select>`;
+                                    } else if (tag.input_type === 'terbilang') {
+                                        let optionsHtml = '<option value="">-- Pilih Tag Sumber --</option>';
+                                        data.tags.forEach(function (otherTag) {
+                                            if (otherTag.input_type === 'currency' && otherTag.tag_name !== tag.tag_name) {
+                                                let isSelected = defaultValue == otherTag.tag_name ? 'selected' : '';
+                                                optionsHtml += `<option value="${otherTag.tag_name}" ${isSelected}>[${otherTag.tag_name.replace(/_/g, ' ').toUpperCase()}]</option>`;
+                                            }
+                                        });
+                                        inputElement = `<select name="dynamic_tags[${tag.tag_name}]" class="form-select" required>${optionsHtml}</select>`;
+                                        helperText = '<small class="text-primary mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Pilih tag angka yang akan diubah menjadi terbilang</small>';
                                     } else {
                                         inputElement = `<input type="text" name="dynamic_tags[${tag.tag_name}]" class="form-control" value="${defaultValue}" required ${isReadOnly}>`;
                                     }
