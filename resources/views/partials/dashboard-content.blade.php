@@ -41,7 +41,7 @@
                     <div>
                         <h4 class="mb-1 fw-bold tracking-tight text-white">Selamat datang, {{ auth()->user()->name ?? 'User' }}!</h4>
                         <p class="mb-0 opacity-75 d-flex align-items-center gap-2" style="font-size: 14px;">
-                            <span class="badge bg-white bg-opacity-10 text-white fw-medium px-2 py-1"><i class="bi bi-shield-check me-1"></i> {{ session('role', 'Employee') }}</span>
+                            <span class="badge bg-white bg-opacity-10 text-white fw-medium px-2 py-1"><i class="bi bi-shield-check me-1"></i> {{ auth()->user()->employee?->department?->name ?? session('role', 'Employee') }}</span>
                             <span class="opacity-50">&bull;</span>
                             <span class="fw-medium"><i class="bi bi-calendar3 me-1"></i> {{ \Carbon\Carbon::now()->translatedFormat('l, d F Y') }}</span>
                         </p>

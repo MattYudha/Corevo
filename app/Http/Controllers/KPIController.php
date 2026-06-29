@@ -126,7 +126,7 @@ class KPIController extends Controller
             $performanceReview = null;
         }
 
-        $allKpis = \App\Models\KPI::where('is_active', true)->get();
+        $allKpis = \App\Models\KPI::where('status', 'active')->get();
 
         return view('kpi.show', compact('employee', 'period', 'kpiRecords', 'kpisByCategory', 'performanceReview', 'compositeScore', 'performanceLevel', 'allKpis'));
     }

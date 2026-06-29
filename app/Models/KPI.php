@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class KPI extends Model
 {
@@ -38,6 +39,15 @@ class KPI extends Model
     public function employeeRecords(): HasMany
     {
         return $this->hasMany(EmployeeKPIRecord::class);
+    }
+
+    /**
+     * Get the roles assigned to this KPI
+     */
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class, 'role_kpi', 'kpi_id', 'role_id')
+                    ->withPivot('target_value', 'weight');
     }
 
     /**

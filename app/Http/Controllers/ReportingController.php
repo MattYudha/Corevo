@@ -329,4 +329,24 @@ class ReportingController extends Controller
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ]);
     }
+
+    /**
+     * Synchronize actual values from operational tables to KPI records
+     */
+    public function syncMetrics(Request $request)
+    {
+        $period = $request->input('period', now()->format('Y-m'));
+        
+        // Get all active employees
+        $employees = Employee::where('status', 'active')->get();
+        
+        $syncedCount = 0;
+        foreach ($employees as $employee) {
+            $service = new \App\Services\KPICalculationService($employee, $period);
+            $service->syncActualValuesToDatabase();
+            $syncedCount++;
+        }
+        
+        return back()->with('success', "Data sinkronisasi berhasil! Telah memperbarui data {$syncedCount} karyawan untuk periode {$period}.");
+    }
 }

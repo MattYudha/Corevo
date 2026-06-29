@@ -8,6 +8,11 @@
             <p class="text-muted">{{ $employee->department->name }} • {{ $employee->role?->title }}</p>
         </div>
         <div>
+            @if(in_array(session('role'), [\App\Constants\Roles::MASTER_ADMIN, \App\Constants\Roles::HR_ADMINISTRATOR]) || (auth()->user()->employee?->role?->title ?? '') === \App\Constants\Roles::MANAGER_UNIT_HEAD)
+            <button type="button" class="btn btn-sm btn-outline-warning me-2" data-bs-toggle="modal" data-bs-target="#addKPIModal">
+                <i class="bi bi-plus-circle"></i> Tambah KPI Manual
+            </button>
+            @endif
             <a href="{{ route('kpi.trend', $employee->id) }}" class="btn btn-sm btn-outline-success">
                 <i class="bi bi-graph-up"></i> View Trend
             </a>
@@ -246,4 +251,134 @@
         window.location.href = `{{ route('kpi.show', $employee->id) }}?period=${period}`;
     }
 </script>
+
+<!-- Add KPI Modal -->
+<div class="modal fade" id="addKPIModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0">
+            <form action="{{ route('kpi.store') }}" method="POST">
+                @csrf
+                <input type="hidden" name="employee_id" value="{{ $employee->id }}">
+                <input type="hidden" name="period" value="{{ $period }}">
+                
+                <div class="modal-header border-0 pb-0 bg-white">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; background: #EEF2FF;">
+                            <i class="bi bi-plus-circle-fill fs-3 text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="modal-title fw-bold text-dark ls-tight" style="letter-spacing: -0.5px;">Tambah KPI Manual</h5>
+                            <p class="mb-0 text-muted small fw-semibold">Assign metrik penilaian baru ke periode berjalan.</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <div class="modal-body py-4">
+                    <div class="mb-4" id="selectKpiContainer">
+                        <label for="kpi_id" class="form-label text-muted small fw-bold ls-1">PILIH METRIK KPI</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white border-end-0 text-primary"><i class="bi bi-list-stars"></i></span>
+                            <select class="form-select border-start-0 ps-1 fw-semibold" id="kpi_id" name="kpi_id">
+                                <option value="">-- Silakan Pilih KPI --</option>
+                                @foreach($allKpis ?? [] as $k)
+                                    <option value="{{ $k->id }}">[{{ $k->category }}] {{ $k->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mt-2 text-end">
+                            <button type="button" class="btn btn-link btn-sm text-primary fw-bold text-decoration-none p-0" id="btnShowNewKpi">
+                                <i class="bi bi-plus-lg"></i> Atau buat metrik baru...
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- New KPI Fields (Hidden by default) -->
+                    <div id="newKpiContainer" class="d-none">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <label class="form-label text-muted small fw-bold ls-1 mb-0">BUAT METRIK BARU</label>
+                            <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none p-0" id="btnShowSelectKpi">
+                                <i class="bi bi-arrow-left"></i> Kembali pilih list
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <input type="text" class="form-control fw-semibold" name="new_kpi_name" id="new_kpi_name" placeholder="Nama Metrik (misal: Customer Satisfaction)">
+                        </div>
+                        
+                        <div class="row g-3 mb-4">
+                            <div class="col-6">
+                                <select class="form-select small fw-semibold" name="new_kpi_category">
+                                    <option value="Attendance">Attendance</option>
+                                    <option value="Productivity">Productivity</option>
+                                    <option value="Quality" selected>Quality</option>
+                                    <option value="Behavior">Behavior</option>
+                                    <option value="Leave">Leave</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <input type="text" class="form-control small fw-semibold" name="new_kpi_unit" placeholder="Satuan (%, Jam, Rp)">
+                            </div>
+                        </div>
+                        <input type="hidden" name="is_new_kpi" id="is_new_kpi" value="0">
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label for="add_target_value" class="form-label text-muted small fw-bold ls-1">NILAI TARGET</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-secondary"><i class="bi bi-bullseye"></i></span>
+                                <input type="number" step="0.01" class="form-control border-start-0 ps-1 fw-bold" id="add_target_value" name="target_value" value="100" required>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <label for="add_actual_value" class="form-label text-muted small fw-bold ls-1">NILAI AKTUAL</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0 text-warning"><i class="bi bi-lightning-charge-fill"></i></span>
+                                <input type="number" step="0.01" class="form-control border-start-0 ps-1 fw-bold text-dark" id="add_actual_value" name="actual_value" required placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label for="add_notes" class="form-label text-muted small fw-bold ls-1">CATATAN PENDUKUNG (OPSIONAL)</label>
+                        <textarea class="form-control" id="add_notes" name="notes" rows="3" placeholder="Tuliskan justifikasi atau keterangan nilai aktual..."></textarea>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-0 bg-light bg-opacity-50">
+                    <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none px-4" data-bs-dismiss="modal">Batalkan</button>
+                    <button type="submit" class="btn btn-primary px-4 shadow-sm">
+                        <i class="bi bi-cloud-arrow-up-fill"></i> Simpan Data KPI
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+$(function() {
+    $('#addKPIModal').appendTo('body');
+
+    // Toggle New KPI fields
+    $('#btnShowNewKpi').on('click', function() {
+        $('#selectKpiContainer').addClass('d-none');
+        $('#newKpiContainer').removeClass('d-none');
+        $('#is_new_kpi').val('1');
+        $('#kpi_id').val('').prop('required', false);
+        $('#new_kpi_name').prop('required', true);
+    });
+
+    $('#btnShowSelectKpi').on('click', function() {
+        $('#newKpiContainer').addClass('d-none');
+        $('#selectKpiContainer').removeClass('d-none');
+        $('#is_new_kpi').val('0');
+        $('#kpi_id').prop('required', true);
+        $('#new_kpi_name').prop('required', false);
+    });
+});
+</script>
+@endpush
 @endsection

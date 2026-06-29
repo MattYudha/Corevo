@@ -10,6 +10,10 @@ use App\Models\Incident;
 use App\Models\Signature;
 use App\Models\EmployeeKPIRecord;
 use App\Models\KPI;
+use App\Models\WorkLog;
+use App\Models\FinancialTransaction;
+use App\Models\CrmContact;
+use App\Models\Letter;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 
@@ -152,6 +156,12 @@ class KPICalculationService
         $metrics['active_tasks'] = $tasks->where('status', 'in-progress')->count();
         $metrics['pending_tasks'] = $tasks->where('status', 'pending')->count();
 
+        // Work Logs Count
+        $workLogsCount = WorkLog::where('employee_id', $this->employee->id)
+            ->whereBetween('log_date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')])
+            ->count();
+        $metrics['work_logs_count'] = $workLogsCount;
+
         return $metrics;
     }
 
@@ -204,46 +214,43 @@ class KPICalculationService
      */
     public function calculateDepartmentMetrics()
     {
-        if (!$this->employee->department_id) {
-            return [
-                'dept_avg_attendance' => 0,
-                'dept_avg_task_completion' => 0,
-            ];
+        $startDate = Carbon::createFromFormat('Y-m', $this->period)->startOfMonth();
+        $endDate = $startDate->copy()->endOfMonth();
+        
+        $metrics = [];
+
+        // Admin: Documents Processed
+        // Counts letters where the user is the creator or approver in the given period.
+        $userId = $this->employee->user_id;
+        if ($userId) {
+            $metrics['admin_documents_processed'] = Letter::where(function($q) use ($userId) {
+                    $q->where('user_id', $userId)->orWhere('approver_id', $userId);
+                })
+                ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+                ->count();
+                
+            // Finance: Transactions Count
+            $metrics['finance_transactions_count'] = FinancialTransaction::where('created_by', $userId)
+                ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+                ->count();
+                
+            // Sales: CRM Contacts Created
+            $metrics['sales_contacts_count'] = CrmContact::where('created_by', $userId)
+                ->whereBetween('created_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+                ->count();
+        } else {
+            $metrics['admin_documents_processed'] = 0;
+            $metrics['finance_transactions_count'] = 0;
+            $metrics['sales_contacts_count'] = 0;
         }
 
-        $cacheKey = "dept_metrics_{$this->employee->department_id}_{$this->period}";
-        
-        return \Cache::remember($cacheKey, now()->addHours(6), function() {
-            $metrics = [];
+        // IT: Projects/Tasks Completed
+        $metrics['it_projects_completed'] = Task::where('assigned_to', $this->employee->id)
+            ->where('status', 'completed')
+            ->whereBetween('completed_at', [$startDate->startOfDay(), $endDate->endOfDay()])
+            ->count();
 
-            // Get all employees in same department
-            $departmentEmployees = Employee::where('department_id', $this->employee->department_id)->get();
-
-            if ($departmentEmployees->count() === 0) {
-                return [
-                    'dept_avg_attendance' => 0,
-                    'dept_avg_task_completion' => 0,
-                ];
-            }
-
-            // Department Attendance Average
-            $avgAttendance = 0;
-            foreach ($departmentEmployees as $emp) {
-                $empMetrics = (new static($emp, $this->period))->calculateAttendanceMetrics();
-                $avgAttendance += $empMetrics['attendance_rate'] ?? 0;
-            }
-            $metrics['dept_avg_attendance'] = round($avgAttendance / $departmentEmployees->count(), 2);
-
-            // Department Task Completion Average
-            $avgCompletion = 0;
-            foreach ($departmentEmployees as $emp) {
-                $empMetrics = (new static($emp, $this->period))->calculateProductivityMetrics();
-                $avgCompletion += $empMetrics['task_completion_rate'] ?? 0;
-            }
-            $metrics['dept_avg_task_completion'] = round($avgCompletion / $departmentEmployees->count(), 2);
-
-            return $metrics;
-        });
+        return $metrics;
     }
 
     /**
@@ -330,9 +337,6 @@ class KPICalculationService
         return $metrics;
     }
 
-    /**
-     * Get all calculated metrics as a flat array
-     */
     public function getFlatMetrics()
     {
         $allMetrics = $this->calculateAllKPIs();
@@ -343,6 +347,41 @@ class KPICalculationService
             }
         }
         return $flat;
+    }
+
+    /**
+     * Synchronize computed flat metrics directly into the database records
+     * Note: This preserves existing targets and weights set by HR/Admin.
+     */
+    public function syncActualValuesToDatabase()
+    {
+        $flatMetrics = $this->getFlatMetrics();
+        
+        $records = EmployeeKPIRecord::with('kpi')
+            ->where('employee_id', $this->employee->id)
+            ->where('period', $this->period)
+            ->get();
+
+        foreach ($records as $record) {
+            $category = strtolower($record->kpi->metric_category ?? '');
+            $key = strtolower($record->kpi->metric_key ?? '');
+            $flatKey = "{$category}.{$key}";
+
+            if (isset($flatMetrics[$flatKey])) {
+                // Update actual value from operational calculation
+                $record->actual_value = $flatMetrics[$flatKey];
+                
+                // Recalculate achievement logic
+                $achievement = $record->getAchievementPercentage();
+                $record->composite_score = round($achievement, 2);
+                
+                // Determine status based on achievement
+                $record->status = $achievement >= 75 ? 'achieved' : ($achievement >= 60 ? 'warning' : 'critical');
+                $record->performance_level = self::getPerformanceLevel($achievement);
+                
+                $record->save();
+            }
+        }
     }
 
     /**

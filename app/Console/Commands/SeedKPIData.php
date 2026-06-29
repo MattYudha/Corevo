@@ -36,7 +36,13 @@ class SeedKPIData extends Command
             foreach ($kpis as $kpi) {
                 // Generate realistic value based on category
                 $actualValue = $this->generateValue($kpi->category, $kpi->target_value);
-                $achievement = ($actualValue / $kpi->target_value) * 100;
+                
+                if ($kpi->target_value > 0) {
+                    $achievement = ($actualValue / $kpi->target_value) * 100;
+                } else {
+                    $achievement = $actualValue > 0 ? 100 : 0;
+                }
+                
                 $status = $achievement >= 100 ? 'achieved' : ($achievement >= 80 ? 'warning' : 'critical');
                 
                 // Determine performance level

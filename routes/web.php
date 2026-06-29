@@ -29,6 +29,7 @@ use App\Http\Controllers\LetterConfigurationController;
 use App\Http\Controllers\LetterArchiveController;
 use App\Http\Controllers\SignatureController;
 use App\Http\Controllers\KPIController;
+use App\Http\Controllers\KPIMasterController;
 use App\Http\Controllers\ReportingController;
 use App\Http\Controllers\MyProfileController;
 use App\Http\Controllers\KnowledgeBaseController;
@@ -440,7 +441,13 @@ Route::middleware(['auth'])->group(function () {
         ->name('kpi.admin-update')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
 
+    // Master KPI Management
+    Route::resource('kpi-masters', KPIMasterController::class)
+        ->only(['index', 'edit', 'update'])
+        ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
+
     Route::get('reports/monthly-recap', [ReportingController::class, 'monthlyRecap'])->name('reports.monthly-recap');
+    Route::post('reports/monthly-recap/sync', [ReportingController::class, 'syncMetrics'])->name('reports.monthly-recap.sync');
     Route::get('reports/executive', [ReportingController::class, 'executiveDashboard'])
         ->name('reports.executive')
         ->middleware(['role:' . Roles::HR_ADMINISTRATOR . ',' . Roles::MASTER_ADMIN]);
@@ -546,5 +553,10 @@ Route::post('/signatures/public/{token}/verify-otp', [SignatureController::class
 // })->middleware(['auth', 'verified'])->name('dashboard');
 
 require __DIR__ . '/auth.php';
+
+Route::get('/seed-kpi', function () {
+    \Illuminate\Support\Facades\Artisan::call('db:seed', ['--class' => 'MockKPISeeder', '--force' => true]);
+    return 'Seeded!';
+});
 require __DIR__ . '/web_finance.php';
 require __DIR__ . '/web_crm.php';

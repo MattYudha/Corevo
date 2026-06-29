@@ -337,6 +337,11 @@
                                             >
                                         </li>
                                     @endif
+                                    @if ($isAdmin || $isMasterAdmin)
+                                        <li class="submenu-item {{ request()->routeIs('kpi-masters.*') ? 'active' : '' }}">
+                                            <a href="{{ route('kpi-masters.index') }}" class="submenu-link">Master KPI</a>
+                                        </li>
+                                    @endif
                                 </ul>
                             </li>
                         @endif
@@ -511,6 +516,13 @@
                             <a href="{{ url('/presences') }}" class="sidebar-link">
                                 <i class="bi bi-table"></i>
                                 <span>Presences</span>
+                            </a>
+                        </li>
+
+                        <li class="sidebar-item {{ $activeKpiDashboard ? 'active' : '' }}">
+                            <a href="{{ url('/kpi/dashboard') }}" class="sidebar-link">
+                                <i class="bi bi-bar-chart-fill"></i>
+                                <span>My KPI</span>
                             </a>
                         </li>
 
